@@ -497,3 +497,504 @@ int y2 = y - h;
 	TOWCap = XPCreateWidget(x+250, y-280, x+280, y-300,
 		1, "TOW", 0, OXWidget,
 		xpWidgetClass_Caption);
+
+	TOWdisp = XPCreateWidget(x+300, y-280, x+400, y-300,
+		1, "", 0, OXWidget,
+		xpWidgetClass_Caption);
+
+	BFCap = XPCreateWidget(x+20, y-320, x+40, y-340,
+		1, "BF", 0, OXWidget,
+		xpWidgetClass_Caption);
+
+	BFdisp = XPCreateWidget(x+50, y-320, x+100, y-340,
+		1, "", 0, OXWidget,
+		xpWidgetClass_Caption);
+
+	FFCap = XPCreateWidget(x+130, y-320, x+150, y-340,
+		1, "FF", 0, OXWidget,
+		xpWidgetClass_Caption);
+
+	FFdisp = XPCreateWidget(x+160, y-320, x+210, y-340,
+		1, "", 0, OXWidget,
+		xpWidgetClass_Caption);
+
+	LWCap = XPCreateWidget(x+250, y-320, x+280, y-340,
+		1, "LW", 0, OXWidget,
+		xpWidgetClass_Caption);
+
+	LWdisp = XPCreateWidget(x+300, y-320, x+400, y-340,
+		1, "", 0, OXWidget,
+		xpWidgetClass_Caption);
+
+	OUTCap = XPCreateWidget(x+20, y-360, x+50, y-380,
+		1, "OUT", 0, OXWidget,
+		xpWidgetClass_Caption);
+
+	OUTlatdisp = XPCreateWidget(x+70, y-360, x+150, y-380,
+		1, "", 0, OXWidget,
+		xpWidgetClass_Caption);
+
+	OUTlondisp = XPCreateWidget(x+180, y-360, x+260, y-380,
+		1, "", 0, OXWidget,
+		xpWidgetClass_Caption);
+
+	OUTaltdisp = XPCreateWidget(x+290, y-360, x+350, y-380,
+		1, "", 0, OXWidget,
+		xpWidgetClass_Caption);
+
+	INCap = XPCreateWidget(x+20, y-400, x+50, y-420,
+		1, "IN", 0, OXWidget,
+		xpWidgetClass_Caption);
+
+	INlatdisp = XPCreateWidget(x+70, y-400, x+150, y-420,
+		1, "", 0, OXWidget,
+		xpWidgetClass_Caption);
+
+	INlondisp = XPCreateWidget(x+180, y-400, x+260, y-420,
+		1, "", 0, OXWidget,
+		xpWidgetClass_Caption);
+
+	INaltdisp = XPCreateWidget(x+290, y-400, x+350, y-420,
+		1, "", 0, OXWidget,
+		xpWidgetClass_Caption);
+
+	MAXCap = XPCreateWidget(x+20, y-440, x+80, y-460,
+		1, "MAX C/D", 0, OXWidget,
+		xpWidgetClass_Caption);
+
+	maxCdisp = XPCreateWidget(x+110, y-440, x+140, y-460,
+		1, "", 0, OXWidget,
+		xpWidgetClass_Caption);
+
+	maxslash = XPCreateWidget(x+150, y-440, x+160, y-460,
+		1, "/", 0, OXWidget,
+		xpWidgetClass_Caption);
+
+	maxDdisp = XPCreateWidget(x+160, y-440, x+190, y-460,
+		1, "", 0, OXWidget,
+		xpWidgetClass_Caption);
+
+	maxICap = XPCreateWidget(x+220, y-440, x+250, y-460,
+		1, "IAS", 0, OXWidget,
+		xpWidgetClass_Caption);
+
+	maxIdisp = XPCreateWidget(x+260, y-440, x+290, y-460,
+		1, "", 0, OXWidget,
+		xpWidgetClass_Caption);
+
+	maxGCap = XPCreateWidget(x+310, y-440, x+330, y-460,
+		1, "GS", 0, OXWidget,
+		xpWidgetClass_Caption);
+
+	maxGdisp = XPCreateWidget(x+340, y-440, x+370, y-460,
+		1, "", 0, OXWidget,
+		xpWidgetClass_Caption);
+
+	SendButton = XPCreateWidget(x+20, y-480, x+140, y-500,
+		1, "Send", 0, OXWidget,
+		xpWidgetClass_Button);
+	XPSetWidgetProperty(SendButton, xpProperty_ButtonType, xpPushButton);
+
+// Register our widget handler
+	XPAddWidgetCallback(OXWidget, OXHandler);
+}
+
+// This is our widget handler.
+int SettingsHandler(XPWidgetMessage inMessage, XPWidgetID inWidget, long inParam1, long inParam2)
+{
+	if (inMessage == xpMessage_CloseButtonPushed)
+	{
+		if (sWidget == 1)
+		{
+			XPHideWidget(SettingsWidget);
+			}
+				return 1;
+			}
+
+			// Test for a button pressed
+			if (inMessage == xpMsg_PushButtonPressed) {
+				if (inParam1 == (long)SettingsSaveButton) {
+					printf("OXACARS - Saving settings...\n");
+					XPGetWidgetDescriptor( PIREPText, pirepurl, 63);
+					XPGetWidgetDescriptor( ACARSText, acarsurl, 63);
+					XPGetWidgetDescriptor( FDText, fdurl, 63);
+					XPGetWidgetDescriptor( PIDText, PID, 7);
+					}
+				}
+}
+
+int OXHandler(XPWidgetMessage inMessage, XPWidgetID inWidget, long inParam1, long inParam2)
+{
+	if (inMessage == xpMessage_CloseButtonPushed)
+	{
+		if (gWidget == 1)
+		{
+			XPHideWidget(OXWidget);
+		}
+		return 1;
+	}
+
+	// Test for a button pressed
+	if (inMessage == xpMsg_PushButtonPressed)
+	{
+		if (inParam1 == (long)ACARSInfoButton)
+		{
+			// ?DATA1=XACARS|1.1&DATA2=XAC1001
+			// ?DATA1=XACARS|2.0&DATA2=pid&DATA3=flightplan&DATA4=pid&DATA5=password
+			char Altn[5], Alt[6], Route[256], ACType[5], Plan[4], cargo[7], pax[4];
+			char *response = NULL;
+
+			printf("OXACARS - Assembling query URL...\n");
+			//char * durl = malloc(snprintf(NULL, 0, "%s?DATA1=%s&DATA2=%s", fdurl, DATA1v1, PID) + 1);
+			//sprintf(durl, "%s?DATA1=%s&DATA2=%s", fdurl, DATA1v1, PID);
+
+			char * durl = malloc(snprintf(NULL, 0, "DATA1=%s&DATA2=%s&DATA3=flightplan&DATA4=%s&DATA5=%s", DATA1v2, PID, PID, Ppass) + 1);
+			sprintf(durl, "DATA1=%s&DATA2=%s&DATA3=flightplan&DATA4=%s&DATA5=%s", DATA1v2, PID, PID, Ppass);
+
+			printf("OXACARS - Will attempt to get %s\n", durl);
+			//http://stackoverflow.com/questions/2577654/curl-put-output-into-variable
+			CURL *curl;
+			CURLcode res;
+			curl = curl_easy_init();
+			if(curl) {
+				curl_easy_setopt(curl, CURLOPT_URL, fdurl);
+				curl_easy_setopt(curl, CURLOPT_POSTFIELDS, durl);
+				curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback_func);
+				curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+				res = curl_easy_perform(curl);
+				if(res != CURLE_OK)
+				  fprintf(stderr, "curl_easy_perform() failed: %s\n",
+					curl_easy_strerror(res));
+				curl_easy_cleanup(curl);
+			}
+
+			//http://stackoverflow.com/questions/12789883/parallel-to-phps-explode-in-c-split-char-into-char-using-delimiter But I don't wanna explode...
+			printf("OXACARS - Now attempting to parse response...\n");
+			char ** fd = NULL;
+			char * p = strtok (response, "\n");
+			int n_spaces = 0, i;
+
+			while (p) {
+				fd = realloc (fd, sizeof (char*) * ++n_spaces);
+				if (fd == NULL)
+					exit (-1); //mem allocation fail
+				fd[n_spaces-1] = p;
+				p = strtok (NULL, "\n");
+			}
+			//realloc for last NULL
+			fd = realloc (fd, sizeof (char*) * (n_spaces+1));
+			fd[n_spaces] = 0;
+
+			strcpy(Dep,fd[1]);
+			strcpy(Arr, fd[2]);
+			strcpy(Altn, fd[3]);
+			//strcpy(Alt, fd[9]); //or not
+			strcpy(Route, fd[4]);
+			strcpy(ACType, fd[8]);
+			strcpy(Plan, fd[7]);
+			strcpy(cargo, fd[6]);
+			strcpy(pax, fd[5]);
+
+			/*printf("OXACARS - Dep: %s Arr: %s Altn: %s\n", Dep, Arr, Altn);
+			printf("OXACARS - Route: %s\n", Route);
+			printf("OXACARS - Alt: %s Plan: %s Type: %s\n", Alt, Plan, ACType);
+			printf("OXACARS - Pax: %s Cargo: %s\n", pax, cargo);*/
+
+			XPSetWidgetDescriptor( DepText, Dep);
+			XPSetWidgetDescriptor( ArrText, Arr);
+			XPSetWidgetDescriptor( AltnText, Altn);
+			XPSetWidgetDescriptor( RtText, Route);
+			XPSetWidgetDescriptor( PlanText, Plan);
+			XPSetWidgetDescriptor( TypeText, ACType);
+			XPSetWidgetDescriptor( CargoText, cargo);
+			XPSetWidgetDescriptor( PaxText, pax);
+
+		}
+		if (inParam1 == (long)SettingsButton)
+		{
+			// open settings stuff
+			printf("OXACARS - You pressed the Settings button...\n");
+			if (sWidget == 0) {
+				CreateSettingsWidget(100, 712, 600, 662); //left, top, right, bottom.
+				sWidget = 1;
+			} else {
+				if(!XPIsWidgetVisible(SettingsWidget))
+				XPShowWidget(SettingsWidget);
+			}
+		}
+		if (inParam1 == (long)StartButton) {
+			printf("OXACARS - Starting OXACARS monitoring...\n");
+			int eng_run[8], i;
+			if ( XPLMGetDataf(pbrake_ref) < 1 ) {
+				printf("OXACARS - GODDAMN PARKING BRAKE IS SET\n");
+				return 0;
+			}
+			num_eng = XPLMGetDatai( num_eng_ref );
+			printf("OXACARS - Found %d engines...\n", num_eng);
+			XPLMGetDatavi( eng_run_ref, eng_run, 0, num_eng );
+			for ( i = 0; i < num_eng; i++ ) {
+				if ( eng_run[i] == 1 ) {
+					printf("OXACARS - SHUT OFF THE GODDAMN ENGINES\n");
+					return 0;
+				}
+			}
+
+			char BEGlat[12], BEGlon[12], tailnumbuf[41];
+			char * RouteStr = NULL;
+			double BEG_lat, BEG_lon, BEG_alt;
+			float BEG_f, FW, Elev, hdgm, hdgt, wndh, wndk;
+			char *buf = 0;
+			void *temp = 0;
+
+			printf("OXACARS - Gathering flight info...\n");
+			XPLMGetDatab( tailnum_ref, tailnum, 0, 40 );
+			/* XPLMGetDatab( tailnum_ref, tailnumbuf, 0, 40 );
+			printf("OXACARS - Tail number is %d long\n",strlen(tailnumbuf));
+			temp = realloc(tailnum, strlen(tailnumbuf) + 1);
+			if (temp) tailnum = temp;
+			strcpy( tailnum, tailnumbuf );*/
+
+			XPGetWidgetDescriptor( PaxText, pax, 3);
+			XPGetWidgetDescriptor( FltNoText, fltno, 8);
+			XPGetWidgetDescriptor( TypeText, Type, 4);
+			XPGetWidgetDescriptor( FLText, Alt, 5);
+			XPGetWidgetDescriptor( PlanText, Plan, 3);
+			XPGetWidgetDescriptor( DepText, Dep, 4);
+			XPGetWidgetDescriptor( ArrText, Arr, 4);
+			XPGetWidgetDescriptor( AltnText, Altn, 4);
+			XPGetWidgetDescriptor( CargoText, cargo, 6);
+			XPGetWidgetDescriptor( RtText, Route, 255);
+
+			RouteStr = str_replace( Route, " ", "~" );
+
+			hdgm = XPLMGetDataf(hdgm_ref);
+			wndh = XPLMGetDataf(wndh_ref);
+			wndk = XPLMGetDataf(wndk_ref);
+			BEG_lat = XPLMGetDatad(lat_ref); // N/Sxx xx.xxxx
+			BEG_lon = XPLMGetDatad(lon_ref); //http://data.x-plane.com/designers.html#Hint_LatLonFormat
+			BEG_alt = XPLMGetDatad(alt_ref);
+			BEG_f = XPLMGetDataf(wt_f_tot_ref);
+			strcpy(BEGlat, degdm(BEG_lat, 0));
+			strcpy(BEGlon, degdm(BEG_lon, 1));
+
+			FW = BEG_f * kglb;
+			Elev = BEG_alt * mft;
+			//DATA1=XACARS|2.0&DATA2=BEGINFLIGHT&DATA3=pid||pid|73W||KMDW~PEKUE~OBENE~MONNY~IANNA~FSD~J16~BIL~J136~MLP~GLASR9~KSEA|N34 34.2313 E69 11.6551|5866||||107|180|15414|0|IFR|0|password|&DATA4=
+
+			char * surl = malloc(snprintf(NULL, 0, "DATA1=%s&DATA2=BEGINFLIGHT&DATA3=%s||%s|%s||%s~%s~%s|%s %s|%.0f||||%.0f|%.0f|%.0f%.0f|0|%s|0|%s|&DATA4=", DATA1v2, uname, fltno, Type, Dep, RouteStr, Arr, BEGlat, BEGlon, Elev, FW, hdgm, wndh, wndk, Plan, Ppass) + 1);
+			sprintf(surl, "DATA1=%s&DATA2=BEGINFLIGHT&DATA3=%s||%s|%s||%s~%s~%s|%s %s|%.0f||||%.0f|%.0f|%.0f%.0f|0|%s|0|%s|&DATA4=", DATA1v2, uname, fltno, Type, Dep, RouteStr, Arr, BEGlat, BEGlon, Elev, FW, hdgm, wndh, wndk, Plan, Ppass);
+
+			printf("OXACARS - Will send url %s\n", surl);
+			/*CURL *curl;
+			CURLcode res;
+			curl = curl_easy_init();
+			if(curl) {
+				curl_easy_setopt(curl, CURLOPT_URL, acarsurl);
+				curl_easy_setopt(curl, CURLOPT_POSTFIELDS, surl);
+				res = curl_easy_perform(curl);
+				if(res != CURLE_OK)
+				  fprintf(stderr, "curl_easy_perform() failed: %s\n",
+					curl_easy_strerror(res));
+				curl_easy_cleanup(curl);
+			}*/
+
+			XPSetWidgetProperty( PaxText, xpProperty_TextFieldType, xpTextTranslucent);
+			XPSetWidgetProperty( FltNoText, xpProperty_TextFieldType, xpTextTranslucent);
+			XPSetWidgetProperty( TypeText, xpProperty_TextFieldType, xpTextTranslucent);
+			XPSetWidgetProperty( FLText, xpProperty_TextFieldType, xpTextTranslucent);
+			XPSetWidgetProperty( PlanText, xpProperty_TextFieldType, xpTextTranslucent);
+			XPSetWidgetProperty( DepText, xpProperty_TextFieldType, xpTextTranslucent);
+			XPSetWidgetProperty( ArrText, xpProperty_TextFieldType, xpTextTranslucent);
+			XPSetWidgetProperty( AltnText, xpProperty_TextFieldType, xpTextTranslucent);
+			XPSetWidgetProperty( CargoText, xpProperty_TextFieldType, xpTextTranslucent);
+			XPSetWidgetProperty( RtText, xpProperty_TextFieldType, xpTextTranslucent);
+
+			XPLMRegisterFlightLoopCallback(
+				MyFlightLoopCallback,
+				1.0,
+				NULL);
+			printf("OXACARS - Registered loop callback, startup complete\n");
+		}
+		if (inParam1 == (long)SendButton)
+		{
+			XPLMUnregisterFlightLoopCallback(MyFlightLoopCallback, NULL);
+			char online[8];
+
+			/*printf("OXACARS - Defining flight variables...\n");
+			time_t OUT_time = 1394204887;
+			time_t IN_time = 1394214827;
+			time_t OFF_time = 1394204987;
+			time_t ON_time = 1394214887;
+			float OUT_f = 10000.0;
+			float OFF_f = 9500.0;
+			float OFF_w = 150000.0;
+			float ON_f = 2200.0;
+			float ON_w = 142700.0;
+			float IN_f = 2100.0;
+			double OUT_lat = 45.43210; // N/Sxx xx.xxxx N/E > 0, S/W < 0
+			double OUT_lon = -95.43210; // E/Wxx xx.xxxx
+			double OUT_alt = 135.0;
+			double IN_lat = 44.43210;
+			double IN_lon = -90.43210;
+			double IN_alt = 583.1;
+			float maxC = 4000.0;
+			float maxD = 3000.0;
+			float maxI = 288.0;
+			float maxG = 100.0; */
+
+			//http://www.xacars.net/index.php?Client-Server-Protocol
+			printf("Online seconds: %f\n",IN_net_s);
+			// if ( IN_net_s > (IN_time - OUT_time) ) { // or...?
+			// strcpy(online, "VATSIM");
+			// } else {
+			strcpy(online, "OFFLINE");
+			// }
+
+			/* XPGetWidgetDescriptor( TypeText, Type, 4);
+			XPGetWidgetDescriptor( FLText, Alt, 5);
+			XPGetWidgetDescriptor( PlanText, Plan, 3);
+			XPGetWidgetDescriptor( AltnText, Altn, 4);
+			XPGetWidgetDescriptor( PaxText, pax, 3);
+			XPGetWidgetDescriptor( CargoText, cargo, 6); */
+
+			printf("OXACARS - This is a lot of information...\n");
+			char * DATA2 = malloc(snprintf(NULL, 0, "%s~%s~%s~%s~%s~%s~%s~%s~%s~%s~%s~%s~%.0f~%.0f~%s~%s~%s~%lu~%lu~%lu~%lu~%.0f~%.0f~%.0f~%s~%s~%.0f~%s~%s~%.0f~%.0f~%.0f~%.0f~%.0f", PID, Ppass, fltno, Type, Alt, Plan, Dep, Arr, Altn, DT, blocktime, flighttime, BF, FF, pax, cargo, online, OUT_time, OFF_time, ON_time, IN_time, ZFW, TOW, LW, OUTlat, OUTlon, OUTalt, INlat, INlon, INalt, maxC, -maxD, maxI, maxG) + 1);
+			sprintf(DATA2, "%s~%s~%s~%s~%s~%s~%s~%s~%s~%s~%s~%s~%.0f~%.0f~%s~%s~%s~%lu~%lu~%lu~%lu~%.0f~%.0f~%.0f~%s~%s~%.0f~%s~%s~%.0f~%.0f~%.0f~%.0f~%.0f", PID, Ppass, fltno, Type, Alt, Plan, Dep, Arr, Altn, DT, blocktime, flighttime, BF, FF, pax, cargo, online, OUT_time, OFF_time, ON_time, IN_time, ZFW, TOW, LW, OUTlat, OUTlon, OUTalt, INlat, INlon, INalt, maxC, -maxD, maxI, maxG);
+
+			char * purl = malloc(snprintf(NULL, 0, "DATA1=%s&DATA2=%s", DATA1v1, DATA2) + 1);
+			sprintf(purl, "DATA1=%s&DATA2=%s", DATA1v1, DATA2);
+
+			printf("OXACARS - Will send url %s\n", purl);
+			/*CURL *curl;
+			CURLcode res;
+			curl = curl_easy_init();
+			if(curl) {
+				curl_easy_setopt(curl, CURLOPT_URL, pirepurl);
+				(curl, CURLOPT_POSTFIELDS, purl);
+				res = curl_easy_perform(curl);
+				if(res != CURLE_OK)
+				  fprintf(stderr, "curl_easy_perform() failed: %s\n",
+					curl_easy_strerror(res));
+				curl_easy_cleanup(curl);
+			}*/
+		}
+	}
+}
+
+//http://www.xsquawkbox.net/xpsdk/mediawiki/TimedProcessing
+float MyFlightLoopCallback(
+    float inElapsedSinceLastCall,
+    float inElapsedTimeSinceLastFlightLoop,
+    int inCounter,
+    void * inRefcon)
+{
+	int iter, schg = 0, i, gear_state, hot = 0, cstate, newstate;
+	float IAS = XPLMGetDataf(ias_ref), geardep[10], C_now = XPLMGetDataf(vvi_ref);
+	double Alt = XPLMGetDatad(alt_ref) * mft;
+	char *buf = 0;
+
+if( OFF==1 && ON == 0 ) {
+	// Track max values
+	float I_now = XPLMGetDataf(ias_ref);
+	float G_now = XPLMGetDataf(gs_ref) * mkt;
+	if ( C_now > maxC ) {
+		maxC = C_now;
+		void *temp = realloc(buf, snprintf(NULL, 0, "%.0f", maxC) + 1);
+		if (temp) buf = temp;
+		sprintf(buf, "%.0f", maxC);
+		XPSetWidgetDescriptor( maxCdisp, buf );
+	} else if ( C_now < maxD ) {
+		maxD = C_now;
+		void *temp = realloc(buf, snprintf(NULL, 0, "%.0f", maxD) + 1);
+		if (temp) buf = temp;
+		sprintf(buf, "%.0f", maxD);
+		XPSetWidgetDescriptor( maxDdisp, buf );
+	}
+	if ( I_now > maxI ) {
+		maxI = I_now;
+		void *temp = realloc(buf, snprintf(NULL, 0, "%.0f", maxI) + 1);
+		if (temp) buf = temp;
+		sprintf(buf, "%.0f", maxI);
+		XPSetWidgetDescriptor( maxIdisp, buf );
+	}
+	if ( G_now > maxG ) {
+		maxG = G_now;
+		void *temp = realloc(buf, snprintf(NULL, 0, "%.0f", maxG) + 1);
+		if (temp) buf = temp;
+		sprintf(buf, "%.0f", maxG);
+		XPSetWidgetDescriptor( maxGdisp, buf );
+	}
+}
+
+//CLB = 0 LVL = 1 DES = 2
+
+	iter = Counter % ( 60 * ival);
+	if ( iter == 0 ) {
+		if ( C_now > 500 )
+			cstate = 0;
+		else if ( C_now < -500 )
+			cstate = 2;
+		else
+			cstate = 1;
+		if ( cstate != state )
+			newstate = 1;
+		else
+			newstate = 0;
+		schg = 10;
+	// printf("Clb: %.0f cstate: %d state: %d newstate: %d",C_now,cstate,state,newstate);
+	}
+
+	if ( XPLMGetDatai(sim_speed_ref) > 1 || XPLMGetDatai(grd_speed_ref) > 1 ) // looks like we've got a time traveller here, welcome to the future
+		delorean = 1;
+
+	if ( Alt < 10000 && IAS > 270 ) // the FAA will hear about this!
+		capt_yaeger = 1;
+
+	// Track flight state
+
+	/*XPLMGetDatai(); //int
+	XPLMGetDatavi(); //int array
+	XPLMGetDataf(); //flt
+	XPLMGetDatavf(); //flt array
+	XPLMGetDatad(); //dbl*/
+
+	//f_axil = XPLMGetDataf(f_axil_ref);
+	//f_side = XPLMGetDataf(f_side_ref);
+
+	if ( OUT == 0 || ON == 1 && IN == 0 ) {
+		int eng_run[8];
+		XPLMGetDatavi( eng_run_ref, eng_run, 0, MAX_ENG );
+		for ( i = 0; i < num_eng; i++ ) {
+			if ( eng_run[i] == 1 )
+				hot = 1;
+		}
+	}
+
+if ( OUT == 1 && OFF == 0 || OFF == 1 && ON == 0 ) {
+	XPLMGetDatavf( geardep_ref, geardep, 0, 10);
+	gear_state = 1;
+	for ( i = 0; i < 10; i++ ) {
+		if ( geardep[i] == 0 ) {
+			gear_state = 0;
+		}
+	}
+}
+
+	if ( OUT == 0 && hot == 1 ) {
+// printf("OXACARS - Detected OUT state...\n");
+		OUT = 1;
+		schg = 1;
+	} else if ( OFF == 0 && OUT == 1 && gear_state == 0 ) {
+// printf("OXACARS - Detected OFF state...\n");
+		OFF = 1;
+		schg = 2;
+	} else if ( ON == 0 && OFF == 1 && XPLMGetDataf(f_norm_ref) != 0 && gear_state == 1 ) {
+// printf("OXACARS - Detected ON state...\n");
+		ON = 1;
+		schg = 3;
+		Lrate = C_then;
+	} else if ( ON == 1 && IN == 0 && hot == 0 && XPLMGetDataf(pbrake_ref) == 1) {
+// printf("OXACARS - Detected IN state...\n");
+		IN = 1;
+		schg = 4;
+	}
