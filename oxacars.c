@@ -998,3 +998,97 @@ if ( OUT == 1 && OFF == 0 || OFF == 1 && ON == 0 ) {
 		IN = 1;
 		schg = 4;
 	}
+
+	if ( schg > 0 ) {
+		time_t tstamp = time(NULL);
+		struct tm ts;
+		printf("OXACARS - Assembling message...\n");
+		float hdgm = XPLMGetDataf(hdgm_ref);
+		float hdgt = XPLMGetDataf(hdgt_ref);
+		float wndh = XPLMGetDataf(wndh_ref);
+		float wndk = XPLMGetDataf(wndk_ref);
+		float OAT = XPLMGetDataf(t_amb_ref);
+		float TAT = XPLMGetDataf(t_le_ref);
+		float FOB = XPLMGetDataf(wt_f_tot_ref) * kglb;
+		float TAW, dist = 0, n1[8], n2[8];
+		double lat, lon;
+		char zdate[11], ztime[7], dlat[12], dlon[12], act[13];
+		char * messg;
+		float dist_down = 0, dist_togo = 0; // this would be too hard
+		void *temp;
+
+		printf("States: OUT=%d, OFF=%d, ON=%d, IN=%d\n",OUT,OFF,ON,IN);
+		// printf("Gear: Dep: %d F_norm: %f\n", gear_state, XPLMGetDataf(f_norm_ref));
+
+		if ( FOB > FOB_prev )
+			capt_smith = 1; // hooked up with a tanker, did you?
+
+		ts = *gmtime(&tstamp);
+		strftime(zdate, sizeof(zdate), "%m/%d/%Y", &ts);
+		strftime(ztime, sizeof(ztime), "%H:%MZ", &ts);
+
+		if ( msg == 100 ) { // roll ACARS message index
+			msgc++;
+			msg = 1;
+		}
+
+		char * head = malloc(snprintf(NULL, 0, "[%s %s]\nACARS Mode: 2 Aircraft Reg: .%s\nMsg Label: PR Block ID: 01 Msg No: M%02d%c\nFlight ID: %s\nMessage:\n", zdate, ztime, tailnum, msg, msgc, fltno) + 1);
+		sprintf(head, "[%s %s]\nACARS Mode: 2 Aircraft Reg: .%s\nMsg Label: PR Block ID: 01 Msg No: M%02d%c\nFlight ID: %s\nMessage:\n", zdate, ztime, tailnum, msg, msgc, fltno);
+
+		char * com = malloc(snprintf(NULL, 0, "/HDG %.0f\n/HDT %.0f\n/IAS %.0f\n/WND %.0f%.0f /OAT %.0f /TAT %.0f\n", hdgm, hdgt, IAS, wndh, wndk, OAT, TAT) + 1);
+		sprintf(com, "/HDG %.0f\n/HDT %.0f\n/IAS %.0f\n/WND %.0f%.0f /OAT %.0f /TAT %.0f\n", hdgm, hdgt, IAS, wndh, wndk, OAT, TAT);
+
+		lat = XPLMGetDatad(lat_ref);
+		lon = XPLMGetDatad(lon_ref);
+		strcpy(dlat, degdm(lat, 0));
+		strcpy(dlon, degdm(lon, 1));
+
+		char * POS = malloc(snprintf(NULL, 0, "POS %s %s\n", dlat, dlon) + 1);
+		sprintf(POS, "POS %s %s\n", dlat, dlon);
+
+		switch ( schg ) {
+			case 1: // OUT
+				TAW = XPLMGetDataf(wt_tot_ref) * kglb;
+				OUT_f = FOB;
+				ZFW = TAW - OUT_f;
+				OUT_time = tstamp;
+				strcpy(OUTlat, dlat);
+				strcpy(OUTlon, dlon);
+				OUTalt = Alt;
+				temp = realloc(buf, snprintf(NULL, 0, "%.0f", ZFW) + 1);
+				if (temp) buf = temp;
+				sprintf(buf, "%.0f", ZFW);
+				XPSetWidgetDescriptor( ZFWdisp, buf);
+				XPSetWidgetDescriptor( OUTlatdisp, OUTlat );
+				XPSetWidgetDescriptor( OUTlondisp, OUTlon );
+				temp = realloc(buf, snprintf(NULL, 0, "%.0f", OUTalt) + 1);
+				if (temp) buf = temp;
+				sprintf(buf, "%.0f", OUTalt);
+				XPSetWidgetDescriptor( OUTaltdisp, buf );
+				printf("OXACARS - Building OUT report...\n");
+				messg = malloc(snprintf(NULL, 0, "OUT %s /ZFW %.0f /FOB %.0f /TAW %.0f\n/AP %s\n/%s/ALT %.0f\n%s", ztime, ZFW, OUT_f, TAW, Dep, POS, Alt, com) + 1);
+				sprintf(messg, "OUT %s /ZFW %.0f /FOB %.0f /TAW %.0f\n/AP %s\n/%s/ALT %.0f\n%s", ztime, ZFW, OUT_f, TAW, Dep, POS, Alt, com);
+				break;
+			case 2: // OFF
+				OFF_f = FOB;
+				TOW = XPLMGetDataf(wt_tot_ref) * kglb;
+				XPLMGetDatavf( en1_ref, n1, 0, num_eng );
+				XPLMGetDatavf( en2_ref, n2, 0, num_eng );
+				OFF_time = tstamp;
+				temp = realloc(buf, snprintf(NULL, 0, "%.0f", TOW) + 1);
+				if (temp) buf = temp;
+				sprintf(buf, "%.0f", TOW);
+				XPSetWidgetDescriptor( TOWdisp, buf );
+				printf("OXACARS - Building OFF report...\n");
+				messg = malloc(snprintf(NULL, 0, "OFF %s /FOB %.0f /TOW %.0f\n/%s/ALT %.0f\n%s", ztime, OFF_f, TOW, POS, Alt, com) + 1);
+				sprintf(messg, "OFF %s /FOB %.0f /TOW %.0f\n/%s/ALT %.0f\n%s", ztime, OFF_f, TOW, POS, Alt, com);
+				for( i = 0; i < num_eng; i++ ) {
+					temp = realloc(buf, snprintf(NULL, 0, "%s", messg) + 1);
+					if (temp) buf = temp;
+					strcpy( buf, messg );
+					messg = realloc(messg, snprintf(NULL, 0, "%s/E%dN1 %.0f /E%dN2 %.0f ", buf, i+1, n1[i], i+1, n2[i]) + 1);
+					sprintf(messg, "%s/E%dN1 %.0f /E%dN2 %.0f ", buf, i+1, n1[i], i+1, n2[i]);
+				}
+				messg = realloc(messg, snprintf(NULL, 0, "%s\n\n", messg) + 1);
+				sprintf(messg, "%s\n\n", messg);
+				break;
