@@ -1171,3 +1171,4 @@ if ( OUT == 1 && OFF == 0 || OFF == 1 && ON == 0 ) {
 				messg = malloc(snprintf(NULL, 0, "%s/ALT %.0f%s%s/FOB %.0f\n/DST %.0f - %.0f\n", POS, Alt, act, com, FOB, dist_down, dist_togo) + 1);
 				sprintf(messg, "%s/ALT %.0f%s%s/FOB %.0f\n/DST %.0f - %.0f\n", POS, Alt, act, com, FOB, dist_down, dist_togo);
 				break;
+			default:
