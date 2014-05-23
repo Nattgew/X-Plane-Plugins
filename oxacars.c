@@ -689,10 +689,6 @@ int OXHandler(XPWidgetMessage inMessage, XPWidgetID inWidget, long inParam1, lon
 			strcpy(cargo, fd[6]);
 			strcpy(pax, fd[5]);
 
-			/*printf("OXACARS - Dep: %s Arr: %s Altn: %s\n", Dep, Arr, Altn);
-			printf("OXACARS - Route: %s\n", Route);
-			printf("OXACARS - Alt: %s Plan: %s Type: %s\n", Alt, Plan, ACType);
-			printf("OXACARS - Pax: %s Cargo: %s\n", pax, cargo);*/
 
 			XPSetWidgetDescriptor( DepText, Dep);
 			XPSetWidgetDescriptor( ArrText, Arr);
@@ -742,11 +738,6 @@ int OXHandler(XPWidgetMessage inMessage, XPWidgetID inWidget, long inParam1, lon
 
 			printf("OXACARS - Gathering flight info...\n");
 			XPLMGetDatab( tailnum_ref, tailnum, 0, 40 );
-			/* XPLMGetDatab( tailnum_ref, tailnumbuf, 0, 40 );
-			printf("OXACARS - Tail number is %d long\n",strlen(tailnumbuf));
-			temp = realloc(tailnum, strlen(tailnumbuf) + 1);
-			if (temp) tailnum = temp;
-			strcpy( tailnum, tailnumbuf );*/
 
 			XPGetWidgetDescriptor( PaxText, pax, 3);
 			XPGetWidgetDescriptor( FltNoText, fltno, 8);
@@ -814,28 +805,6 @@ int OXHandler(XPWidgetMessage inMessage, XPWidgetID inWidget, long inParam1, lon
 			XPLMUnregisterFlightLoopCallback(MyFlightLoopCallback, NULL);
 			char online[8];
 
-			/*printf("OXACARS - Defining flight variables...\n");
-			time_t OUT_time = 1394204887;
-			time_t IN_time = 1394214827;
-			time_t OFF_time = 1394204987;
-			time_t ON_time = 1394214887;
-			float OUT_f = 10000.0;
-			float OFF_f = 9500.0;
-			float OFF_w = 150000.0;
-			float ON_f = 2200.0;
-			float ON_w = 142700.0;
-			float IN_f = 2100.0;
-			double OUT_lat = 45.43210; // N/Sxx xx.xxxx N/E > 0, S/W < 0
-			double OUT_lon = -95.43210; // E/Wxx xx.xxxx
-			double OUT_alt = 135.0;
-			double IN_lat = 44.43210;
-			double IN_lon = -90.43210;
-			double IN_alt = 583.1;
-			float maxC = 4000.0;
-			float maxD = 3000.0;
-			float maxI = 288.0;
-			float maxG = 100.0; */
-
 			//http://www.xacars.net/index.php?Client-Server-Protocol
 			printf("Online seconds: %f\n",IN_net_s);
 			// if ( IN_net_s > (IN_time - OUT_time) ) { // or...?
@@ -843,13 +812,6 @@ int OXHandler(XPWidgetMessage inMessage, XPWidgetID inWidget, long inParam1, lon
 			// } else {
 			strcpy(online, "OFFLINE");
 			// }
-
-			/* XPGetWidgetDescriptor( TypeText, Type, 4);
-			XPGetWidgetDescriptor( FLText, Alt, 5);
-			XPGetWidgetDescriptor( PlanText, Plan, 3);
-			XPGetWidgetDescriptor( AltnText, Altn, 4);
-			XPGetWidgetDescriptor( PaxText, pax, 3);
-			XPGetWidgetDescriptor( CargoText, cargo, 6); */
 
 			printf("OXACARS - This is a lot of information...\n");
 			char * DATA2 = malloc(snprintf(NULL, 0, "%s~%s~%s~%s~%s~%s~%s~%s~%s~%s~%s~%s~%.0f~%.0f~%s~%s~%s~%lu~%lu~%lu~%lu~%.0f~%.0f~%.0f~%s~%s~%.0f~%s~%s~%.0f~%.0f~%.0f~%.0f~%.0f", PID, Ppass, fltno, Type, Alt, Plan, Dep, Arr, Altn, DT, blocktime, flighttime, BF, FF, pax, cargo, online, OUT_time, OFF_time, ON_time, IN_time, ZFW, TOW, LW, OUTlat, OUTlon, OUTalt, INlat, INlon, INalt, maxC, -maxD, maxI, maxG) + 1);
@@ -1169,3 +1131,26 @@ if ( OUT == 1 && OFF == 0 || OFF == 1 && ON == 0 ) {
 				messg = malloc(snprintf(NULL, 0, "/I hate this airline YOLO") + 1);
 				sprintf(messg, "/I hate this airline YOLO");
 		}
+
+		// printf("OXACARS - Assembling message URL...\n");
+		char * murl = malloc(snprintf(NULL, 0, "DATA1=%s&DATA2=MESSAGE&DATA3=%lu&DATA4=%s%s", DATA1v2, tstamp, head, messg) + 1);
+		sprintf(murl, "DATA1=%s&DATA2=MESSAGE&DATA3=%lu&DATA4=%s%s", DATA1v2, tstamp, head, messg);
+
+		printf("OXACARS - Will attempt to visit %s\n", murl);
+
+		msg++;
+		FOB_prev = FOB; // this is rocket science
+		state = cstate; // when you learn something, you need to remember it
+		Counter = 0; // no need to report sooner than interval
+	}
+
+	C_then = C_now; // in case we land before next loop
+	Counter++; // increment loop counter
+
+	/* Return 1.0 to indicate that we want to be called again in 1 second. */
+	if( IN == 0 ) {
+		return 1.0;
+	} else {
+		return 600.0; // no reports after IN
+	}
+}
