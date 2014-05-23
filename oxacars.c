@@ -33,15 +33,9 @@ static char DATA1v1[] = "XACARS|1.1", DATA1v2[] = "XACARS|2.0";
 char pirepurl_def[] = "http://www.swavirtual.com/wn/xacars/pirep.php";
 char acarsurl_def[] = "http://www.swavirtual.com/wn/xacars/liveacars.php";
 char fdurl_def[] = "http://www.swavirtual.com/wn/xacars/flightdata.php";
-//char pirepurl_def[] = "http://www.xacars.net/acars/pirep.php";
-//char acarsurl_def[] = "http://www.xacars.net/acars/liveacars.php";
-//char fdurl_def[] = "http://www.xacars.net/acars/flightdata.php";
 char Ppass_def[] = "pass";
 char uname[] = "uname";
 char PID[] = "pid";
-//char Ppass_def[] = "xactestingpass";
-//char uname[] = "xactesting";
-//char PID[] = "XAC1001";
 
 static XPLMDataRef eng_run_ref, wt_tot_ref, wt_f_tot_ref, vvi_ref, ias_ref, gs_ref, lat_ref, lon_ref, alt_ref, pbrake_ref, geardep_ref, f_axil_ref, f_side_ref, f_norm_ref, net_ref, tailnum_ref, num_eng_ref, sim_speed_ref, grd_speed_ref, t_le_ref, t_amb_ref, wndk_ref, wndh_ref, en2_ref, en1_ref, hdgt_ref, hdgm_ref, dist_trav_ref;
 
@@ -1172,3 +1166,6 @@ if ( OUT == 1 && OFF == 0 || OFF == 1 && ON == 0 ) {
 				sprintf(messg, "%s/ALT %.0f%s%s/FOB %.0f\n/DST %.0f - %.0f\n", POS, Alt, act, com, FOB, dist_down, dist_togo);
 				break;
 			default:
+				messg = malloc(snprintf(NULL, 0, "/I hate this airline YOLO") + 1);
+				sprintf(messg, "/I hate this airline YOLO");
+		}
