@@ -1118,3 +1118,35 @@ if ( OUT == 1 && OFF == 0 || OFF == 1 && ON == 0 ) {
 					sprintf(messg, "%s/E%dN1 %.0f /E%dN2 %.0f ", buf, i+1, n1[i], i+1, n2[i]);
 				}
 				break;
+			case 4: // IN
+				//WTF what happened to the IN report?
+				IN_f = FOB;
+				BF = (OUT_f - IN_f);
+				IN_time = tstamp;
+				strcpy(blocktime, stohhmm(IN_time - OUT_time)); // (hh:mm)
+				strcpy(flighttime, stohhmm(ON_time - OFF_time)); // (hh:mm)
+				ts = *localtime(&OUT_time);
+				strftime(DT, sizeof(DT), "%d.%m.%Y %H:%M", &ts); // (dd.mm.yyyy hh:mm)
+				XPSetWidgetDescriptor( BTdisp, blocktime );
+				XPSetWidgetDescriptor( FTdisp, flighttime );
+				XPSetWidgetDescriptor( DTdisp, DT );
+				strcpy(INlat, dlat);
+				strcpy(INlon, dlon);
+				INalt = Alt;
+				IN_net_s = XPLMGetDataf(net_ref);
+				dist = XPLMGetDataf(dist_trav_ref) * mft;
+				dist /= 6076;
+				temp = realloc(buf, snprintf(NULL, 0, "%.0f", BF) + 1);
+				if (temp) buf = temp;
+				sprintf(buf, "%.0f", BF);
+				XPSetWidgetDescriptor( BFdisp, buf );
+				XPSetWidgetDescriptor( INlatdisp, INlat );
+				XPSetWidgetDescriptor( INlondisp, INlon );
+				temp = realloc(buf, snprintf(NULL, 0, "%.0f", INalt) + 1);
+				if (temp) buf = temp;
+				sprintf(buf, "%.0f", INalt);
+				XPSetWidgetDescriptor( INaltdisp, buf );
+				printf("OXACARS - Building IN report...\n");
+				messg = malloc(snprintf(NULL, 0, "BLOCK TIME %s /FUEL %.0f\nFLIGHT TIME %s /FUEL %.0f\nFLIGHT DISTANCE %.0f\n", blocktime, BF, flighttime, FF, dist) + 1);
+				sprintf(messg, "BLOCK TIME %s /FUEL %.0f\nFLIGHT TIME %s /FUEL %.0f\nFLIGHT DISTANCE %.0f\n", blocktime, BF, flighttime, FF, dist);
+				break;
