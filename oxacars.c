@@ -1150,3 +1150,19 @@ if ( OUT == 1 && OFF == 0 || OFF == 1 && ON == 0 ) {
 				messg = malloc(snprintf(NULL, 0, "BLOCK TIME %s /FUEL %.0f\nFLIGHT TIME %s /FUEL %.0f\nFLIGHT DISTANCE %.0f\n", blocktime, BF, flighttime, FF, dist) + 1);
 				sprintf(messg, "BLOCK TIME %s /FUEL %.0f\nFLIGHT TIME %s /FUEL %.0f\nFLIGHT DISTANCE %.0f\n", blocktime, BF, flighttime, FF, dist);
 				break;
+			case 10: // CHG CLB = 0 LVL = 1 DES = 2
+				if ( newstate == 1) {
+					switch ( cstate ) {
+					case 0:
+						strcpy(act, " CHG CLIMB\n");
+						break;
+					case 1:
+						strcpy(act, " LEVEL\n");
+						break;
+					case 2:
+						strcpy(act, " CHG DESC\n");
+						break;
+					default:
+						strcpy(act, "\n");
+					}
+				} else
