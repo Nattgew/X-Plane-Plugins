@@ -1092,3 +1092,29 @@ if ( OUT == 1 && OFF == 0 || OFF == 1 && ON == 0 ) {
 				messg = realloc(messg, snprintf(NULL, 0, "%s\n\n", messg) + 1);
 				sprintf(messg, "%s\n\n", messg);
 				break;
+			case 3: // ON
+				XPLMGetDatavf( en1_ref, n1, 0, num_eng );
+				XPLMGetDatavf( en2_ref, n2, 0, num_eng );
+				ON_f = FOB;
+				LW = XPLMGetDataf(wt_tot_ref) * kglb;
+				ON_time = tstamp;
+				FF = (OFF_f - ON_f);
+				temp = realloc(buf, snprintf(NULL, 0, "%.0f", LW) + 1);
+				if (temp) buf = temp;
+				sprintf(buf, "%.0f", LW);
+				XPSetWidgetDescriptor( LWdisp, buf );
+				temp = realloc(buf, snprintf(NULL, 0, "%.0f", FF) + 1);
+				if (temp) buf = temp;
+				sprintf(buf, "%.0f", FF);
+				XPSetWidgetDescriptor( FFdisp, buf );
+				printf("OXACARS - Building ON report...\n");
+				messg = malloc(snprintf(NULL, 0, "ON %s /FOB %.0f /LAW %.0f\n/AP %s\n/%s/ALT %.0f\n%s", ztime, ON_f, LW, Arr, POS, Alt, com) + 1);
+				sprintf(messg, "ON %s /FOB %.0f /LAW %.0f\n/AP %s\n/%s/ALT %.0f\n%s", ztime, ON_f, LW, Arr, POS, Alt, com);
+				for( i = 0; i < num_eng; i++ ) {
+					void *temp= realloc(buf, snprintf(NULL, 0, "%s", messg) + 1);
+					if (temp) buf = temp;
+					strcpy( buf, messg );
+					messg = realloc(messg, snprintf(NULL, 0, "%s/E%dN1 %.0f /E%dN2 %.0f ", buf, i+1, n1[i], i+1, n2[i]) + 1);
+					sprintf(messg, "%s/E%dN1 %.0f /E%dN2 %.0f ", buf, i+1, n1[i], i+1, n2[i]);
+				}
+				break;
