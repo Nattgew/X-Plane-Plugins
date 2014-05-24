@@ -745,7 +745,7 @@ int     OXHandler(XPWidgetMessage  inMessage, XPWidgetID  inWidget, long  inPara
                         printf("OXACARS - Starting OXACARS monitoring...\n");
                         int eng_run[8], i;
                         if ( XPLMGetDataf(pbrake_ref) < 1 ) {
-                                printf("OXACARS - GODDAMN PARKING BRAKE IS SET\n");
+                                printf("OXACARS - PARKING BRAKE IS SET\n");
                                 return 0;
                         }
                         num_eng = XPLMGetDatai( num_eng_ref );
@@ -753,7 +753,7 @@ int     OXHandler(XPWidgetMessage  inMessage, XPWidgetID  inWidget, long  inPara
                         XPLMGetDatavi( eng_run_ref, eng_run, 0, num_eng );
                         for ( i = 0; i < num_eng; i++ ) {
                                 if ( eng_run[i] == 1 ) {
-                                        printf("OXACARS - SHUT OFF THE GODDAMN ENGINES\n");
+                                        printf("OXACARS - SHUT OFF THE ENGINES\n");
                                         return 0;
                                 }
                         }
