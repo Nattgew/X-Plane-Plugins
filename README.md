@@ -12,5 +12,7 @@ Basic functionality of starting flight, reporting during flight, and ending flig
 
 <b>TO DO:</b>
 <ul><li>Final flight report fails</li>
+<li>Read settings from file</li>
+<li>Widget for changing settings</li>
 <li>Other functionality</li>
 <li>Cosmetic features</li></ul>
