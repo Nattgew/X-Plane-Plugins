@@ -1,0 +1,19 @@
+A
+1025
+LIBRARY
+EXPORT /lib/global8/us/town_sq_200_200r.obj     myfolder:myobject1.obj
+EXPORT /lib/global8/us/town_sq_200_200r.obj     myfolder:myobject2.obj
+EXPORT /lib/global8/us/town_sq_200_200r.obj     myfolder:myobject3.obj
+EXPORT /lib/global8/us/town_sq_200_200r.obj     myfolder:myobject4.obj
+
+
+
+EXPORT /lib/?/taxi.dds	myfolder:taxi.dds
+EXPORT /lib/?/taxi_LIT.dds	myfolder:taxi.dds
+
+EXPORT /lib/?/asphalt/
+EXPORT /lib/?/asphalt/
+EXPORT /lib/?/concrete/
+EXPORT /lib/?/concrete/
+EXPORT /lib/?/grass/
+EXPORT /lib/?/grass/
