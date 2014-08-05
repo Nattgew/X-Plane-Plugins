@@ -1,0 +1,34 @@
+OXACARS
+
+This plugin is a very basic XACARS client for 64-bit Linux. It has been tested with 64-bit Ubuntu 14.04 and X-Plane 10.25.
+
+The plugin will fetch your flight info. You may then fill in or change any info as necessary.
+
+Clicking "Start" will start the flight reporting. You need to have engines off and parking brake set to do this.
+
+Throughout the flight, the window should be updated with the recorded values.
+
+Upon landing, you must shut down the engines and set the parking brake. This should make your flight report ready to send. Click "Send" to send the flight report.
+
+Settings:
+Currently, settings are read from a text file in the plugin directory. An example file is included. Replace this info with your own info.
+If you are worried about placing your info in a plain text file, consider that XACARS sends all the info in plain text over the Internet.
+
+Note:
+This plugin uses Curl to perform the Internet queries.
+This plugin may have bugs. The plugin expects the right input and is not necessarily able to handle wrong or unexpected input. If you do something wrong or encouter a bug, it could crash X-Plane. This plugin is intended as a "better than nothing" alternative. Since the XACARS client should work on all other platforms, I have no plans to create versions other than 64-bit Linux.
+Source code included in download.
+While I enjoy programming from time to time I am no expert, especially with C. I welcome any suggestions.
+While this has been tested to work with one virtual airline, it may not work with all airlines. Feel free to modify the plugin or suggest changes for better compatibility.
+
+To Do:
+Better settings control
+Better error handling
+Save flight reports
+
+About:
+Currently the newest XACARS client available for Linux is from 2011, and does not include 64-bit support. The Windows and OS X versions were updated in late 2013, and the MSFS version in early 2014. When will the Linux version get an update? This always seems to be the question (Xsquawkbox, anyone?). Who knows.
+Rather than reduce my texture settings every time I want to use XACARS, and risk aborting a flight after running out of memory, I decided to write my own client.
+I included some "improvements" upon how the XACARS client behaves. Instead of having to enter your ID to get the flight info and then change it to the flight number, your ID is used from settings and you must set the flight number.
+Values recorded are also displayed in the window throughout the flight. This lets you see the weights and other info without waiting to see the flight report.
+The code is based on the XACARS documentation, testing the XACARS plugin, and with lots of help from StackOverflow and similar places.
