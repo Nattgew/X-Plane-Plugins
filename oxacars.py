@@ -12,10 +12,42 @@ from XPLMDataAccess import *
 from XPLMMenus import *
 from XPWidgets import *
 from XPStandardWidgets import *
+from XPWidgetDefs import *
+from XPWidgets import *
 
 #include <time.h>
 
 class PythonInterface:
+
+	def stohhmm(self, totalSeconds):
+		seconds = totalSeconds % 60
+		minutes = (totalSeconds / 60) % 60
+		hours = totalSeconds / 3600
+		if ( seconds > 30 ):
+			minutes++
+		hhmmstring='%02d:%02d' % hours % minutes
+		
+		return hhmmstring
+
+	def degdm(self, decdegrees, latlon):
+		if ( latlon == 0 ):
+			if ( decdegrees > 0 ):
+				hemi = "N"
+			else:
+				hemi = "S"
+				decdegrees = fabs(decdegrees)
+		elif ( decdegrees > 0 ):
+				hemi = "E"
+			else:
+				hemi = "W"
+				decdegrees = fabs(decdegrees)
+		degrees = decdegrees
+		decpart = decdegrees - degrees
+		minutes = decpart * 60
+
+		locstring=hemi + degrees + " " + str(round(minutes,4))
+
+		return locstring
 
 	def XPluginStart(self):
 		self.Name="OXACARS 1.0"
@@ -31,10 +63,63 @@ class PythonInterface:
 		self.DrawWindowCB = self.DrawWindowCallback
 		self.KeyCB = self.KeyCallback
 		self.MouseClickCB = self.MouseClickCallback
+		self.MyFlightLoopCB=self.MyFlightLoopCallback
 		self.WindowId = XPLMCreateWindow(self, 50, 600, 300, 400, 1, self.DrawWindowCB, self.KeyCB, self.MouseClickCB, 0)
 
+		self.Dep=""
+		self.Arr=""
+		self.Altn=""
+		#self.Alt="" #or not
+		self.Route=""
+		self.ACType=""
+		self.Plan=""
+		self.cargo=""
+		self.pax=""
+		self.fltno=""
+		
+		self.Type=""
+		self.Alt=""
+		self.DT=""
+		self.blocktime=""
+		self.flighttime=""
+		self.BF=""
+		self.FF=""
+		self.online=""
+		self.OUT_time=""
+		self.OFF_time=""
+		self.ON_time=""
+		self.IN_time=""
+		self.ZFW=""
+		self.TOW=""
+		self.LW=""
+		self.OUTlat=""
+		self.OUTlon=""
+		self.OUTalt=""
+		self.INlat=""
+		self.INlon=""
+		self.INalt=""
+		self.maxC=""
+		self.maxD=""
+		self.maxI=""
+		self.maxG=""
+		
 		self.gWidget = 0
 		self.sWidget = 0
+		DATA1v1 = "XACARS|1.1"
+		DATA1v2 = "XACARS|2.0"
+		# default settings
+		self.pirepurl_def = "http://www.swavirtual.com/wn/xacars/pirep.php"
+		self.acarsurl_def = "http://www.swavirtual.com/wn/xacars/liveacars.php"
+		self.fdurl_def = "http://www.swavirtual.com/wn/xacars/flightdata.php"
+		#char pirepurl_def = "http://www.xacars.net/acars/pirep.php"
+		#char acarsurl_def = "http://www.xacars.net/acars/liveacars.php"
+		#char fdurl_def = "http://www.xacars.net/acars/flightdata.php"
+		self.Ppass_def = "pass"
+		self.uname = "uname"
+		self.PID = "pid"
+		#char Ppass_def[] = "xactestingpass"
+		#char uname[] = "xactesting"
+		#char PID[] = "XAC1001"
 		
 		self.dist_trav_ref = XPLMFindDataRef("sim/flightmodel/controls/dist")  # float 660+ yes meters Distance Traveled
 		self.eng_run_ref = XPLMFindDataRef("sim/flightmodel/engine/ENGN_running")  # int[8] boolean
@@ -69,7 +154,6 @@ class PythonInterface:
 		return self.Name, self.Sig, self.Desc
 	
 	def XPluginStop(self):
-
 		# Unregister the callback
 		XPLMUnregisterFlightLoopCallback(self, self.MyFlightLoopCallback, 0)
 		if gWidget == 1:
@@ -78,16 +162,13 @@ class PythonInterface:
 		if sWidget == 1:
 			XPDestroyWidget(self, self.SettingsWidget, 1)
 			sWidget = 0
-
 		pass
 
 	def XPluginEnable(self):
 		return 1
 
-
 	def XPluginDisable(self):
 		pass
-
 
 	def XPluginReceiveMessage(self, inFromWho, inMessage, inParam):
 		pass
@@ -126,10 +207,15 @@ class PythonInterface:
 			return True
 		
 		return False
+	
+	def XACARSpost(self, url, query):
+		stuff = urlopen(url+query).read()
+		stuff = stuff.replace('&',' and ')
+		dom = minidom.parseString(stuff)
+		return dom
 
 	def CreateWidget(self, x, y, w, h):
-		Index
-
+		
 		x2 = x + w
 		y2 = y - h
 
@@ -142,7 +228,7 @@ class PythonInterface:
 				xpWidgetClass_MainWindow)
 
 		# Add Close Box to the Main Widget
-			XPSetWidgetProperty(self, self.OXWidget, xpProperty_MainWindowHasCloseBoxes, 1)
+			XPSetWidgetProperty(self.OXWidget, xpProperty_MainWindowHasCloseBoxes, 1)
 
 		# Add widgets and stuff
 			FltNoCap = XPCreateWidget(x+20, y-40, x+80, y-60,
@@ -152,17 +238,17 @@ class PythonInterface:
 			self.FltNoText = XPCreateWidget(x+100, y-40, x+180, y-60,
 				1, "", 0, self.OXWidget,
 				xpWidgetClass_TextField)
-			XPSetWidgetProperty(self, FltNoText, xpProperty_TextFieldType, xpTextEntryField)
+			XPSetWidgetProperty(FltNoText, xpProperty_TextFieldType, xpTextEntryField)
 
 			ACARSInfoButton = XPCreateWidget(x+200, y-40, x+300, y-60,
 				1, "ACARS Info", 0, self.OXWidget,
 				xpWidgetClass_Button)
-			XPSetWidgetProperty(self, ACARSInfoButton, xpProperty_ButtonType, xpPushButton)
+			XPSetWidgetProperty(ACARSInfoButton, xpProperty_ButtonType, xpPushButton)
 
 			SettingsButton = XPCreateWidget(x+320, y-40, x+420, y-60,
 				1, "Settings", 0, self.OXWidget,
 				xpWidgetClass_Button)
-			XPSetWidgetProperty(self, SettingsButton, xpProperty_ButtonType, xpPushButton)
+			XPSetWidgetProperty(SettingsButton, xpProperty_ButtonType, xpPushButton)
 
 			DepCap = XPCreateWidget(x+20, y-80, x+50, y-100,
 				1, "Dep", 0, self.OXWidget,
@@ -171,7 +257,7 @@ class PythonInterface:
 			self.DepText = XPCreateWidget(x+60, y-80, x+120, y-100,
 				1, "", 0, self.OXWidget,
 				xpWidgetClass_TextField)
-			XPSetWidgetProperty(self, DepText, xpProperty_TextFieldType, xpTextEntryField)
+			XPSetWidgetProperty(DepText, xpProperty_TextFieldType, xpTextEntryField)
 
 			ArrCap = XPCreateWidget(x+150, y-80, x+180, y-100,
 				1, "Arr", 0, self.OXWidget,
@@ -180,7 +266,7 @@ class PythonInterface:
 			self.ArrText = XPCreateWidget(x+180, y-80, x+240, y-100,
 				1, "", 0, self.OXWidget,
 				xpWidgetClass_TextField)
-			XPSetWidgetProperty(self, ArrText, xpProperty_TextFieldType, xpTextEntryField)
+			XPSetWidgetProperty(ArrText, xpProperty_TextFieldType, xpTextEntryField)
 
 			AltnCap = XPCreateWidget(x+300, y-80, x+330, y-100,
 				1, "Altn", 0, self.OXWidget,
@@ -189,7 +275,7 @@ class PythonInterface:
 			self.AltnText = XPCreateWidget(x+340, y-80, x+400, y-100,
 				1, "", 0, self.OXWidget,
 				xpWidgetClass_TextField)
-			XPSetWidgetProperty(self, AltnText, xpProperty_TextFieldType, xpTextEntryField)
+			XPSetWidgetProperty(AltnText, xpProperty_TextFieldType, xpTextEntryField)
 
 			RtCap = XPCreateWidget(x+20, y-120, x+60, y-140,
 				1, "Route", 0, self.OXWidget,
@@ -198,7 +284,7 @@ class PythonInterface:
 			self.RtText = XPCreateWidget(x+70, y-120, x+430, y-140,
 				1, "", 0, self.OXWidget,
 				xpWidgetClass_TextField)
-			XPSetWidgetProperty(self, RtText, xpProperty_TextFieldType, xpTextEntryField)
+			XPSetWidgetProperty(RtText, xpProperty_TextFieldType, xpTextEntryField)
 
 			PaxCap = XPCreateWidget(x+20, y-160, x+60, y-180,
 				1, "Pax", 0, self.OXWidget,
@@ -207,7 +293,7 @@ class PythonInterface:
 			self.PaxText = XPCreateWidget(x+70, y-160, x+120, y-180,
 				1, "", 0, self.OXWidget,
 				xpWidgetClass_TextField)
-			XPSetWidgetProperty(self, PaxText, xpProperty_TextFieldType, xpTextEntryField)
+			XPSetWidgetProperty(PaxText, xpProperty_TextFieldType, xpTextEntryField)
 
 			PlanCap = XPCreateWidget(x+150, y-160, x+180, y-180,
 				1, "Plan", 0, self.OXWidget,
@@ -216,7 +302,7 @@ class PythonInterface:
 			self.PlanText = XPCreateWidget(x+190, y-160, x+240, y-180,
 				1, "", 0, self.OXWidget,
 				xpWidgetClass_TextField)
-			XPSetWidgetProperty(self, PlanText, xpProperty_TextFieldType, xpTextEntryField)
+			XPSetWidgetProperty(PlanText, xpProperty_TextFieldType, xpTextEntryField)
 
 			TypeCap = XPCreateWidget(x+280, y-160, x+310, y-180,
 				1, "Type", 0, self.OXWidget,
@@ -225,7 +311,7 @@ class PythonInterface:
 			self.TypeText = XPCreateWidget(x+320, y-160, x+370, y-180,
 				1, "", 0, self.OXWidget,
 				xpWidgetClass_TextField)
-			XPSetWidgetProperty(self, TypeText, xpProperty_TextFieldType, xpTextEntryField)
+			XPSetWidgetProperty(TypeText, xpProperty_TextFieldType, xpTextEntryField)
 
 			CargoCap = XPCreateWidget(x+20, y-200, x+60, y-220,
 				1, "Cargo", 0, self.OXWidget,
@@ -234,7 +320,7 @@ class PythonInterface:
 			self.CargoText = XPCreateWidget(x+70, y-200, x+120, y-220,
 				1, "", 0, self.OXWidget,
 				xpWidgetClass_TextField)
-			XPSetWidgetProperty(self, CargoText, xpProperty_TextFieldType, xpTextEntryField)
+			XPSetWidgetProperty(CargoText, xpProperty_TextFieldType, xpTextEntryField)
 
 			FLCap = XPCreateWidget(x+150, y-200, x+180, y-220,
 				1, "Alt", 0, self.OXWidget,
@@ -243,12 +329,12 @@ class PythonInterface:
 			self.FLText = XPCreateWidget(x+190, y-200, x+260, y-220,
 				1, "", 0, self.OXWidget,
 				xpWidgetClass_TextField)
-			XPSetWidgetProperty(self, FLText, xpProperty_TextFieldType, xpTextEntryField)
+			XPSetWidgetProperty(FLText, xpProperty_TextFieldType, xpTextEntryField)
 
 			StartButton = XPCreateWidget(x+280, y-200, x+320, y-220,
 				1, "Start", 0, self.OXWidget,
 				xpWidgetClass_Button)
-			XPSetWidgetProperty(self, StartButton, xpProperty_ButtonType, xpPushButton)
+			XPSetWidgetProperty(StartButton, xpProperty_ButtonType, xpPushButton)
 
 			DTCap = XPCreateWidget(x+20, y-240, x+40, y-260,
 				1, "DT", 0, self.OXWidget,
@@ -381,10 +467,10 @@ class PythonInterface:
 			SendButton = XPCreateWidget(x+20, y-480, x+140, y-500,
 				1, "Send", 0, self.OXWidget,
 				xpWidgetClass_Button)
-			XPSetWidgetProperty(self, SendButton, xpProperty_ButtonType, xpPushButton)
+			XPSetWidgetProperty(SendButton, xpProperty_ButtonType, xpPushButton)
 
 		# Register our widget handler
-			XPAddWidgetCallback(self.OXWidget, self.OXHandler)
+			XPAddWidgetCallback(self, self.OXWidget, self.OXHandler)
 
 	def OXHandler(self, inMessage, inWidget,    inParam1, inParam2):
 		if (inMessage == xpMessage_CloseButtonPushed):
@@ -398,83 +484,59 @@ class PythonInterface:
 			if (inParam1 == (long)ACARSInfoButton):
 				# ?DATA1=XACARS|1.1&DATA2=XAC1001
 				# ?DATA1=XACARS|2.0&DATA2=pid&DATA3=flightplan&DATA4=pid&DATA5=password
-				char Altn[5], Alt[6], Route[256], ACType[5], Plan[4], cargo[7], pax[4]
 
 				print "OXACARS - Assembling query URL..."
 				#char * durl = malloc(snprintf(NULL, 0, "%s?DATA1=%s&DATA2=%s", fdurl, DATA1v1, PID) + 1)
 				#sprintf(durl, "%s?DATA1=%s&DATA2=%s", fdurl, DATA1v1, PID)
 
-				char * durl = malloc(snprintf(NULL, 0, "DATA1=%s&DATA2=%s&DATA3=flightplan&DATA4=%s&DATA5=%s", DATA1v2, PID, PID, Ppass) + 1)
-				sprintf(durl, "DATA1=%s&DATA2=%s&DATA3=flightplan&DATA4=%s&DATA5=%s", DATA1v2, PID, PID, Ppass)
+				durl="DATA1="+DATA1v2+"&DATA2="+PID+"&DATA3=flightplan&DATA4="+PID+"&DATA5="+Ppass
 
 				print "OXACARS - Will attempt to get " + durl
-				# http://stackoverflow.com/questions/2577654/curl-put-output-into-variable
-				CURL *curl
-				CURLcode res
-				curl = curl_easy_init()
-				if(curl) :
-					curl_easy_setopt(curl, CURLOPT_URL, fdurl)
-					curl_easy_setopt(curl, CURLOPT_POSTFIELDS, durl)
-					curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback_func)
-					curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response)
-					res = curl_easy_perform(curl)
-					if(res != CURLE_OK)
-					  fprintf(stderr, "curl_easy_perform() failed: %s\n",
-						curl_easy_strerror(res))
-					curl_easy_cleanup(curl)
-				}
+				
+				getInfo=self.XACARSpost(self.fdurl,durl)
 
-				#http://stackoverflow.com/questions/12789883/parallel-to-phps-explode-in-c-split-char-into-char-using-delimiter But I don't wanna explode...
+				#But I don't wanna explode...
 				print "OXACARS - Now attempting to parse response..."
-				char ** fd = NULL
+
 				char * p = strtok (response, "\n")
-				int n_spaces = 0, i
+				n_spaces = 0
 
-				while (p) :
-					fd = realloc (fd, sizeof (char*) * ++n_spaces)
-					if (fd == NULL):
-						exit (-1) #mem allocation fail
-					fd[n_spaces-1] = p
-					p = strtok (NULL, "\n")
+				fd[n_spaces-1] = p
 
-					#realloc for last NULL
-				fd = realloc (fd, sizeof (char*) * (n_spaces+1))
-				fd[n_spaces] = 0
-
-				strcpy(Dep,fd[1])
-				strcpy(Arr, fd[2])
-				strcpy(Altn, fd[3])
-				#strcpy(Alt, fd[9]) #or not
-				strcpy(Route, fd[4])
-				strcpy(ACType, fd[8])
-				strcpy(Plan, fd[7])
-				strcpy(cargo, fd[6])
-				strcpy(pax, fd[5])
+				self.Dep=fd[1]
+				self.Arr= fd[2]
+				self.Altn= fd[3]
+				#self.Alt= fd[9] #or not
+				self.Route= fd[4]
+				self.ACType= fd[8]
+				self.Plan= fd[7]
+				self.cargo= fd[6]
+				self.pax= fd[5]
 
 				# print "OXACARS - Dep: %s Arr: %s Altn: %s\n", Dep, Arr, Altn)
 				# print "OXACARS - Route: %s\n", Route)
 				# print "OXACARS - Alt: %s Plan: %s Type: %s\n", Alt, Plan, ACType)
 				# print "OXACARS - Pax: %s Cargo: %s\n", pax, cargo)
 
-				XPSetWidgetDescriptor(self, self.DepText, Dep)
-				XPSetWidgetDescriptor(self, self.ArrText, Arr)
-				XPSetWidgetDescriptor(self, self.AltnText, Altn)
-				XPSetWidgetDescriptor(self, self.RtText, Route)
-				XPSetWidgetDescriptor(self, self.PlanText, Plan)
-				XPSetWidgetDescriptor(self, self.TypeText, ACType)
-				XPSetWidgetDescriptor(self, self.CargoText, cargo)
-				XPSetWidgetDescriptor(self, self.PaxText, pax)
+				XPSetWidgetDescriptor(self, self.DepText, self.Dep)
+				XPSetWidgetDescriptor(self, self.ArrText, self.Arr)
+				XPSetWidgetDescriptor(self, self.AltnText, self.Altn)
+				XPSetWidgetDescriptor(self, self.RtText, self.Route)
+				XPSetWidgetDescriptor(self, self.PlanText, self.Plan)
+				XPSetWidgetDescriptor(self, self.TypeText, self.ACType)
+				XPSetWidgetDescriptor(self, self.CargoText, self.cargo)
+				XPSetWidgetDescriptor(self, self.PaxText, self.pax)
 
-			if (inParam1 == (long)SettingsButton):
+			if (inParam1 == self.SettingsButton):
 				# open settings stuff
 				print "OXACARS - You pressed the Settings button..."
 				if (sWidget == 0) :
 					self.CreateSettingsWidget(100, 712, 600, 662) #left, top, right, bottom.
 					sWidget = 1
 				else :
-					if(!XPIsWidgetVisible(SettingsWidget)):
-						XPShowWidget(SettingsWidget)
-			if (inParam1 == (long)StartButton) :
+					if(!XPIsWidgetVisible(self.SettingsWidget)):
+						XPShowWidget(self.SettingsWidget)
+			if (inParam1 == self.StartButton) :
 				print "OXACARS - Starting OXACARS monitoring..."
 				if ( XPLMGetDataf(self.pbrake_ref) < 1 ) :
 					print "OXACARS - PARKING BRAKE IS SET"
@@ -487,31 +549,26 @@ class PythonInterface:
 						print "OXACARS - SHUT OFF THE ENGINES"
 						return 0
 
-				char BEGlat[12], BEGlon[12], tailnumbuf[41]
-				char * RouteStr = NULL
-				double BEG_lat, BEG_lon, BEG_alt
-				float BEG_f, FW, Elev, hdgm, hdgt, wndh, wndk
-				char *buf = 0
-				void *temp = 0
+				tailnum=""
 
 				print "OXACARS - Gathering flight info..."
-				XPLMGetDatab( tailnum_ref, tailnum, 0, 40 )
+				XPLMGetDatab( self.tailnum_ref, tailnum, 0, 40 )
 				# XPLMGetDatab( tailnum_ref, tailnumbuf, 0, 40 )
 				# print "OXACARS - Tail number is %d long\n",strlen(tailnumbuf))
 				# temp = realloc(tailnum, strlen(tailnumbuf) + 1)
 				# if (temp) tailnum = temp
 				# strcpy( tailnum, tailnumbuf )
 
-				XPGetWidgetDescriptor(self, self.PaxText, pax, 3)
-				XPGetWidgetDescriptor(self, self.FltNoText, fltno, 8)
-				XPGetWidgetDescriptor(self, self.TypeText, Type, 4)
-				XPGetWidgetDescriptor(self, self.FLText, Alt, 5)
-				XPGetWidgetDescriptor(self, self.PlanText, Plan, 3)
-				XPGetWidgetDescriptor(self, self.DepText, Dep, 4)
-				XPGetWidgetDescriptor(self, self.ArrText, Arr, 4)
-				XPGetWidgetDescriptor(self, self.AltnText, Altn, 4)
-				XPGetWidgetDescriptor(self, self.CargoText, cargo, 6)
-				XPGetWidgetDescriptor(self, self.RtText, Route, 255)
+				XPGetWidgetDescriptor(self.PaxText, self.pax, 3)
+				XPGetWidgetDescriptor(self.FltNoText, self.fltno, 8)
+				XPGetWidgetDescriptor(self.TypeText, self.Type, 4)
+				XPGetWidgetDescriptor(self.FLText, self.Alt, 5)
+				XPGetWidgetDescriptor(self.PlanText, self.Plan, 3)
+				XPGetWidgetDescriptor(self.DepText, self.Dep, 4)
+				XPGetWidgetDescriptor(self.ArrText, self.Arr, 4)
+				XPGetWidgetDescriptor(self.AltnText, self.Altn, 4)
+				XPGetWidgetDescriptor(self.CargoText, self.cargo, 6)
+				XPGetWidgetDescriptor(self.RtText, self.Route, 255)
 
 				RouteStr = str_replace( Route, " ", "~" )
 
@@ -522,50 +579,35 @@ class PythonInterface:
 				self.BEG_lon = XPLMGetDatad(self.lon_ref) #http://data.x-plane.com/designers.html#Hint_LatLonFormat
 				self.BEG_alt = XPLMGetDatad(self.alt_ref)
 				self.BEG_f = XPLMGetDataf(self.wt_f_tot_ref)
-				strcpy(self.BEGlat, degdm(BEG_lat, 0))
-				strcpy(self.BEGlon, degdm(BEG_lon, 1))
+				self.BEGlat=degdm(self.BEG_lat, 0))
+				self.BEGlon=degdm(self.BEG_lon, 1))
 
 				FW = self.BEG_f * kglb
 				Elev = self.BEG_alt * mft
 				#DATA1=XACARS|2.0&DATA2=BEGINFLIGHT&DATA3=pid||pid|73W||KMDW~PEKUE~OBENE~MONNY~IANNA~FSD~J16~BIL~J136~MLP~GLASR9~KSEA|N34 34.2313 E69 11.6551|5866||||107|180|15414|0|IFR|0|password|&DATA4=
 
-				char * surl = malloc(snprintf(NULL, 0, "DATA1=%s&DATA2=BEGINFLIGHT&DATA3=%s||%s|%s||%s~%s~%s|%s %s|%.0f||||%.0f|%.0f|%.0f%.0f|0|%s|0|%s|&DATA4=", DATA1v2, uname, fltno, Type, Dep, RouteStr, Arr, BEGlat, BEGlon, Elev, FW, hdgm, wndh, wndk, Plan, Ppass) + 1)
-				sprintf(surl, "DATA1=%s&DATA2=BEGINFLIGHT&DATA3=%s||%s|%s||%s~%s~%s|%s %s|%.0f||||%.0f|%.0f|%.0f%.0f|0|%s|0|%s|&DATA4=", DATA1v2, uname, fltno, Type, Dep, RouteStr, Arr, BEGlat, BEGlon, Elev, FW, hdgm, wndh, wndk, Plan, Ppass)
-
+				surl="DATA1="+DATA1v2+"&DATA2=BEGINFLIGHT&DATA3="+uname+"||"+fltno+"|"+Type+"||"+Dep+"~"+RouteStr+"~"+Arr+"|"+BEGlat+" "+BEGlon+"|"+Elev+"||||"+FW+"|"+hdgm+"|"+wndh+wndk+"|0|"+Plan+"|0|"+Ppass+"|&DATA4="
+				
 				print "OXACARS - Will send url " + surl
-				# CURL *curl
-				# CURLcode res
-				# curl = curl_easy_init()
-				# if(curl) :
-					# curl_easy_setopt(curl, CURLOPT_URL, acarsurl)
-					# curl_easy_setopt(curl, CURLOPT_POSTFIELDS, surl)
-					# res = curl_easy_perform(curl)
-					# if(res != CURLE_OK)
-					  # fprintf(stderr, "curl_easy_perform() failed: %s\n",
-						# curl_easy_strerror(res))
-					# curl_easy_cleanup(curl)
-				# }
+				
+				getInfo=self.XACARSpost(self.acarsurl,surl)
 
-				XPSetWidgetProperty(self, self.PaxText, xpProperty_TextFieldType, xpTextTranslucent)
-				XPSetWidgetProperty(self, self.FltNoText, xpProperty_TextFieldType, xpTextTranslucent)
-				XPSetWidgetProperty(self, self.TypeText, xpProperty_TextFieldType, xpTextTranslucent)
-				XPSetWidgetProperty(self, self.FLText, xpProperty_TextFieldType, xpTextTranslucent)
-				XPSetWidgetProperty(self, self.PlanText, xpProperty_TextFieldType, xpTextTranslucent)
-				XPSetWidgetProperty(self, self.DepText, xpProperty_TextFieldType, xpTextTranslucent)
-				XPSetWidgetProperty(self, self.ArrText, xpProperty_TextFieldType, xpTextTranslucent)
-				XPSetWidgetProperty(self, self.AltnText, xpProperty_TextFieldType, xpTextTranslucent)
-				XPSetWidgetProperty(self, self.CargoText, xpProperty_TextFieldType, xpTextTranslucent)
-				XPSetWidgetProperty(self, self.RtText, xpProperty_TextFieldType, xpTextTranslucent)
+				XPSetWidgetProperty(self.PaxText, xpProperty_TextFieldType, xpTextTranslucent)
+				XPSetWidgetProperty(self.FltNoText, xpProperty_TextFieldType, xpTextTranslucent)
+				XPSetWidgetProperty(self.TypeText, xpProperty_TextFieldType, xpTextTranslucent)
+				XPSetWidgetProperty(self.FLText, xpProperty_TextFieldType, xpTextTranslucent)
+				XPSetWidgetProperty(self.PlanText, xpProperty_TextFieldType, xpTextTranslucent)
+				XPSetWidgetProperty(self.DepText, xpProperty_TextFieldType, xpTextTranslucent)
+				XPSetWidgetProperty(self.ArrText, xpProperty_TextFieldType, xpTextTranslucent)
+				XPSetWidgetProperty(self.AltnText, xpProperty_TextFieldType, xpTextTranslucent)
+				XPSetWidgetProperty(self.CargoText, xpProperty_TextFieldType, xpTextTranslucent)
+				XPSetWidgetProperty(self.RtText, xpProperty_TextFieldType, xpTextTranslucent)
 
-				XPLMRegisterFlightLoopCallback(self,
-					MyFlightLoopCallback,
-					1.0,
-					0)
+				XPLMRegisterFlightLoopCallback(self, self.MyFlightLoopCB, 1.0, 0)
 				print "OXACARS - Registered loop callback, startup complete"
 
 			if (inParam1 == (long)SendButton):
-				XPLMUnregisterFlightLoopCallback(self, self.MyFlightLoopCallback, 0)
-				char online[8]
+				XPLMUnregisterFlightLoopCallback(self, self.MyFlightLoopCB, 0)
 
 				# print "OXACARS - Defining flight variables..."
 				# time_t OUT_time = 1394204887
@@ -605,22 +647,38 @@ class PythonInterface:
 				# XPGetWidgetDescriptor( CargoText, cargo, 6)
 
 				print "OXACARS - This is a lot of information..."
-				char * DATA2 = malloc(snprintf(NULL, 0, "%s~%s~%s~%s~%s~%s~%s~%s~%s~%s~%s~%s~%.0f~%.0f~%s~%s~%s~%lu~%lu~%lu~%lu~%.0f~%.0f~%.0f~%s~%s~%.0f~%s~%s~%.0f~%.0f~%.0f~%.0f~%.0f", PID, Ppass, fltno, Type, Alt, Plan, Dep, Arr, Altn, DT, blocktime, flighttime, BF, FF, pax, cargo, online, OUT_time, OFF_time, ON_time, IN_time, ZFW, TOW, LW, OUTlat, OUTlon, OUTalt, INlat, INlon, INalt, maxC, -maxD, maxI, maxG) + 1)
-				sprintf(DATA2, "%s~%s~%s~%s~%s~%s~%s~%s~%s~%s~%s~%s~%.0f~%.0f~%s~%s~%s~%lu~%lu~%lu~%lu~%.0f~%.0f~%.0f~%s~%s~%.0f~%s~%s~%.0f~%.0f~%.0f~%.0f~%.0f", PID, Ppass, fltno, Type, Alt, Plan, Dep, Arr, Altn, DT, blocktime, flighttime, BF, FF, pax, cargo, online, OUT_time, OFF_time, ON_time, IN_time, ZFW, TOW, LW, OUTlat, OUTlon, OUTalt, INlat, INlon, INalt, maxC, -maxD, maxI, maxG)
+				DATA2=PID+"~"+Ppass+"~"+fltno+"~"+Type+"~"+Alt+"~"+Plan+"~"+Dep+"~"+Arr+"~"+Altn+"~"+DT+"~"+blocktime+"~"+flighttime+"~"+str(round(BF))+"~"+str(round(FF))+"~"+pax+"~"+cargo+"~"+online+"~"+str(OUT_time)+"~"+str(OFF_time)+"~"+str(ON_time)+"~"+str(IN_time)+"~"+str(round(ZFW))+"~"+str(round(TOW))+"~"+str(round(LW))+"~"+OUTlat+"~"+OUTlon+"~"+str(round(OUTalt))+"~"+INlat+"~"+INlon"~"+str(round(INalt))+"~"+str(round(maxC))+"~"+str(round())+"~"+str(round(maxI))+"~"+str(round(maxG))
 
-				char * purl = malloc(snprintf(NULL, 0, "DATA1=%s&DATA2=%s", DATA1v1, DATA2) + 1)
-				sprintf(purl, "DATA1=%s&DATA2=%s", DATA1v1, DATA2)
+				purl="DATA1="+DATA1v1+"&DATA2="+DATA2
 
-				print "OXACARS - Will send url %s\n", purl)
-				# CURL *curl
-				# CURLcode res
-				# curl = curl_easy_init()
-				# if(curl) :
-					# curl_easy_setopt(curl, CURLOPT_URL, pirepurl)
-					# (curl, CURLOPT_POSTFIELDS, purl)
-					# res = curl_easy_perform(curl)
-					# if(res != CURLE_OK)
-					  # fprintf(stderr, "curl_easy_perform() failed: %s\n",
-						# curl_easy_strerror(res))
-					# curl_easy_cleanup(curl)
-				# }
+				print "OXACARS - Will send url "+ purl
+
+				sendInfo=self.XACARSpost(self.pirepurl,purl)
+
+	def MyFlightLoopCallback(self, ):
+		if ( OFF==1 and ON == 0 ):
+		# Track max values
+		float I_now = XPLMGetDataf(ias_ref)
+		float G_now = XPLMGetDataf(gs_ref) * mkt
+		if ( C_now > maxC ):
+			maxC = C_now
+			void *temp = realloc(buf, snprintf(NULL, 0, "%.0f", maxC) + 1)
+			sprintf(buf, "%.0f", maxC)
+			XPSetWidgetDescriptor( maxCdisp, buf )
+		} else if ( C_now < maxD ):
+			maxD = C_now;
+			void *temp = realloc(buf, snprintf(NULL, 0, "%.0f", maxD) + 1)
+			sprintf(buf, "%.0f", maxD)
+			XPSetWidgetDescriptor( maxDdisp, buf )
+		if ( I_now > maxI ):
+			maxI = I_now
+			void *temp = realloc(buf, snprintf(NULL, 0, "%.0f", maxI) + 1)
+			sprintf(buf, "%.0f", maxI)
+			XPSetWidgetDescriptor( maxIdisp, buf )
+		if ( G_now > maxG ):
+			maxG = G_now
+			void *temp = realloc(buf, snprintf(NULL, 0, "%.0f", maxG) + 1)
+			sprintf(buf, "%.0f", maxG)
+			XPSetWidgetDescriptor( maxGdisp, buf )
+
+		return 0.05
