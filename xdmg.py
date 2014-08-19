@@ -20,6 +20,7 @@ class PythonInterface:
 		self.num_eng_ref=XPLMFindDataRef("sim/aircraft/engine/acf_num_engines")
 		self.alt_ref=XPLMFindDataRef("sim/flightmodel/position/y_agl")
 		
+		self.started=0
 		self.gWindow=0
 		self.msg1=""
 		self.msg2=""
@@ -27,7 +28,7 @@ class PythonInterface:
 		self.remainingShowTime=0
 		self.showTime=1
 		self.winPosX=20
-		self.winPosY=600
+		self.winPosY=300
 		self.WINDOW_WIDTH=130
 		self.WINDOW_HEIGHT=80
 		self.windowCloseRequest=0
@@ -55,6 +56,7 @@ class PythonInterface:
 
 	def MyHotKeyCallback(self, inRefcon):
 		if self.started == 0 :
+			self.started=1
 			self.num_eng=XPLMGetDatai(self.num_eng_ref)
 			self.gameLoopCB=self.gameLoopCallback
 			XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 0.05, 0)
@@ -105,26 +107,30 @@ class PythonInterface:
 
 		if (XPLMGetDataf(self.flightTime_ref) > 3.0):
 			if self.defaultcht== -100:
-				self.defaultcht=XPLMGetDataf(OAT_ref)
-			rpms=XPLMGetDatavf(self.RPM_ref, _currentRPM, 0, self.numberOfEngines)
+				self.defaultcht=XPLMGetDataf(self.OAT_ref)
+			rpms=[]
+			XPLMGetDatavf(self.RPM_ref, rpms, 0, self.num_eng)
 			if rpms[0] > 0:
 				self.runtime+=1
 			#Let's do some damage
-			cht=XPLMGetDatavf(self.CHT_ref)
+			chts=[]
+			XPLMGetDatavf(self.CHT_ref, chts, 0, self.num_eng)
 			if self.defaultcht>0:
-				_diff=abs(cht[0]-self.defaultcht)
+				_diff=abs(chts[0]-self.defaultcht)
 				if _diff>0:
 					#COOL THE ENGINES
 					self.chtDamage+=_diff
-			self.defaultcht=cht[0]
-			mix=XPLMGetDatavf(self.mix_ref)*100
-			if (mix[0] > 95 and XPLMGetDataf(self.alt_ref) > 1000):
+			self.defaultcht=chts[0]
+			mixes=[]
+			XPLMGetDatavf(self.mix_ref, mixes, 0, self.num_eng)
+			mixes*=100
+			if (mixes[0] > 0.95 and XPLMGetDataf(self.alt_ref) > 1000):
 				#SMOKIN'
 				self.mixtureDamage += 1
 
 			self.msg1="Runtime: "+str(self.runtime)
-			self.msg2="CHT dmg: "+str(self.chtDamage)
-			self.msg3="mix dmg: "+str(self.mixtureDamage)
+			self.msg2="CHT: "+str(round(chts[0],2))+" dmg: "+str(round(self.chtDamage,2))
+			self.msg3="Mix: "+str(round(mixes[0],2))+" dmg: "+str(round(self.mixtureDamage,2))
 			self.createEventWindow()
 
 		return 1
