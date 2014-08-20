@@ -19,6 +19,7 @@ class PythonInterface:
 		self.flightTime_ref=XPLMFindDataRef("sim/time/total_flight_time_sec")
 		self.num_eng_ref=XPLMFindDataRef("sim/aircraft/engine/acf_num_engines")
 		self.alt_ref=XPLMFindDataRef("sim/flightmodel/position/y_agl")
+		self.eng_type_ref=XPLMFindDataRef("sim/aircraft/prop/acf_prop_type")
 		
 		self.started=0
 		self.gWindow=0
@@ -37,6 +38,7 @@ class PythonInterface:
 		self.runtime=0
 		self.chtDamage=0
 		self.mixtureDamage=0
+		self.eng_type=[]
 
 		self.DrawWindowCB=self.DrawWindowCallback
 		self.KeyCB=self.KeyCallback
@@ -58,6 +60,7 @@ class PythonInterface:
 		if self.started == 0 :
 			self.started=1
 			self.num_eng=XPLMGetDatai(self.num_eng_ref)
+			XPLMGetDatavi(self.eng_type_ref, self.eng_type, 0, self.num_eng)
 			self.gameLoopCB=self.gameLoopCallback
 			XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 0.05, 0)
 		else:
@@ -128,7 +131,7 @@ class PythonInterface:
 				#SMOKIN'
 				self.mixtureDamage += 1
 
-			self.msg1="Runtime: "+str(self.runtime)
+			self.msg1="Run: "+str(self.runtime)}" Type: "+str(self.eng_type[0])
 			self.msg2="CHT: "+str(round(chts[0],2))+" dmg: "+str(round(self.chtDamage,2))
 			self.msg3="Mix: "+str(round(mixes[0],2))+" dmg: "+str(round(self.mixtureDamage,2))
 			self.createEventWindow()
