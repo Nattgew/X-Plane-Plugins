@@ -76,8 +76,6 @@ class PythonInterface:
 			XPLMDrawString(color, left+5, top-20, self.msg1, 0, xplmFont_Basic)
 			XPLMDrawString(color, left+5, top-35, self.msg2, 0, xplmFont_Basic)
 			XPLMDrawString(color, left+5, top-50, self.msg3, 0, xplmFont_Basic)
-		
-			#gl stuff removed
 
 	def XPluginStop(self):
 		XPLMUnregisterHotKey(self, self.gHotKey)
