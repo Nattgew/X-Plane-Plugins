@@ -33,7 +33,6 @@ class PythonInterface:
 		self.WINDOW_WIDTH=130
 		self.WINDOW_HEIGHT=80
 		self.windowCloseRequest=0
-		self.defaultcht=-100 #absurd... right? ... right?
 		self.num_eng=0
 		self.runtime=0
 		self.chtDamage=0
@@ -61,6 +60,7 @@ class PythonInterface:
 			self.started=1
 			self.num_eng=XPLMGetDatai(self.num_eng_ref)
 			XPLMGetDatavi(self.eng_type_ref, self.eng_type, 0, self.num_eng)
+			self.defaultcht=XPLMGetDataf(self.OAT_ref)
 			self.gameLoopCB=self.gameLoopCallback
 			XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 0.05, 0)
 		else:
@@ -109,8 +109,6 @@ class PythonInterface:
 	def gameLoopCallback(self, inElapsedSinceLastCall, elapsedSim, counter, refcon):
 
 		if (XPLMGetDataf(self.flightTime_ref) > 3.0):
-			if self.defaultcht== -100:
-				self.defaultcht=XPLMGetDataf(self.OAT_ref)
 			rpms=[]
 			XPLMGetDatavf(self.RPM_ref, rpms, 0, self.num_eng)
 			if rpms[0] > 0:
