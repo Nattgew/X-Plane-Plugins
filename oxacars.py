@@ -37,10 +37,10 @@ class PythonInterface:
 				hemi="S"
 				decdegrees=fabs(decdegrees)
 		elif decdegrees > 0:
-				hemi="E"
-			else:
-				hemi="W"
-				decdegrees=fabs(decdegrees)
+			hemi="E"
+		else:
+			hemi="W"
+			decdegrees=fabs(decdegrees)
 		degrees=floor(decdegrees)
 		decpart=decdegrees - degrees
 		minutes=decpart * 60
@@ -60,11 +60,11 @@ class PythonInterface:
 		self.Id=XPLMCreateMenu(self, "OXACARS" , XPLMFindPluginsMenu(), Item, self.MenuHandlerCB,	0)
 		XPLMAppendMenuItem(self.Id, "Open OXACARS", 1, 1)
 		
-		self.DrawWindowCB=self.DrawWindowCallback
-		self.KeyCB=self.KeyCallback
-		self.MouseClickCB=self.MouseClickCallback
+		#self.DrawWindowCB=self.DrawWindowCallback
+		#self.KeyCB=self.KeyCallback
+		#self.MouseClickCB=self.MouseClickCallback
 		self.MyFlightLoopCB=self.MyFlightLoopCallback
-		self.WindowId=XPLMCreateWindow(self, 50, 600, 300, 400, 1, self.DrawWindowCB, self.KeyCB, self.MouseClickCB, 0)
+		#self.WindowId=XPLMCreateWindow(self, 50, 600, 300, 400, 1, self.DrawWindowCB, self.KeyCB, self.MouseClickCB, 0)
 
 		self.kglb=2.20462262 # conversion constants
 		self.mft=3.2808399
@@ -123,6 +123,7 @@ class PythonInterface:
 		
 		self.gWidget=0
 		self.sWidget=0
+		self.MenuItem1=0
 		DATA1v1="XACARS|1.1"
 		DATA1v2="XACARS|2.0"
 		# default settings
@@ -243,146 +244,146 @@ class PythonInterface:
 		x2=x + w
 		y2=y - h
 
-		# Create the Main Widget window.
-			self.OXWidget=XPCreateWidget(x, y, x2, y2,
-				1, # Visible
-				"OXACARS", # desc
-				1, # root
-				0, # no container
-				xpWidgetClass_MainWindow)
+	# Create the Main Widget window.
+		self.OXWidget=XPCreateWidget(x, y, x2, y2,
+			1, # Visible
+			"OXACARS", # desc
+			1, # root
+			0, # no container
+			xpWidgetClass_MainWindow)
 
-		# Add Close Box to the Main Widget
-			XPSetWidgetProperty(self.OXWidget, xpProperty_MainWindowHasCloseBoxes, 1)
+	# Add Close Box to the Main Widget
+		XPSetWidgetProperty(self.OXWidget, xpProperty_MainWindowHasCloseBoxes, 1)
 
-		# Add widgets and stuff
-			FltNoCap=XPCreateWidget(x+20, y-40, x+80, y-60, 1, "Flight No.", 0, self.OXWidget, xpWidgetClass_Caption)
+	# Add widgets and stuff
+		FltNoCap=XPCreateWidget(x+20, y-40, x+80, y-60, 1, "Flight No.", 0, self.OXWidget, xpWidgetClass_Caption)
 
-			self.FltNoText=XPCreateWidget(x+100, y-40, x+180, y-60, 1, "", 0, self.OXWidget, xpWidgetClass_TextField)
-			XPSetWidgetProperty(FltNoText, xpProperty_TextFieldType, xpTextEntryField)
+		self.FltNoText=XPCreateWidget(x+100, y-40, x+180, y-60, 1, "", 0, self.OXWidget, xpWidgetClass_TextField)
+		XPSetWidgetProperty(FltNoText, xpProperty_TextFieldType, xpTextEntryField)
 
-			self.ACARSInfoButton=XPCreateWidget(x+200, y-40, x+300, y-60, 1, "ACARS Info", 0, self.OXWidget, xpWidgetClass_Button)
-			XPSetWidgetProperty(ACARSInfoButton, xpProperty_ButtonType, xpPushButton)
+		self.ACARSInfoButton=XPCreateWidget(x+200, y-40, x+300, y-60, 1, "ACARS Info", 0, self.OXWidget, xpWidgetClass_Button)
+		XPSetWidgetProperty(ACARSInfoButton, xpProperty_ButtonType, xpPushButton)
 
-			self.SettingsButton=XPCreateWidget(x+320, y-40, x+420, y-60, 1, "Settings", 0, self.OXWidget, xpWidgetClass_Button)
-			XPSetWidgetProperty(SettingsButton, xpProperty_ButtonType, xpPushButton)
+		self.SettingsButton=XPCreateWidget(x+320, y-40, x+420, y-60, 1, "Settings", 0, self.OXWidget, xpWidgetClass_Button)
+		XPSetWidgetProperty(SettingsButton, xpProperty_ButtonType, xpPushButton)
 
-			DepCap=XPCreateWidget(x+20, y-80, x+50, y-100, 1, "Dep", 0, self.OXWidget, xpWidgetClass_Caption)
+		DepCap=XPCreateWidget(x+20, y-80, x+50, y-100, 1, "Dep", 0, self.OXWidget, xpWidgetClass_Caption)
 
-			self.DepText=XPCreateWidget(x+60, y-80, x+120, y-100, 1, "", 0, self.OXWidget, xpWidgetClass_TextField)
-			XPSetWidgetProperty(DepText, xpProperty_TextFieldType, xpTextEntryField)
+		self.DepText=XPCreateWidget(x+60, y-80, x+120, y-100, 1, "", 0, self.OXWidget, xpWidgetClass_TextField)
+		XPSetWidgetProperty(DepText, xpProperty_TextFieldType, xpTextEntryField)
 
-			ArrCap=XPCreateWidget(x+150, y-80, x+180, y-100, 1, "Arr", 0, self.OXWidget, xpWidgetClass_Caption)
+		ArrCap=XPCreateWidget(x+150, y-80, x+180, y-100, 1, "Arr", 0, self.OXWidget, xpWidgetClass_Caption)
 
-			self.ArrText=XPCreateWidget(x+180, y-80, x+240, y-100, 1, "", 0, self.OXWidget, xpWidgetClass_TextField)
-			XPSetWidgetProperty(ArrText, xpProperty_TextFieldType, xpTextEntryField)
+		self.ArrText=XPCreateWidget(x+180, y-80, x+240, y-100, 1, "", 0, self.OXWidget, xpWidgetClass_TextField)
+		XPSetWidgetProperty(ArrText, xpProperty_TextFieldType, xpTextEntryField)
 
-			AltnCap=XPCreateWidget(x+300, y-80, x+330, y-100, 1, "Altn", 0, self.OXWidget, xpWidgetClass_Caption)
+		AltnCap=XPCreateWidget(x+300, y-80, x+330, y-100, 1, "Altn", 0, self.OXWidget, xpWidgetClass_Caption)
 
-			self.AltnText=XPCreateWidget(x+340, y-80, x+400, y-100, 1, "", 0, self.OXWidget, xpWidgetClass_TextField)
-			XPSetWidgetProperty(AltnText, xpProperty_TextFieldType, xpTextEntryField)
+		self.AltnText=XPCreateWidget(x+340, y-80, x+400, y-100, 1, "", 0, self.OXWidget, xpWidgetClass_TextField)
+		XPSetWidgetProperty(AltnText, xpProperty_TextFieldType, xpTextEntryField)
 
-			RtCap=XPCreateWidget(x+20, y-120, x+60, y-140, 1, "Route", 0, self.OXWidget, xpWidgetClass_Caption)
+		RtCap=XPCreateWidget(x+20, y-120, x+60, y-140, 1, "Route", 0, self.OXWidget, xpWidgetClass_Caption)
 
-			self.RtText=XPCreateWidget(x+70, y-120, x+430, y-140, 1, "", 0, self.OXWidget, xpWidgetClass_TextField)
-			XPSetWidgetProperty(RtText, xpProperty_TextFieldType, xpTextEntryField)
+		self.RtText=XPCreateWidget(x+70, y-120, x+430, y-140, 1, "", 0, self.OXWidget, xpWidgetClass_TextField)
+		XPSetWidgetProperty(RtText, xpProperty_TextFieldType, xpTextEntryField)
 
-			PaxCap=XPCreateWidget(x+20, y-160, x+60, y-180, 1, "Pax", 0, self.OXWidget, xpWidgetClass_Caption)
+		PaxCap=XPCreateWidget(x+20, y-160, x+60, y-180, 1, "Pax", 0, self.OXWidget, xpWidgetClass_Caption)
 
-			self.PaxText=XPCreateWidget(x+70, y-160, x+120, y-180, 1, "", 0, self.OXWidget, xpWidgetClass_TextField)
-			XPSetWidgetProperty(PaxText, xpProperty_TextFieldType, xpTextEntryField)
+		self.PaxText=XPCreateWidget(x+70, y-160, x+120, y-180, 1, "", 0, self.OXWidget, xpWidgetClass_TextField)
+		XPSetWidgetProperty(PaxText, xpProperty_TextFieldType, xpTextEntryField)
 
-			PlanCap=XPCreateWidget(x+150, y-160, x+180, y-180, 1, "Plan", 0, self.OXWidget, xpWidgetClass_Caption)
+		PlanCap=XPCreateWidget(x+150, y-160, x+180, y-180, 1, "Plan", 0, self.OXWidget, xpWidgetClass_Caption)
 
-			self.PlanText=XPCreateWidget(x+190, y-160, x+240, y-180, 1, "", 0, self.OXWidget, xpWidgetClass_TextField)
-			XPSetWidgetProperty(PlanText, xpProperty_TextFieldType, xpTextEntryField)
+		self.PlanText=XPCreateWidget(x+190, y-160, x+240, y-180, 1, "", 0, self.OXWidget, xpWidgetClass_TextField)
+		XPSetWidgetProperty(PlanText, xpProperty_TextFieldType, xpTextEntryField)
 
-			TypeCap=XPCreateWidget(x+280, y-160, x+310, y-180, 1, "Type", 0, self.OXWidget, xpWidgetClass_Caption)
+		TypeCap=XPCreateWidget(x+280, y-160, x+310, y-180, 1, "Type", 0, self.OXWidget, xpWidgetClass_Caption)
 
-			self.TypeText=XPCreateWidget(x+320, y-160, x+370, y-180, 1, "", 0, self.OXWidget, xpWidgetClass_TextField)
-			XPSetWidgetProperty(TypeText, xpProperty_TextFieldType, xpTextEntryField)
+		self.TypeText=XPCreateWidget(x+320, y-160, x+370, y-180, 1, "", 0, self.OXWidget, xpWidgetClass_TextField)
+		XPSetWidgetProperty(TypeText, xpProperty_TextFieldType, xpTextEntryField)
 
-			CargoCap=XPCreateWidget(x+20, y-200, x+60, y-220, 1, "Cargo", 0, self.OXWidget, xpWidgetClass_Caption)
+		CargoCap=XPCreateWidget(x+20, y-200, x+60, y-220, 1, "Cargo", 0, self.OXWidget, xpWidgetClass_Caption)
 
-			self.CargoText=XPCreateWidget(x+70, y-200, x+120, y-220, 1, "", 0, self.OXWidget, xpWidgetClass_TextField)
-			XPSetWidgetProperty(CargoText, xpProperty_TextFieldType, xpTextEntryField)
+		self.CargoText=XPCreateWidget(x+70, y-200, x+120, y-220, 1, "", 0, self.OXWidget, xpWidgetClass_TextField)
+		XPSetWidgetProperty(CargoText, xpProperty_TextFieldType, xpTextEntryField)
 
-			FLCap=XPCreateWidget(x+150, y-200, x+180, y-220, 1, "Alt", 0, self.OXWidget, xpWidgetClass_Caption)
+		FLCap=XPCreateWidget(x+150, y-200, x+180, y-220, 1, "Alt", 0, self.OXWidget, xpWidgetClass_Caption)
 
-			self.FLText=XPCreateWidget(x+190, y-200, x+260, y-220, 1, "", 0, self.OXWidget, xpWidgetClass_TextField)
-			XPSetWidgetProperty(FLText, xpProperty_TextFieldType, xpTextEntryField)
+		self.FLText=XPCreateWidget(x+190, y-200, x+260, y-220, 1, "", 0, self.OXWidget, xpWidgetClass_TextField)
+		XPSetWidgetProperty(FLText, xpProperty_TextFieldType, xpTextEntryField)
 
-			StartButton=XPCreateWidget(x+280, y-200, x+320, y-220, 1, "Start", 0, self.OXWidget, xpWidgetClass_Button)
-			XPSetWidgetProperty(StartButton, xpProperty_ButtonType, xpPushButton)
+		StartButton=XPCreateWidget(x+280, y-200, x+320, y-220, 1, "Start", 0, self.OXWidget, xpWidgetClass_Button)
+		XPSetWidgetProperty(StartButton, xpProperty_ButtonType, xpPushButton)
 
-			DTCap=XPCreateWidget(x+20, y-240, x+40, y-260, 1, "DT", 0, self.OXWidget, xpWidgetClass_Caption)
+		DTCap=XPCreateWidget(x+20, y-240, x+40, y-260, 1, "DT", 0, self.OXWidget, xpWidgetClass_Caption)
 
-			self.DTdisp=XPCreateWidget(x+50, y-240, x+220, y-260, 1, "", 0, self.OXWidget, xpWidgetClass_Caption)
+		self.DTdisp=XPCreateWidget(x+50, y-240, x+220, y-260, 1, "", 0, self.OXWidget, xpWidgetClass_Caption)
 
-			ZFWCap=XPCreateWidget(x+250, y-240, x+280, y-260, 1, "ZFW", 0, self.OXWidget, xpWidgetClass_Caption)
+		ZFWCap=XPCreateWidget(x+250, y-240, x+280, y-260, 1, "ZFW", 0, self.OXWidget, xpWidgetClass_Caption)
 
-			self.ZFWdisp=XPCreateWidget(x+300, y-240, x+400, y-260, 1, "", 0, self.OXWidget, xpWidgetClass_Caption)
+		self.ZFWdisp=XPCreateWidget(x+300, y-240, x+400, y-260, 1, "", 0, self.OXWidget, xpWidgetClass_Caption)
 
-			BTCap=XPCreateWidget(x+20, y-280, x+40, y-300, 1, "BT", 0, self.OXWidget, xpWidgetClass_Caption)
+		BTCap=XPCreateWidget(x+20, y-280, x+40, y-300, 1, "BT", 0, self.OXWidget, xpWidgetClass_Caption)
 
-			self.BTdisp=XPCreateWidget(x+50, y-280, x+100, y-300, 1, "", 0, self.OXWidget, xpWidgetClass_Caption)
+		self.BTdisp=XPCreateWidget(x+50, y-280, x+100, y-300, 1, "", 0, self.OXWidget, xpWidgetClass_Caption)
 
-			FTCap=XPCreateWidget(x+130, y-280, x+150, y-300, 1, "FT", 0, self.OXWidget, xpWidgetClass_Caption)
+		FTCap=XPCreateWidget(x+130, y-280, x+150, y-300, 1, "FT", 0, self.OXWidget, xpWidgetClass_Caption)
 
-			self.FTdisp=XPCreateWidget(x+160, y-280, x+210, y-300, 1, "", 0, self.OXWidget, xpWidgetClass_Caption)
+		self.FTdisp=XPCreateWidget(x+160, y-280, x+210, y-300, 1, "", 0, self.OXWidget, xpWidgetClass_Caption)
 
-			TOWCap=XPCreateWidget(x+250, y-280, x+280, y-300, 1, "TOW", 0, self.OXWidget, xpWidgetClass_Caption)
+		TOWCap=XPCreateWidget(x+250, y-280, x+280, y-300, 1, "TOW", 0, self.OXWidget, xpWidgetClass_Caption)
 
-			self.TOWdisp=XPCreateWidget(x+300, y-280, x+400, y-300, 1, "", 0, self.OXWidget, xpWidgetClass_Caption)
+		self.TOWdisp=XPCreateWidget(x+300, y-280, x+400, y-300, 1, "", 0, self.OXWidget, xpWidgetClass_Caption)
 
-			BFCap=XPCreateWidget(x+20, y-320, x+40, y-340, 1, "BF", 0, self.OXWidget, xpWidgetClass_Caption)
+		BFCap=XPCreateWidget(x+20, y-320, x+40, y-340, 1, "BF", 0, self.OXWidget, xpWidgetClass_Caption)
 
-			self.BFdisp=XPCreateWidget(x+50, y-320, x+100, y-340, 1, "", 0, self.OXWidget, xpWidgetClass_Caption)
+		self.BFdisp=XPCreateWidget(x+50, y-320, x+100, y-340, 1, "", 0, self.OXWidget, xpWidgetClass_Caption)
 
-			FFCap=XPCreateWidget(x+130, y-320, x+150, y-340, 1, "FF", 0, self.OXWidget, xpWidgetClass_Caption)
+		FFCap=XPCreateWidget(x+130, y-320, x+150, y-340, 1, "FF", 0, self.OXWidget, xpWidgetClass_Caption)
 
-			self.FFdisp=XPCreateWidget(x+160, y-320, x+210, y-340, 1, "", 0, self.OXWidget, xpWidgetClass_Caption)
+		self.FFdisp=XPCreateWidget(x+160, y-320, x+210, y-340, 1, "", 0, self.OXWidget, xpWidgetClass_Caption)
 
-			LWCap=XPCreateWidget(x+250, y-320, x+280, y-340, 1, "LW", 0, self.OXWidget, xpWidgetClass_Caption)
+		LWCap=XPCreateWidget(x+250, y-320, x+280, y-340, 1, "LW", 0, self.OXWidget, xpWidgetClass_Caption)
 
-			self.LWdisp=XPCreateWidget(x+300, y-320, x+400, y-340, 1, "", 0, self.OXWidget, xpWidgetClass_Caption)
+		self.LWdisp=XPCreateWidget(x+300, y-320, x+400, y-340, 1, "", 0, self.OXWidget, xpWidgetClass_Caption)
 
-			OUTCap=XPCreateWidget(x+20, y-360, x+50, y-380, 1, "OUT", 0, self.OXWidget, xpWidgetClass_Caption)
+		OUTCap=XPCreateWidget(x+20, y-360, x+50, y-380, 1, "OUT", 0, self.OXWidget, xpWidgetClass_Caption)
 
-			self.OUTlatdisp=XPCreateWidget(x+70, y-360, x+150, y-380, 1, "", 0, self.OXWidget, xpWidgetClass_Caption)
+		self.OUTlatdisp=XPCreateWidget(x+70, y-360, x+150, y-380, 1, "", 0, self.OXWidget, xpWidgetClass_Caption)
 
-			self.OUTlondisp=XPCreateWidget(x+180, y-360, x+260, y-380, 1, "", 0, self.OXWidget, xpWidgetClass_Caption)
+		self.OUTlondisp=XPCreateWidget(x+180, y-360, x+260, y-380, 1, "", 0, self.OXWidget, xpWidgetClass_Caption)
 
-			self.OUTaltdisp=XPCreateWidget(x+290, y-360, x+350, y-380, 1, "", 0, self.OXWidget, xpWidgetClass_Caption)
+		self.OUTaltdisp=XPCreateWidget(x+290, y-360, x+350, y-380, 1, "", 0, self.OXWidget, xpWidgetClass_Caption)
 
-			INCap=XPCreateWidget(x+20, y-400, x+50, y-420, 1, "IN", 0, self.OXWidget, xpWidgetClass_Caption)
+		INCap=XPCreateWidget(x+20, y-400, x+50, y-420, 1, "IN", 0, self.OXWidget, xpWidgetClass_Caption)
 
-			self.INlatdisp=XPCreateWidget(x+70, y-400, x+150, y-420, 1, "", 0, self.OXWidget, xpWidgetClass_Caption)
+		self.INlatdisp=XPCreateWidget(x+70, y-400, x+150, y-420, 1, "", 0, self.OXWidget, xpWidgetClass_Caption)
 
-			self.INlondisp=XPCreateWidget(x+180, y-400, x+260, y-420, 1, "", 0, self.OXWidget, xpWidgetClass_Caption)
+		self.INlondisp=XPCreateWidget(x+180, y-400, x+260, y-420, 1, "", 0, self.OXWidget, xpWidgetClass_Caption)
 
-			self.INaltdisp=XPCreateWidget(x+290, y-400, x+350, y-420, 1, "", 0, self.OXWidget, xpWidgetClass_Caption)
+		self.INaltdisp=XPCreateWidget(x+290, y-400, x+350, y-420, 1, "", 0, self.OXWidget, xpWidgetClass_Caption)
 
-			MAXCap=XPCreateWidget(x+20, y-440, x+80, y-460, 1, "MAX C/D", 0, self.OXWidget, xpWidgetClass_Caption)
+		MAXCap=XPCreateWidget(x+20, y-440, x+80, y-460, 1, "MAX C/D", 0, self.OXWidget, xpWidgetClass_Caption)
 
-			self.maxCdisp=XPCreateWidget(x+110, y-440, x+140, y-460, 1, "", 0, self.OXWidget, xpWidgetClass_Caption)
+		self.maxCdisp=XPCreateWidget(x+110, y-440, x+140, y-460, 1, "", 0, self.OXWidget, xpWidgetClass_Caption)
 
-			maxslash=XPCreateWidget(x+150, y-440, x+160, y-460, 1, "/", 0, self.OXWidget, xpWidgetClass_Caption)
+		maxslash=XPCreateWidget(x+150, y-440, x+160, y-460, 1, "/", 0, self.OXWidget, xpWidgetClass_Caption)
 
-			self.maxDdisp=XPCreateWidget(x+160, y-440, x+190, y-460, 1, "", 0, self.OXWidget, xpWidgetClass_Caption)
+		self.maxDdisp=XPCreateWidget(x+160, y-440, x+190, y-460, 1, "", 0, self.OXWidget, xpWidgetClass_Caption)
 
-			maxICap=XPCreateWidget(x+220, y-440, x+250, y-460, 1, "IAS", 0, self.OXWidget, xpWidgetClass_Caption)
+		maxICap=XPCreateWidget(x+220, y-440, x+250, y-460, 1, "IAS", 0, self.OXWidget, xpWidgetClass_Caption)
 
-			self.maxIdisp=XPCreateWidget(x+260, y-440, x+290, y-460, 1, "", 0, self.OXWidget, xpWidgetClass_Caption)
+		self.maxIdisp=XPCreateWidget(x+260, y-440, x+290, y-460, 1, "", 0, self.OXWidget, xpWidgetClass_Caption)
 
-			maxGCap=XPCreateWidget(x+310, y-440, x+330, y-460, 1, "GS", 0, self.OXWidget, xpWidgetClass_Caption)
+		maxGCap=XPCreateWidget(x+310, y-440, x+330, y-460, 1, "GS", 0, self.OXWidget, xpWidgetClass_Caption)
 
-			self.maxGdisp=XPCreateWidget(x+340, y-440, x+370, y-460, 1, "", 0, self.OXWidget, xpWidgetClass_Caption)
+		self.maxGdisp=XPCreateWidget(x+340, y-440, x+370, y-460, 1, "", 0, self.OXWidget, xpWidgetClass_Caption)
 
-			self.SendButton=XPCreateWidget(x+20, y-480, x+140, y-500, 1, "Send", 0, self.OXWidget, xpWidgetClass_Button)
-			XPSetWidgetProperty(SendButton, xpProperty_ButtonType, xpPushButton)
+		self.SendButton=XPCreateWidget(x+20, y-480, x+140, y-500, 1, "Send", 0, self.OXWidget, xpWidgetClass_Button)
+		XPSetWidgetProperty(SendButton, xpProperty_ButtonType, xpPushButton)
 
-		# Register our widget handler
-			XPAddWidgetCallback(self, self.OXWidget, self.OXHandler)
+	# Register our widget handler
+		XPAddWidgetCallback(self, self.OXWidget, self.OXHandler)
 
 	def OXHandler(self, inMessage, inWidget,    inParam1, inParam2):
 		if inMessage==xpMessage_CloseButtonPushed:
@@ -410,9 +411,10 @@ class PythonInterface:
 				#But I don't wanna explode...
 				print "OXACARS - Now attempting to parse response..."
 
-				char * p=strtok (response, "\n")
+				p=getInfo.split('\n')
 				n_spaces=0
-
+				
+				fd=[]
 				fd[n_spaces-1]=p
 
 				self.Dep=fd[1]
@@ -480,8 +482,8 @@ class PythonInterface:
 				BEG_lon=XPLMGetDatad(self.lon_ref) #http://data.x-plane.com/designers.html#Hint_LatLonFormat
 				BEG_alt=XPLMGetDatad(self.alt_ref)
 				BEG_f=XPLMGetDataf(self.wt_f_tot_ref)
-				BEGlat=self.degdm(BEG_lat, 0))
-				BEGlon=self.degdm(BEG_lon, 1))
+				BEGlat=self.degdm(BEG_lat, 0)
+				BEGlon=self.degdm(BEG_lon, 1)
 				
 				FW=BEG_f * self.kglb
 				Elev=BEG_alt * self.mft
@@ -603,7 +605,7 @@ class PythonInterface:
 		if ( self.OUT==0 or self.ON==1 and self.IN==0):
 			cold=self.isAllEngineStopped()
 
-		if ( self.OUT==1 and self.OFF==0 || self.OFF==1 and self.ON==0):
+		if ( self.OUT==1 and self.OFF==0 or self.OFF==1 and self.ON==0):
 			geardep=[]
 			XPLMGetDatavf( self.geardep_ref, geardep, 0, 10)
 			gear_state=0
@@ -683,7 +685,7 @@ class PythonInterface:
 				XPSetWidgetDescriptor(self.ZFWdisp, str(round(self.ZFW)))
 				XPSetWidgetDescriptor(self.OUTlatdisp, self.OUTlat)
 				XPSetWidgetDescriptor(self.OUTlondisp, self.OUTlon)
-				XPSetWidgetDescriptor(self.OUTaltdisp, str(round(OUTalt))
+				XPSetWidgetDescriptor(self.OUTaltdisp, str(round(OUTalt)))
 				print "OXACARS - Building OUT report..."
 				#messg="OUT "+ztime+" /ZFW "+str(round(self.ZFW))+" /FOB "+str(round(self.OUT_f))+" /TAW "+str(round(TAW))+"\n/AP "+self.Dep+"\n/"+POS+"/ALT "+str(round(self.OUTalt))+"\n"+com
 				messg='OUT %s /ZFW %.0f /FOB %.0f /TAW %.0f\n/AP %s\n/%s/ALT %.0f\n%s' % (ztime, self.ZFW, self.OUT_f, TAW, self.Dep, POS, self.OUTalt, com)
