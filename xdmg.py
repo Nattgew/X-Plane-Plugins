@@ -10,7 +10,7 @@ class PythonInterface:
 		self.Name="XFSE Damage Info"
 		self.Sig= "natt.python.damaged"
 		self.Desc="Shows damage info FSE would calculate"
-		self.VERSION="1.0"
+		self.VERSION="1.1"
 		
 		self.OAT_ref=XPLMFindDataRef("sim/weather/temperature_ambient_c")
 		self.RPM_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_N2_")
@@ -19,24 +19,29 @@ class PythonInterface:
 		self.flightTime_ref=XPLMFindDataRef("sim/time/total_flight_time_sec")
 		self.num_eng_ref=XPLMFindDataRef("sim/aircraft/engine/acf_num_engines")
 		self.alt_ref=XPLMFindDataRef("sim/flightmodel/position/y_agl")
-		self.eng_type_ref=XPLMFindDataRef("sim/aircraft/prop/acf_prop_type")
+		self.prop_type_ref=XPLMFindDataRef("sim/aircraft/prop/acf_prop_type")
+		self.acf_fuel_ref=XPLMFindDataRef("sim/aircraft/weight/acf_m_fuel_tot") #flt
+		self.m_fuel_ref=XPLMFindDataRef("sim/flightmodel/weight/m_fuel_total") #flt
+		self.eng_type_ref=XPLMFindDataRef("sim/aircraft/prop/acf_en_type") #int[8]
 		
 		self.started=0
 		self.gWindow=0
 		self.msg1=""
 		self.msg2=""
 		self.msg3=""
+		self.msg4=""
 		self.remainingShowTime=0
 		self.showTime=1
 		self.winPosX=20
 		self.winPosY=300
-		self.WINDOW_WIDTH=130
-		self.WINDOW_HEIGHT=80
+		self.WINDOW_WIDTH=230
+		self.WINDOW_HEIGHT=90
 		self.windowCloseRequest=0
 		self.num_eng=0
 		self.runtime=0
 		self.chtDamage=0
 		self.mixtureDamage=0
+		self.prop_type=[]
 		self.eng_type=[]
 
 		self.DrawWindowCB=self.DrawWindowCallback
@@ -46,6 +51,8 @@ class PythonInterface:
 
 		self.MyHotKeyCB=self.MyHotKeyCallback
 		self.gHotKey=XPLMRegisterHotKey(self, XPLM_VK_D, xplm_DownFlag+xplm_ShiftFlag+xplm_ControlFlag, "Shows FSE damage info", self.MyHotKeyCB, 0)
+		self.MyHotKeyCB2=self.MyHotKeyCallback2
+		self.gHotKey2=XPLMRegisterHotKey(self, XPLM_VK_M, xplm_DownFlag+xplm_ShiftFlag+xplm_ControlFlag, "Sets mixture below FSE threshold", self.MyHotKeyCB2, 0)
 		
 		return self.Name, self.Sig, self.Desc
 
@@ -59,12 +66,24 @@ class PythonInterface:
 		if self.started == 0 :
 			self.started=1
 			self.num_eng=XPLMGetDatai(self.num_eng_ref)
+			XPLMGetDatavi(self.prop_type_ref, self.prop_type, 0, self.num_eng)
 			XPLMGetDatavi(self.eng_type_ref, self.eng_type, 0, self.num_eng)
 			self.defaultcht=XPLMGetDataf(self.OAT_ref)
 			self.gameLoopCB=self.gameLoopCallback
-			XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 0.05, 0)
+			XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 1, 0)
 		else:
-			print "Already started"
+			self.started=0
+			XPLMUnregisterFlightLoopCallback(self, self.gameLoopCB, 0)
+			self.closeEventWindow()
+			self.prop_type=[]
+			self.eng_type=[]
+			self.runtime=0
+			self.chtDamage=0
+			self.mixtureDamage=0
+
+	def MyHotKeyCallback2(self, inRefcon):
+		h=0.949
+		XPLMSetDatavf(self.mix_ref, [h, h, h, h, h, h, h, h], 0, self.num_eng)
 
 	def DrawWindowCallback(self, inWindowID, inRefcon):
 		if self.remainingShowTime > 0:
@@ -76,6 +95,7 @@ class PythonInterface:
 			XPLMDrawString(color, left+5, top-20, self.msg1, 0, xplmFont_Basic)
 			XPLMDrawString(color, left+5, top-35, self.msg2, 0, xplmFont_Basic)
 			XPLMDrawString(color, left+5, top-50, self.msg3, 0, xplmFont_Basic)
+			XPLMDrawString(color, left+5, top-65, self.msg4, 0, xplmFont_Basic)
 
 	def XPluginStop(self):
 		XPLMUnregisterHotKey(self, self.gHotKey)
@@ -126,10 +146,12 @@ class PythonInterface:
 			if (mixes[0] > 0.95 and XPLMGetDataf(self.alt_ref) > 1000):
 				#SMOKIN'
 				self.mixtureDamage += 1
-
-			self.msg1="Run: "+str(self.runtime)}" Type: "+str(self.eng_type[0])
+			m_fuel=XPLMGetDataf(self.m_fuel_ref)
+			a_fuel=XPLMGetDataf(self.acf_fuel_ref)
+			self.msg1="Run: "+str(self.runtime)+" Type: "+str(self.prop_type[0])
 			self.msg2="CHT: "+str(round(chts[0],2))+" dmg: "+str(round(self.chtDamage,2))
 			self.msg3="Mix: "+str(round(mixes[0],2))+" dmg: "+str(round(self.mixtureDamage,2))
+			self.msg4="En: "+str(self.eng_type[0])+" F_m: "+str(round(m_fuel))+" F_a: "+str(round(a_fuel))
 			self.createEventWindow()
 
 		return 1
