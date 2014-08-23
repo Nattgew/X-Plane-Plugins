@@ -259,61 +259,61 @@ class PythonInterface:
 		FltNoCap=XPCreateWidget(x+20, y-40, x+80, y-60, 1, "Flight No.", 0, self.OXWidget, xpWidgetClass_Caption)
 
 		self.FltNoText=XPCreateWidget(x+100, y-40, x+180, y-60, 1, "", 0, self.OXWidget, xpWidgetClass_TextField)
-		XPSetWidgetProperty(FltNoText, xpProperty_TextFieldType, xpTextEntryField)
+		XPSetWidgetProperty(self.FltNoText, xpProperty_TextFieldType, xpTextEntryField)
 
 		self.ACARSInfoButton=XPCreateWidget(x+200, y-40, x+300, y-60, 1, "ACARS Info", 0, self.OXWidget, xpWidgetClass_Button)
-		XPSetWidgetProperty(ACARSInfoButton, xpProperty_ButtonType, xpPushButton)
+		XPSetWidgetProperty(self.ACARSInfoButton, xpProperty_ButtonType, xpPushButton)
 
 		self.SettingsButton=XPCreateWidget(x+320, y-40, x+420, y-60, 1, "Settings", 0, self.OXWidget, xpWidgetClass_Button)
-		XPSetWidgetProperty(SettingsButton, xpProperty_ButtonType, xpPushButton)
+		XPSetWidgetProperty(self.SettingsButton, xpProperty_ButtonType, xpPushButton)
 
 		DepCap=XPCreateWidget(x+20, y-80, x+50, y-100, 1, "Dep", 0, self.OXWidget, xpWidgetClass_Caption)
 
 		self.DepText=XPCreateWidget(x+60, y-80, x+120, y-100, 1, "", 0, self.OXWidget, xpWidgetClass_TextField)
-		XPSetWidgetProperty(DepText, xpProperty_TextFieldType, xpTextEntryField)
+		XPSetWidgetProperty(self.DepText, xpProperty_TextFieldType, xpTextEntryField)
 
 		ArrCap=XPCreateWidget(x+150, y-80, x+180, y-100, 1, "Arr", 0, self.OXWidget, xpWidgetClass_Caption)
 
 		self.ArrText=XPCreateWidget(x+180, y-80, x+240, y-100, 1, "", 0, self.OXWidget, xpWidgetClass_TextField)
-		XPSetWidgetProperty(ArrText, xpProperty_TextFieldType, xpTextEntryField)
+		XPSetWidgetProperty(self.ArrText, xpProperty_TextFieldType, xpTextEntryField)
 
 		AltnCap=XPCreateWidget(x+300, y-80, x+330, y-100, 1, "Altn", 0, self.OXWidget, xpWidgetClass_Caption)
 
 		self.AltnText=XPCreateWidget(x+340, y-80, x+400, y-100, 1, "", 0, self.OXWidget, xpWidgetClass_TextField)
-		XPSetWidgetProperty(AltnText, xpProperty_TextFieldType, xpTextEntryField)
+		XPSetWidgetProperty(self.AltnText, xpProperty_TextFieldType, xpTextEntryField)
 
 		RtCap=XPCreateWidget(x+20, y-120, x+60, y-140, 1, "Route", 0, self.OXWidget, xpWidgetClass_Caption)
 
 		self.RtText=XPCreateWidget(x+70, y-120, x+430, y-140, 1, "", 0, self.OXWidget, xpWidgetClass_TextField)
-		XPSetWidgetProperty(RtText, xpProperty_TextFieldType, xpTextEntryField)
+		XPSetWidgetProperty(self.RtText, xpProperty_TextFieldType, xpTextEntryField)
 
 		PaxCap=XPCreateWidget(x+20, y-160, x+60, y-180, 1, "Pax", 0, self.OXWidget, xpWidgetClass_Caption)
 
 		self.PaxText=XPCreateWidget(x+70, y-160, x+120, y-180, 1, "", 0, self.OXWidget, xpWidgetClass_TextField)
-		XPSetWidgetProperty(PaxText, xpProperty_TextFieldType, xpTextEntryField)
+		XPSetWidgetProperty(self.PaxText, xpProperty_TextFieldType, xpTextEntryField)
 
 		PlanCap=XPCreateWidget(x+150, y-160, x+180, y-180, 1, "Plan", 0, self.OXWidget, xpWidgetClass_Caption)
 
 		self.PlanText=XPCreateWidget(x+190, y-160, x+240, y-180, 1, "", 0, self.OXWidget, xpWidgetClass_TextField)
-		XPSetWidgetProperty(PlanText, xpProperty_TextFieldType, xpTextEntryField)
+		XPSetWidgetProperty(self.PlanText, xpProperty_TextFieldType, xpTextEntryField)
 
 		TypeCap=XPCreateWidget(x+280, y-160, x+310, y-180, 1, "Type", 0, self.OXWidget, xpWidgetClass_Caption)
 
 		self.TypeText=XPCreateWidget(x+320, y-160, x+370, y-180, 1, "", 0, self.OXWidget, xpWidgetClass_TextField)
-		XPSetWidgetProperty(TypeText, xpProperty_TextFieldType, xpTextEntryField)
+		XPSetWidgetProperty(self.TypeText, xpProperty_TextFieldType, xpTextEntryField)
 
 		CargoCap=XPCreateWidget(x+20, y-200, x+60, y-220, 1, "Cargo", 0, self.OXWidget, xpWidgetClass_Caption)
 
 		self.CargoText=XPCreateWidget(x+70, y-200, x+120, y-220, 1, "", 0, self.OXWidget, xpWidgetClass_TextField)
-		XPSetWidgetProperty(CargoText, xpProperty_TextFieldType, xpTextEntryField)
+		XPSetWidgetProperty(self.CargoText, xpProperty_TextFieldType, xpTextEntryField)
 
 		FLCap=XPCreateWidget(x+150, y-200, x+180, y-220, 1, "Alt", 0, self.OXWidget, xpWidgetClass_Caption)
 
 		self.FLText=XPCreateWidget(x+190, y-200, x+260, y-220, 1, "", 0, self.OXWidget, xpWidgetClass_TextField)
-		XPSetWidgetProperty(FLText, xpProperty_TextFieldType, xpTextEntryField)
+		XPSetWidgetProperty(self.FLText, xpProperty_TextFieldType, xpTextEntryField)
 
-		StartButton=XPCreateWidget(x+280, y-200, x+320, y-220, 1, "Start", 0, self.OXWidget, xpWidgetClass_Button)
-		XPSetWidgetProperty(StartButton, xpProperty_ButtonType, xpPushButton)
+		self.StartButton=XPCreateWidget(x+280, y-200, x+320, y-220, 1, "Start", 0, self.OXWidget, xpWidgetClass_Button)
+		XPSetWidgetProperty(self.StartButton, xpProperty_ButtonType, xpPushButton)
 
 		DTCap=XPCreateWidget(x+20, y-240, x+40, y-260, 1, "DT", 0, self.OXWidget, xpWidgetClass_Caption)
 
@@ -380,7 +380,7 @@ class PythonInterface:
 		self.maxGdisp=XPCreateWidget(x+340, y-440, x+370, y-460, 1, "", 0, self.OXWidget, xpWidgetClass_Caption)
 
 		self.SendButton=XPCreateWidget(x+20, y-480, x+140, y-500, 1, "Send", 0, self.OXWidget, xpWidgetClass_Button)
-		XPSetWidgetProperty(SendButton, xpProperty_ButtonType, xpPushButton)
+		XPSetWidgetProperty(self.SendButton, xpProperty_ButtonType, xpPushButton)
 
 	# Register our widget handler
 		XPAddWidgetCallback(self, self.OXWidget, self.OXHandler)
