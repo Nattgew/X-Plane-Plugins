@@ -44,6 +44,7 @@ class PythonInterface:
 		self.prop_type=[]
 		self.eng_type=[]
 
+		self.gameLoopCB=self.gameLoopCallback
 		self.DrawWindowCB=self.DrawWindowCallback
 		self.KeyCB=self.KeyCallback
 		self.MouseClickCB=self.MouseClickCallback
@@ -69,7 +70,6 @@ class PythonInterface:
 			XPLMGetDatavi(self.prop_type_ref, self.prop_type, 0, self.num_eng)
 			XPLMGetDatavi(self.eng_type_ref, self.eng_type, 0, self.num_eng)
 			self.defaultcht=XPLMGetDataf(self.OAT_ref)
-			self.gameLoopCB=self.gameLoopCallback
 			XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 1, 0)
 		else:
 			self.started=0
