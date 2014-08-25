@@ -86,8 +86,7 @@ class PythonInterface:
 			self.mixtureDamage=0
 
 	def MyHotKeyCallback2(self, inRefcon):
-		h=0.949
-		XPLMSetDatavf(self.mix_ref, [h, h, h, h, h, h, h, h], 0, self.num_eng)
+		self.MixTape(0.949)
 
 	def DrawWindowCallback(self, inWindowID, inRefcon):
 		if self.remainingShowTime > 0:
@@ -128,6 +127,9 @@ class PythonInterface:
 			XPLMDestroyWindow(self, self.gWindow)
 			self.gWindow = 0
 		self.remainingShowTime = 0.0
+	
+	def MixTape(self, m):
+		XPLMSetDatavf(self.mix_ref, [m, m, m, m, m, m, m, m], 0, self.num_eng)
 
 	def gameLoopCallback(self, inElapsedSinceLastCall, elapsedSim, counter, refcon):
 
@@ -147,40 +149,44 @@ class PythonInterface:
 			# self.defaultcht=chts[0]
 			# mixes=[]
 			# XPLMGetDatavf(self.mix_ref, mixes, 0, self.num_eng)
-			# mixes*=100
 			# if (mixes[0] > 0.95 and XPLMGetDataf(self.alt_ref) > 1000):
 				# #SMOKIN'
 				# self.mixtureDamage += 1
-			
+			altitude=XPLMGetDataf(self.alt_ref)
+			mixes=[]
+			XPLMGetDatavf(self.mix_ref, mixes, 0, self.num_eng)
+			if (mixes[0] > 0.95 and XPLMGetDataf(self.alt_ref) > 1000):
+				self.MixTape(0.949)
 			rpms=[]
 			XPLMGetDatavf(self.RPM_ref, rpms, 0, self.num_eng)
-			engineType=self.eng_type[0]
 			if rpms[0]>0:
-				self.runtime+=sec
-			if engineType==2 or engineType==8:
+				self.runtime+=1
+			if self.eng_type[0]==2 or self.eng_type[0]==8:
 				itts=[]
 				XPLMGetDatavf(self.ITT_ref, itts, 0, self.num_eng)
 				if self.r_ITT>0 and itts[0]>self.r_ITT:
-					self.chtDamage += sec
+					self.chtDamage += 1
 				if altitude < 1000:
-					self.mixtureDamage += sec
+					self.mixtureDamage += 1
 				self.msg2="ITT: "+str(round(itts[0]))+"/"+str(round(self.r_ITT))+" dmg: "+str(round(self.chtDamage,2))
-			elif engineType==4 or engineType==5:
+			elif self.eng_type[0]==4 or self.eng_type[0]==5:
 				egts=[]
 				XPLMGetDatavf(self.EGT_ref, egts, 0, self.num_eng)
 				if self.r_EGT>0 and egts[0]>self.r_EGT:
-					self.chtDamage += sec
+					self.chtDamage += 1
 				if altitude < 1000:
-					self.mixtureDamage += sec
+					self.mixtureDamage += 1
 				self.msg2="EGT: "+str(round(egts[0]))+"/"+str(round(self.r_EGT))+" dmg: "+str(round(self.chtDamage,2))
 			else:
 				if self.defaultcht>0:
-					_diff=abs(cht-self.defaultcht)/float(sec)
+					chts=[]
+					XPLMGetDatavf(self.CHT_ref, chts, 0, self.num_eng)
+					_diff=abs(chts[0]-self.defaultcht)
 					if _diff>0:
 						self.chtDamage+=_diff
-				self.defaultcht=cht
-				if (mix > 95 and altitude > 1000):
-					self.mixtureDamage += sec
+				self.defaultcht=chts[0]
+				if (mixes[0] > 95 and altitude > 1000):
+					self.mixtureDamage += 1
 				self.msg2="CHT: "+str(round(chts[0],2))+" dmg: "+str(round(self.chtDamage,2))
 
 			self.msg1="Run: "+str(self.runtime)+" RPM: "+str(round(rpms[0]))
