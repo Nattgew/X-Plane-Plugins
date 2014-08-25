@@ -152,7 +152,7 @@ class PythonInterface:
 			# if (mixes[0] > 0.95 and XPLMGetDataf(self.alt_ref) > 1000):
 				# #SMOKIN'
 				# self.mixtureDamage += 1
-			altitude=XPLMGetDataf(self.alt_ref)
+			altitude=XPLMGetDataf(self.alt_ref)*3.33
 			mixes=[]
 			XPLMGetDatavf(self.mix_ref, mixes, 0, self.num_eng)
 			if (mixes[0] > 0.95 and altitude > 1000):
