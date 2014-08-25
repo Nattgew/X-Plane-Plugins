@@ -155,7 +155,7 @@ class PythonInterface:
 			altitude=XPLMGetDataf(self.alt_ref)
 			mixes=[]
 			XPLMGetDatavf(self.mix_ref, mixes, 0, self.num_eng)
-			if (mixes[0] > 0.95 and XPLMGetDataf(self.alt_ref) > 1000):
+			if (mixes[0] > 0.95 and altitude > 1000):
 				self.MixTape(0.949)
 			rpms=[]
 			XPLMGetDatavf(self.RPM_ref, rpms, 0, self.num_eng)
