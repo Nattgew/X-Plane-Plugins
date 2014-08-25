@@ -10,7 +10,7 @@ class PythonInterface:
 		self.Name="XFSE Damage Info"
 		self.Sig= "natt.python.damaged"
 		self.Desc="Shows damage info FSE would calculate"
-		self.VERSION="1.1"
+		self.VERSION="1.2"
 		
 		self.OAT_ref=XPLMFindDataRef("sim/weather/temperature_ambient_c")
 		self.RPM_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_N2_")
@@ -32,13 +32,10 @@ class PythonInterface:
 		self.msg2=""
 		self.msg3=""
 		self.msg4=""
-		self.remainingShowTime=0
-		self.showTime=1
 		self.winPosX=20
 		self.winPosY=300
 		self.WINDOW_WIDTH=230
 		self.WINDOW_HEIGHT=90
-		self.windowCloseRequest=0
 		self.num_eng=0
 		self.runtime=0
 		self.chtDamage=0
@@ -50,7 +47,6 @@ class PythonInterface:
 		self.DrawWindowCB=self.DrawWindowCallback
 		self.KeyCB=self.KeyCallback
 		self.MouseClickCB=self.MouseClickCallback
-		#self.WindowId=XPLMCreateWindow(self, 50, 600, 300, 400, 1, self.DrawWindowCB, self.KeyCB, self.MouseClickCB, 0)
 
 		self.MyHotKeyCB=self.MyHotKeyCallback
 		self.gHotKey=XPLMRegisterHotKey(self, XPLM_VK_D, xplm_DownFlag+xplm_ShiftFlag+xplm_ControlFlag, "Shows FSE damage info", self.MyHotKeyCB, 0)
@@ -89,16 +85,15 @@ class PythonInterface:
 		self.MixTape(0.949)
 
 	def DrawWindowCallback(self, inWindowID, inRefcon):
-		if self.remainingShowTime > 0:
-			lLeft=[];	lTop=[]; lRight=[];	lBottom=[]
-			XPLMGetWindowGeometry(inWindowID, lLeft, lTop, lRight, lBottom)
-			left=int(lLeft[0]); top=int(lTop[0]); right=int(lRight[0]); bottom=int(lBottom[0])
-			XPLMDrawTranslucentDarkBox(left,top,right,bottom)
-			color=1.0, 1.0, 1.0
-			XPLMDrawString(color, left+5, top-20, self.msg1, 0, xplmFont_Basic)
-			XPLMDrawString(color, left+5, top-35, self.msg2, 0, xplmFont_Basic)
-			XPLMDrawString(color, left+5, top-50, self.msg3, 0, xplmFont_Basic)
-			XPLMDrawString(color, left+5, top-65, self.msg4, 0, xplmFont_Basic)
+		lLeft=[];	lTop=[]; lRight=[];	lBottom=[]
+		XPLMGetWindowGeometry(inWindowID, lLeft, lTop, lRight, lBottom)
+		left=int(lLeft[0]); top=int(lTop[0]); right=int(lRight[0]); bottom=int(lBottom[0])
+		XPLMDrawTranslucentDarkBox(left,top,right,bottom)
+		color=1.0, 1.0, 1.0
+		XPLMDrawString(color, left+5, top-20, self.msg1, 0, xplmFont_Basic)
+		XPLMDrawString(color, left+5, top-35, self.msg2, 0, xplmFont_Basic)
+		XPLMDrawString(color, left+5, top-50, self.msg3, 0, xplmFont_Basic)
+		XPLMDrawString(color, left+5, top-65, self.msg4, 0, xplmFont_Basic)
 
 	def XPluginStop(self):
 		XPLMUnregisterHotKey(self, self.gHotKey)
@@ -117,8 +112,6 @@ class PythonInterface:
 		pass
 
 	def createEventWindow(self):
-		self.remainingShowTime=self.showTime
-		#self.remainingUpdateTime=1.0
 		if self.gWindow == 0:
 			self.gWindow=XPLMCreateWindow(self, self.winPosX, self.winPosY, self.winPosX + self.WINDOW_WIDTH, self.winPosY - self.WINDOW_HEIGHT, 1, self.DrawWindowCB, self.KeyCB, self.MouseClickCB, 0)
 	
@@ -126,7 +119,6 @@ class PythonInterface:
 		if self.gWindow==1:
 			XPLMDestroyWindow(self, self.gWindow)
 			self.gWindow = 0
-		self.remainingShowTime = 0.0
 	
 	def MixTape(self, m):
 		XPLMSetDatavf(self.mix_ref, [m, m, m, m, m, m, m, m], 0, self.num_eng)
@@ -155,13 +147,13 @@ class PythonInterface:
 			altitude=XPLMGetDataf(self.alt_ref)*3.33
 			mixes=[]
 			XPLMGetDatavf(self.mix_ref, mixes, 0, self.num_eng)
-			if (mixes[0] > 0.95 and altitude > 1000):
+			if (mixes[0] > 0.95 and altitude > 900):
 				self.MixTape(0.949)
 			rpms=[]
 			XPLMGetDatavf(self.RPM_ref, rpms, 0, self.num_eng)
 			if rpms[0]>0:
 				self.runtime+=1
-			if self.eng_type[0]==2 or self.eng_type[0]==8:
+			if self.eng_type[0]==2 or self.eng_type[0]==8: #Turboprop
 				itts=[]
 				XPLMGetDatavf(self.ITT_ref, itts, 0, self.num_eng)
 				if self.r_ITT>0 and itts[0]>self.r_ITT:
@@ -169,7 +161,7 @@ class PythonInterface:
 				if altitude < 1000:
 					self.mixtureDamage += 1
 				self.msg2="ITT: "+str(round(itts[0]))+"/"+str(round(self.r_ITT))+" dmg: "+str(round(self.chtDamage,2))
-			elif self.eng_type[0]==4 or self.eng_type[0]==5:
+			elif self.eng_type[0]==4 or self.eng_type[0]==5: #Jet
 				egts=[]
 				XPLMGetDatavf(self.EGT_ref, egts, 0, self.num_eng)
 				if self.r_EGT>0 and egts[0]>self.r_EGT:
@@ -177,7 +169,7 @@ class PythonInterface:
 				if altitude < 1000:
 					self.mixtureDamage += 1
 				self.msg2="EGT: "+str(round(egts[0]))+"/"+str(round(self.r_EGT))+" dmg: "+str(round(self.chtDamage,2))
-			else:
+			else: #Reciprocating or other gets default
 				if self.defaultcht>0:
 					chts=[]
 					XPLMGetDatavf(self.CHT_ref, chts, 0, self.num_eng)
