@@ -49,9 +49,13 @@ class PythonInterface:
 		self.MouseClickCB=self.MouseClickCallback
 
 		self.MyHotKeyCB=self.MyHotKeyCallback
-		self.gHotKey=XPLMRegisterHotKey(self, XPLM_VK_D, xplm_DownFlag+xplm_ShiftFlag+xplm_ControlFlag, "Shows FSE damage info", self.MyHotKeyCB, 0)
+		self.gHotKey=XPLMRegisterHotKey(self, XPLM_VK_D, xplm_DownFlag+xplm_ShiftFlag+xplm_ControlFlag, "Shows or hides FSE damage info", self.MyHotKeyCB, 0)
 		self.MyHotKeyCB2=self.MyHotKeyCallback2
 		self.gHotKey2=XPLMRegisterHotKey(self, XPLM_VK_M, xplm_DownFlag+xplm_ShiftFlag+xplm_ControlFlag, "Sets mixture below FSE damage threshold", self.MyHotKeyCB2, 0)
+		
+		self.CmdSHConn = XPLMCreateCommand("xdmg/flight/showhide","Shows or hides FSE damage info")
+		self.CmdSHConnCB  = self.CmdSHConnCallback
+		XPLMRegisterCommandHandler(self, self.CmdSHConn,  self.CmdSHConnCB, 0, 0)
 		
 		return self.Name, self.Sig, self.Desc
 
@@ -62,7 +66,16 @@ class PythonInterface:
 		pass 
 
 	def MyHotKeyCallback(self, inRefcon):
-		if self.started == 0 :
+		self.showhide()
+	
+	def CmdSHConnCallback(self, cmd, phase, refcon):
+		if(phase==0): #KeyDown event
+			print "XDMG = CMD show or hide"
+			self.showhide()
+		return 0
+		
+	def showhide(self):
+		if self.started == 0:
 			self.started=1
 			self.num_eng=XPLMGetDatai(self.num_eng_ref)
 			XPLMGetDatavi(self.eng_type_ref, self.eng_type, 0, self.num_eng)
@@ -80,12 +93,12 @@ class PythonInterface:
 			self.runtime=0
 			self.chtDamage=0
 			self.mixtureDamage=0
-
+			
 	def MyHotKeyCallback2(self, inRefcon):
 		self.MixTape(0.949)
 
 	def DrawWindowCallback(self, inWindowID, inRefcon):
-		lLeft=[];	lTop=[]; lRight=[];	lBottom=[]
+		lLeft=[]; lTop=[]; lRight=[]; lBottom=[]
 		XPLMGetWindowGeometry(inWindowID, lLeft, lTop, lRight, lBottom)
 		left=int(lLeft[0]); top=int(lTop[0]); right=int(lRight[0]); bottom=int(lBottom[0])
 		XPLMDrawTranslucentDarkBox(left,top,right,bottom)
@@ -177,7 +190,7 @@ class PythonInterface:
 					if _diff>0:
 						self.chtDamage+=_diff
 				self.defaultcht=chts[0]
-				if (mixes[0] > 95 and altitude > 1000):
+				if (mixes[0] > 0.95 and altitude > 1000):
 					self.mixtureDamage += 1
 				self.msg2="CHT: "+str(round(chts[0],2))+" dmg: "+str(round(self.chtDamage,2))
 
