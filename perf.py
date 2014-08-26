@@ -6,6 +6,10 @@ from XPLMDefs import *
 
 class PythonInterface:
 
+	def interp(self, y2, y1, x2, x1, xi):
+		result=(y2-y1)/(x2-x1)*(xi-x1)+x1
+		return result
+
 	def getDA(self, P, T):
 		density_alt=self.T_SL/self.gamma_l*(1-((P/self.P_SL)/(T/self.T_SL))**(self.gamma_u*self.R/(self.g*self.M-self.gamma_u*self.R)))
 		return density_alt
@@ -20,19 +24,93 @@ class PythonInterface:
 		return delISA
 	
 	def getCC(self, DA, wgt, alt, delISA):
-		
+		bestCC="N/A"
 		return bestCC
+		
+	def getOptFL(self, wgt):
+		optFL="N/A"
+		if AC=="B738":
+			wts=(120, 125, 130, 135, 140, 145, 150, 155, 160, 165, 170, 175, 180)
+			alts=(39700, 38800, 38000, 37200, 36500, 35700, 35000, 34300, 33700, 33000, 32400, 31700, 31100)
+			wt_i=wgt/5000-24
+			wt_il=floor(wt_i)
+			wt_ih=ceil(wt_i)
+			bc=self.interp(alts[wt_ih], alts[wt_il], wts[wt_ih], wts[wt_il], wt_i)
+			FLalt=str(round(bc,-2))
+			optFL="FL"+FLalt[0:3]
+		return optFL
+	
+	def getMaxFL(self, wgt, delISA):
+		maxFL="N/A"
+		if AC=="B738":
+			GW=(120, 125, 130, 135, 140, 145, 150, 155, 160, 165, 170, 175, 180)
+			alts=((41000, 41000, 40500, 39800, 39100, 38500, 37800, 37200, 36600, 36000, 35300, 34600, 33800), # +10C, below
+			(40900, 40200, 39500, 38800, 38200, 37500, 36900, 36200, 35600, 34900, 34000, 33100, 32100), # +15C
+			(39700, 39000, 38300, 37600, 37000, 36200, 35500, 34700, 33800, 32800, 31500, 30300, 29100)) # +20C
+			temps=(10, 15, 20)
+			wt_i=wgt/5000-24
+			dI_i=delISA/5-2
+			if dI_i < 0:
+				dI_i=0
+			elif dI_i > 2:
+				dI_i=2
+			wt_il=floor(wt_i)
+			wt_ih=ceil(wt_i)
+			dI_il=floor(dI_i)
+			dI_ih=ceil(dI_i)
+			
+			ma_l=self.interp(alts[dI_ih][wt_il], alts[dI_il][wt_il], temps[dI_ih], temps[dI_il], delISA)
+			ma_h=self.interp(alts[dI_ih][wt_ih], alts[dI_il][wt_ih], temps[dI_ih], temps[dI_il], delISA)
+			ma=self.interp(ma_h, ma_l, GW[wt_ih], GW[wt_il], wgt/1000)
+			
+			FLalt=str(round(ma,-2))
+			maxFL="FL"+FLalt[0:3]
+			
+		return maxFL
 	
 	def getCruise(self, DA, wgt, alt, delISA):
-		
+		bestCruise="N/A"
+		if AC=="B738":
+			if DA>42000:
+				bestCruise="Descend"
+			elif DA<24000:
+				bestCruise="280 kts"
+			else: # Use LR cruise table
+				machs=((.601,.61,.619,.627,.636,.643,.652,.661,.671,.683,.695,.706,.718,.729),	# FL250
+				(.683,.647,.658,.690,.684,.698,.711,.725,.738,.749,.757,.764,.769,.773),		# FL290
+				(.690,.706,.723,.738,.751,.760,.768,.773,.777,.781,.785,.788,.791,.794),		# FL330
+				(.726,.742,.754,.764,.771,.776,.780,.784,.788,.792,.794,.795,.795,0),			# FL350
+				(.756,.766,.773,.778,.783,.787,.791,.794,.765,.794,0,0,0,0),					# FL370
+				(.774,.780,.785,.789,.793,.795,.795,0,0,0,0,0,0,0),								# FL390
+				(.786,.791,.794,.795,0,0,0,0,0,0,0,0,0,0))										# FL410
+				GW=(110,115,120,125,130,135,140,145,150,155,160,165,170,175)
+				alts=(25,29,33,35,37,39,41)
+				if DA<33000:
+					wt_i=wgt/5000-22
+					fl_i=alt/4000-6.25
+				else: #33000 to ceiling
+					wt_i=wgt/5000-22
+					fl_i=alt/2000-14.5
+				fl_il=floor(fl_i)
+				fl_ih=ceil(fl_i)
+				wt_il=floor(wt_i)
+				wt_ih=ceil(wt_i)
+				
+				bc_l=self.interp(machs[fl_ih][wt_il], machs[fl_il][wt_il], alts[fl_ih], alts[fl_il], DA/1000)
+				bc_h=self.interp(machs[fl_ih][wt_ih], machs[fl_il][wt_ih], alts[fl_ih], alts[fl_il], DA/1000)
+				bc=self.interp(bc_h, bc_l, GW[wt_ih], GW[wt_il], wgt/1000)
+				
+				bestCruise=str(round(bc,2))
+		elif AC="PC12":
+			
 		return bestCruise
 	
 	def getMaxCruise(self, DA, wgt, alt, delISA):
-		
+		maxCruise="N/A"
 		return maxCruise
 	
 	def getMaxTRQ(self, DA, delISA):
-		
+		maxTRQ="N/A"
 		return maxTRQ
 
 	def XPluginStart(self):
@@ -70,7 +148,7 @@ class PythonInterface:
 		self.winPosX=20
 		self.winPosY=800
 		self.WINDOW_WIDTH=230
-		self.WINDOW_HEIGHT=90
+		self.WINDOW_HEIGHT=120
 		self.windowCloseRequest=0
 		self.num_eng=0
 		self.acf_desc=[]
@@ -159,11 +237,14 @@ class PythonInterface:
 		cruiseclb=self.getCC(DenAlt, wgt, alt, delISA)
 		cruise=self.getCruise(DenAlt, wgt, alt, delISA)
 		maxcruise=self.getMaxCruise(DenAlt, wgt, alt, delISA)
+		optFL=self.getOptFL(wgt)
+		maxFL=self.getMaxFL(wgt, delISA)
 		
 		self.msg1="DA: "+str(round(DenAlt))+" Approx: "+str(round(DenAltApprox))
 		self.msg2="T: "+str(round(T))" dISA: "+str(round(delISA))
 		self.msg3="TRQ: "+str(round(maxTRQ,1))+" CC: "+str(round(cruiseclb))
-		self.msg4="Crs: "+str(round(maxcruise))+" LR: "+str(round(cruise))
+		self.msg4="Crs: "+str(round(maxcruise))+" LR: "+cruise
+		self.msg4="opt FL: "+optFL+"max FL: "+maxFL
 		self.createEventWindow()
 
 		return 1
