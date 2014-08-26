@@ -55,9 +55,9 @@ class PythonInterface:
 		self.Desc="XACARS plugin for the 64-bit Linux"
 		self.VERSION="1.0"
 		
-		Item=XPLMAppendMenuItem(XPLMFindPluginsMenu(), "OXACARS", 0, 1)
+		Item=XPLMAppendMenuItem(XPLMFindPluginsMenu(), "OXACARS py", 0, 1)
 		self.MenuHandlerCB=self.MenuHandler
-		self.Id=XPLMCreateMenu(self, "OXACARS" , XPLMFindPluginsMenu(), Item, self.MenuHandlerCB,	0)
+		self.Id=XPLMCreateMenu(self, "OXACARS py" , XPLMFindPluginsMenu(), Item, self.MenuHandlerCB,	0)
 		XPLMAppendMenuItem(self.Id, "Open OXACARS", 1, 1)
 		
 		#self.DrawWindowCB=self.DrawWindowCallback
@@ -203,11 +203,14 @@ class PythonInterface:
 	def MenuHandler(self, inMenuRef, inItemRef):
 		# If menu selected create our widget dialog
 		if inItemRef==1:
+			print "OX Menu item selected"
 			if self.MenuItem1==0:
-				self.CreateWidget(221, 640, 480, 490)
+				print "OX Creating widget"
+				self.CreateWidget(221, 640, 480,525)
 				self.MenuItem1=1
 			else:
 				if not XPIsWidgetVisible(self.Widget):
+					print "OX Showing widget"
 					XPShowWidget(self.Widget)
 
 	def isAllEngineStopped(self):
@@ -247,7 +250,7 @@ class PythonInterface:
 	# Create the Main Widget window.
 		self.OXWidget=XPCreateWidget(x, y, x2, y2,
 			1, # Visible
-			"OXACARS", # desc
+			"OXACARS py", # desc
 			1, # root
 			0, # no container
 			xpWidgetClass_MainWindow)
@@ -383,7 +386,10 @@ class PythonInterface:
 		XPSetWidgetProperty(self.SendButton, xpProperty_ButtonType, xpPushButton)
 
 	# Register our widget handler
-		XPAddWidgetCallback(self, self.OXWidget, self.OXHandler)
+		print "OX Widget created"
+		self.OXHandlerCB=self.OXHandler
+		XPAddWidgetCallback(self, self.OXWidget, self.OXHandlerCB)
+
 
 	def OXHandler(self, inMessage, inWidget,    inParam1, inParam2):
 		if inMessage==xpMessage_CloseButtonPushed:
