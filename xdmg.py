@@ -3,6 +3,7 @@ from XPLMDataAccess import *
 from XPLMDisplay import *
 from XPLMGraphics import *
 from XPLMDefs import *
+from XPLMUtilities import *
 
 class PythonInterface:
 
@@ -25,7 +26,10 @@ class PythonInterface:
 		self.prop_type_ref=XPLMFindDataRef("sim/aircraft/prop/acf_prop_type")
 		self.r_EGT_ref=XPLMFindDataRef("sim/aircraft/limits/red_lo_EGT")
 		self.r_ITT_ref=XPLMFindDataRef("sim/aircraft/limits/red_lo_ITT")
-		
+		self.rh_ITT_ref=XPLMFindDataRef("sim/aircraft/limits/red_hi_ITT")
+		self.y_ITT_ref=XPLMFindDataRef("sim/aircraft/limits/yellow_lo_ITT")
+		self.yh_ITT_ref=XPLMFindDataRef("sim/aircraft/limits/yellow_hi_ITT")
+
 		self.started=0
 		self.gWindow=0
 		self.msg1=""
@@ -81,7 +85,8 @@ class PythonInterface:
 			XPLMGetDatavi(self.eng_type_ref, self.eng_type, 0, self.num_eng)
 			XPLMGetDatavi(self.prop_type_ref, self.prop_type, 0, self.num_eng)
 			self.r_EGT=XPLMGetDataf(self.r_EGT_ref)
-			self.r_ITT=XPLMGetDataf(self.r_ITT_ref)
+			self.r_ITT=XPLMGetDataf(self.rh_ITT_ref)
+			self.y_ITT=XPLMGetDataf(self.y_ITT_ref)
 			self.defaultcht=XPLMGetDataf(self.OAT_ref)
 			XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 1, 0)
 		else:
@@ -169,11 +174,11 @@ class PythonInterface:
 			if self.eng_type[0]==2 or self.eng_type[0]==8: #Turboprop
 				itts=[]
 				XPLMGetDatavf(self.ITT_ref, itts, 0, self.num_eng)
-				if self.r_ITT>0 and itts[0]>self.r_ITT:
+				if self.r_ITT>0 and itts[0]>self.y_ITT:
 					self.chtDamage += 1
-				if altitude < 1000:
+				if mixes[0]>0.5 and altitude < 1000:
 					self.mixtureDamage += 1
-				self.msg2="ITT: "+str(round(itts[0]))+"/"+str(round(self.r_ITT))+" dmg: "+str(round(self.chtDamage,2))
+				self.msg2="ITT: "+str(round(itts[0]))+"/"+str(round(self.y_ITT))+" dmg: "+str(round(self.chtDamage,2))
 			elif self.eng_type[0]==4 or self.eng_type[0]==5: #Jet
 				egts=[]
 				XPLMGetDatavf(self.EGT_ref, egts, 0, self.num_eng)
@@ -196,7 +201,7 @@ class PythonInterface:
 
 			self.msg1="Run: "+str(self.runtime)+" RPM: "+str(round(rpms[0]))
 			self.msg3="Mix: "+str(round(mixes[0],2))+" dmg: "+str(round(self.mixtureDamage,2))
-			self.msg4="En: "+str(self.eng_type[0])" Prop: "+str(self.prop_type[0])
+			self.msg4="En: "+str(self.eng_type[0])+" Prop: "+str(self.prop_type[0])
 			self.createEventWindow()
 
 		return 1
