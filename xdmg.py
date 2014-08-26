@@ -8,10 +8,10 @@ from XPLMUtilities import *
 class PythonInterface:
 
 	def XPluginStart(self):
-		self.Name="XFSE Damage Info"
-		self.Sig= "natt.python.damaged"
-		self.Desc="Shows damage info FSE would calculate"
-		self.VERSION="1.2"
+		self.Name="XFSE Info"
+		self.Sig= "natt.python.fsei"
+		self.Desc="Shows info for FSE"
+		self.VERSION="1.3"
 		
 		self.OAT_ref=XPLMFindDataRef("sim/weather/temperature_ambient_c")
 		self.RPM_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_N2_")
@@ -24,20 +24,24 @@ class PythonInterface:
 		self.alt_ref=XPLMFindDataRef("sim/flightmodel/position/y_agl")
 		self.eng_type_ref=XPLMFindDataRef("sim/aircraft/prop/acf_en_type")
 		self.prop_type_ref=XPLMFindDataRef("sim/aircraft/prop/acf_prop_type")
-		self.r_EGT_ref=XPLMFindDataRef("sim/aircraft/limits/red_lo_EGT")
-		self.r_ITT_ref=XPLMFindDataRef("sim/aircraft/limits/red_lo_ITT")
-		self.rh_ITT_ref=XPLMFindDataRef("sim/aircraft/limits/red_hi_ITT")
 		self.y_ITT_ref=XPLMFindDataRef("sim/aircraft/limits/yellow_lo_ITT")
 		self.yh_ITT_ref=XPLMFindDataRef("sim/aircraft/limits/yellow_hi_ITT")
+		self.gs_ref=XPLMFindDataRef("sim/flightmodel/position/groundspeed")
+		self.ias_ref=XPLMFindDataRef("sim/flightmodel/position/indicated_airspeed")
+		self.fly_ref=XPLMFindDataRef("fse/status/flying")
 
 		self.started=0
 		self.gWindow=0
+		self.eWindow=0
 		self.msg1=""
 		self.msg2=""
 		self.msg3=""
 		self.msg4=""
+		self.e1=""
 		self.winPosX=20
 		self.winPosY=300
+		self.winPosX=20
+		self.winPosY=400
 		self.WINDOW_WIDTH=230
 		self.WINDOW_HEIGHT=90
 		self.num_eng=0
@@ -49,17 +53,17 @@ class PythonInterface:
 
 		self.gameLoopCB=self.gameLoopCallback
 		self.DrawWindowCB=self.DrawWindowCallback
+		self.DrawWarnCB=self.DrawWarnCallback
 		self.KeyCB=self.KeyCallback
 		self.MouseClickCB=self.MouseClickCallback
 
-		self.MyHotKeyCB=self.MyHotKeyCallback
-		self.gHotKey=XPLMRegisterHotKey(self, XPLM_VK_D, xplm_DownFlag+xplm_ShiftFlag+xplm_ControlFlag, "Shows or hides FSE damage info", self.MyHotKeyCB, 0)
-		self.MyHotKeyCB2=self.MyHotKeyCallback2
-		self.gHotKey2=XPLMRegisterHotKey(self, XPLM_VK_M, xplm_DownFlag+xplm_ShiftFlag+xplm_ControlFlag, "Sets mixture below FSE damage threshold", self.MyHotKeyCB2, 0)
-		
-		self.CmdSHConn = XPLMCreateCommand("xdmg/flight/showhide","Shows or hides FSE damage info")
+		self.CmdSHConn = XPLMCreateCommand("fsei/flight/showhide","Shows or hides FSE damage info")
 		self.CmdSHConnCB  = self.CmdSHConnCallback
 		XPLMRegisterCommandHandler(self, self.CmdSHConn,  self.CmdSHConnCB, 0, 0)
+		
+		self.CmdMxConn = XPLMCreateCommand("fsei/flight/mixture","Sets mixture to please FSE")
+		self.CmdMxConnCB  = self.CmdMxConnCallback
+		XPLMRegisterCommandHandler(self, self.CmdMxConn,  self.CmdMxConnCB, 0, 0)
 		
 		return self.Name, self.Sig, self.Desc
 
@@ -69,13 +73,16 @@ class PythonInterface:
 	def KeyCallback(self, inWindowID, inKey, inFlags, inVirtualKey, inRefcon, losingFocus):
 		pass 
 
-	def MyHotKeyCallback(self, inRefcon):
-		self.showhide()
-	
 	def CmdSHConnCallback(self, cmd, phase, refcon):
 		if(phase==0): #KeyDown event
 			print "XDMG = CMD show or hide"
 			self.showhide()
+		return 0
+	
+	def CmdMxConnCallback(self, cmd, phase, refcon):
+		if(phase==0): #KeyDown event
+			print "XDMG = CMD mix set"
+			self.MixTape(0.949)
 		return 0
 		
 	def showhide(self):
@@ -93,29 +100,37 @@ class PythonInterface:
 			self.started=0
 			XPLMUnregisterFlightLoopCallback(self, self.gameLoopCB, 0)
 			self.closeEventWindow()
+			self.closeErrWindow()
 			self.prop_type=[]
 			self.eng_type=[]
 			self.runtime=0
 			self.chtDamage=0
 			self.mixtureDamage=0
 			
-	def MyHotKeyCallback2(self, inRefcon):
-		self.MixTape(0.949)
-
 	def DrawWindowCallback(self, inWindowID, inRefcon):
-		lLeft=[]; lTop=[]; lRight=[]; lBottom=[]
-		XPLMGetWindowGeometry(inWindowID, lLeft, lTop, lRight, lBottom)
-		left=int(lLeft[0]); top=int(lTop[0]); right=int(lRight[0]); bottom=int(lBottom[0])
-		XPLMDrawTranslucentDarkBox(left,top,right,bottom)
-		color=1.0, 1.0, 1.0
-		XPLMDrawString(color, left+5, top-20, self.msg1, 0, xplmFont_Basic)
-		XPLMDrawString(color, left+5, top-35, self.msg2, 0, xplmFont_Basic)
-		XPLMDrawString(color, left+5, top-50, self.msg3, 0, xplmFont_Basic)
-		XPLMDrawString(color, left+5, top-65, self.msg4, 0, xplmFont_Basic)
+		if self.gWindow==1:
+			lLeft=[]; lTop=[]; lRight=[]; lBottom=[]
+			XPLMGetWindowGeometry(inWindowID, lLeft, lTop, lRight, lBottom)
+			left=int(lLeft[0]); top=int(lTop[0]); right=int(lRight[0]); bottom=int(lBottom[0])
+			XPLMDrawTranslucentDarkBox(left,top,right,bottom)
+			color=1.0, 1.0, 1.0
+			XPLMDrawString(color, left+5, top-20, self.msg1, 0, xplmFont_Basic)
+			XPLMDrawString(color, left+5, top-35, self.msg2, 0, xplmFont_Basic)
+			XPLMDrawString(color, left+5, top-50, self.msg3, 0, xplmFont_Basic)
+			XPLMDrawString(color, left+5, top-65, self.msg4, 0, xplmFont_Basic)
 
+	def DrawWarnCallback(self, inWindowID, inRefcon):
+		if self.eWindow==1:
+			lLeft=[]; lTop=[]; lRight=[]; lBottom=[]
+			XPLMGetWindowGeometry(inWindowID, lLeft, lTop, lRight, lBottom)
+			left=int(lLeft[0]); top=int(lTop[0]); right=int(lRight[0]); bottom=int(lBottom[0])
+			XPLMDrawTranslucentDarkBox(left,top,right,bottom)
+			color=1.0, 0.0, 0.0
+			XPLMDrawString(color, left+5, top-20, self.e1, 0, xplmFont_Basic)
+	
 	def XPluginStop(self):
-		XPLMUnregisterHotKey(self, self.gHotKey)
-		XPLMUnregisterHotKey(self, self.gHotKey2)
+		XPLMUnegisterCommandHandler(self, self.CmdSHConn, 0)
+		XPLMUnegisterCommandHandler(self, self.CmdMxConn, 0)
 		XPLMUnregisterFlightLoopCallback(self, self.gameLoopCB, 0)
 		self.closeEventWindow()
 		pass
@@ -137,6 +152,15 @@ class PythonInterface:
 		if self.gWindow==1:
 			XPLMDestroyWindow(self, self.gWindow)
 			self.gWindow = 0
+	
+	def createErrWindow(self):
+		if self.eWindow == 0:
+			self.eWindow=XPLMCreateWindow(self, self.ePosX, self.ePosY, self.ePosX + self.WINDOW_WIDTH, self.ePosY - self.WINDOW_HEIGHT, 1, self.DrawWarnCB, self.KeyCB, self.MouseClickCB, 0)
+	
+	def closeErrWindow(self):
+		if self.eWindow==1:
+			XPLMDestroyWindow(self, self.eWindow)
+			self.eWindow = 0
 	
 	def MixTape(self, m):
 		XPLMSetDatavf(self.mix_ref, [m, m, m, m, m, m, m, m], 0, self.num_eng)
@@ -163,6 +187,12 @@ class PythonInterface:
 				# #SMOKIN'
 				# self.mixtureDamage += 1
 			altitude=XPLMGetDataf(self.alt_ref)*3.33
+			ias=XPLMGetDataf(self.ias_ref)
+			flying=XPLMGetDatai(self.fly_ref)
+			if flying==0 and ias>60 and altitude<20:
+				self.e1="FSE FLIGHT NOT STARTED"
+				self.createErrWindow()
+				return 1
 			mixes=[]
 			XPLMGetDatavf(self.mix_ref, mixes, 0, self.num_eng)
 			if (mixes[0] > 0.95 and altitude > 900):
