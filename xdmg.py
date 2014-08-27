@@ -28,6 +28,14 @@ class PythonInterface:
 		self.rh_ITT_ref=XPLMFindDataRef("sim/aircraft/limits/red_hi_ITT")
 		self.g_ITT_ref=XPLMFindDataRef("sim/aircraft/limits/green_lo_ITT")
 		self.gh_ITT_ref=XPLMFindDataRef("sim/aircraft/limits/green_hi_ITT")
+		self.r_EGT_ref=XPLMFindDataRef("sim/aircraft/limits/red_lo_EGT")
+		self.rh_EGT_ref=XPLMFindDataRef("sim/aircraft/limits/red_hi_EGT")
+		self.g_EGT_ref=XPLMFindDataRef("sim/aircraft/limits/green_lo_EGT")
+		self.gh_EGT_ref=XPLMFindDataRef("sim/aircraft/limits/green_hi_EGT")
+		self.r_CHT_ref=XPLMFindDataRef("sim/aircraft/limits/red_lo_CHT")
+		self.rh_CHT_ref=XPLMFindDataRef("sim/aircraft/limits/red_hi_CHT")
+		self.g_CHT_ref=XPLMFindDataRef("sim/aircraft/limits/green_lo_CHT")
+		self.gh_CHT_ref=XPLMFindDataRef("sim/aircraft/limits/green_hi_CHT")
 		self.gs_ref=XPLMFindDataRef("sim/flightmodel/position/groundspeed")
 		self.ias_ref=XPLMFindDataRef("sim/flightmodel/position/indicated_airspeed")
 		self.fly_ref=XPLMFindDataRef("fse/status/flying")
@@ -45,8 +53,8 @@ class PythonInterface:
 		self.e1=""
 		self.winPosX=20
 		self.winPosY=300
-		self.winPosX=20
-		self.winPosY=400
+		self.ePosX=20
+		self.ePosY=400
 		self.WINDOW_WIDTH=230
 		self.WINDOW_HEIGHT=90
 		self.num_eng=0
@@ -96,9 +104,9 @@ class PythonInterface:
 			self.num_eng=XPLMGetDatai(self.num_eng_ref)
 			XPLMGetDatavi(self.eng_type_ref, self.eng_type, 0, self.num_eng)
 			XPLMGetDatavi(self.prop_type_ref, self.prop_type, 0, self.num_eng)
-			self.r_ITT=XPLMGetDataf(self.r_ITT_ref)
-			self.rh_ITT=XPLMGetDataf(self.rh_ITT_ref)
 			self.gh_ITT=XPLMGetDataf(self.gh_ITT_ref)
+			self.gh_EGT=XPLMGetDataf(self.gh_EGT_ref)
+			self.gh_CHT=XPLMGetDataf(self.gh_CHT_ref)
 			self.defaultcht=XPLMGetDataf(self.OAT_ref)
 			XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 1, 0)
 		else:
@@ -218,16 +226,16 @@ class PythonInterface:
 				if self.gh_ITT>0 and itts[0]>self.gh_ITT:
 					self.chtDamage += 1
 				if mixes[0]>0.5 and altitude < 1000:
-					self.mixtureDamage += 1
+					self.mixtureDamage += 0.25
 				self.msg2="ITT: "+str(round(itts[0]))+"/"+str(round(self.gh_ITT))+" dmg: "+str(round(self.chtDamage,2))
 			elif self.eng_type[0]==4 or self.eng_type[0]==5: #Jet
 				egts=[]
 				XPLMGetDatavf(self.EGT_ref, egts, 0, self.num_eng)
-				if self.r_EGT>0 and egts[0]>self.r_EGT:
+				if self.gh_EGT>0 and egts[0]>self.gh_EGT:
 					self.chtDamage += 1
 				if altitude < 1000:
 					self.mixtureDamage += 1
-				self.msg2="EGT: "+str(round(egts[0]))+"/"+str(round(self.r_EGT))+" dmg: "+str(round(self.chtDamage,2))
+				self.msg2="EGT: "+str(round(egts[0]))+"/"+str(round(self.gh_EGT))+" dmg: "+str(round(self.chtDamage,2))
 			else: #Reciprocating or other gets default
 				if self.defaultcht>0:
 					chts=[]
