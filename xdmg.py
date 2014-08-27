@@ -24,8 +24,10 @@ class PythonInterface:
 		self.alt_ref=XPLMFindDataRef("sim/flightmodel/position/y_agl")
 		self.eng_type_ref=XPLMFindDataRef("sim/aircraft/prop/acf_en_type")
 		self.prop_type_ref=XPLMFindDataRef("sim/aircraft/prop/acf_prop_type")
-		self.y_ITT_ref=XPLMFindDataRef("sim/aircraft/limits/yellow_lo_ITT")
-		self.yh_ITT_ref=XPLMFindDataRef("sim/aircraft/limits/yellow_hi_ITT")
+		self.r_ITT_ref=XPLMFindDataRef("sim/aircraft/limits/red_lo_ITT")
+		self.rh_ITT_ref=XPLMFindDataRef("sim/aircraft/limits/red_hi_ITT")
+		self.g_ITT_ref=XPLMFindDataRef("sim/aircraft/limits/green_lo_ITT")
+		self.gh_ITT_ref=XPLMFindDataRef("sim/aircraft/limits/green_hi_ITT")
 		self.gs_ref=XPLMFindDataRef("sim/flightmodel/position/groundspeed")
 		self.ias_ref=XPLMFindDataRef("sim/flightmodel/position/indicated_airspeed")
 		self.fly_ref=XPLMFindDataRef("fse/status/flying")
@@ -33,6 +35,9 @@ class PythonInterface:
 		self.started=0
 		self.gWindow=0
 		self.eWindow=0
+		self.mwindow=0
+		self.ewindow=0
+		self.err=0
 		self.msg1=""
 		self.msg2=""
 		self.msg3=""
@@ -91,9 +96,9 @@ class PythonInterface:
 			self.num_eng=XPLMGetDatai(self.num_eng_ref)
 			XPLMGetDatavi(self.eng_type_ref, self.eng_type, 0, self.num_eng)
 			XPLMGetDatavi(self.prop_type_ref, self.prop_type, 0, self.num_eng)
-			self.r_EGT=XPLMGetDataf(self.r_EGT_ref)
-			self.r_ITT=XPLMGetDataf(self.rh_ITT_ref)
-			self.y_ITT=XPLMGetDataf(self.y_ITT_ref)
+			self.r_ITT=XPLMGetDataf(self.r_ITT_ref)
+			self.rh_ITT=XPLMGetDataf(self.rh_ITT_ref)
+			self.gh_ITT=XPLMGetDataf(self.gh_ITT_ref)
 			self.defaultcht=XPLMGetDataf(self.OAT_ref)
 			XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 1, 0)
 		else:
@@ -108,7 +113,7 @@ class PythonInterface:
 			self.mixtureDamage=0
 			
 	def DrawWindowCallback(self, inWindowID, inRefcon):
-		if self.gWindow==1:
+		if self.started==1:
 			lLeft=[]; lTop=[]; lRight=[]; lBottom=[]
 			XPLMGetWindowGeometry(inWindowID, lLeft, lTop, lRight, lBottom)
 			left=int(lLeft[0]); top=int(lTop[0]); right=int(lRight[0]); bottom=int(lBottom[0])
@@ -120,7 +125,7 @@ class PythonInterface:
 			XPLMDrawString(color, left+5, top-65, self.msg4, 0, xplmFont_Basic)
 
 	def DrawWarnCallback(self, inWindowID, inRefcon):
-		if self.eWindow==1:
+		if self.err==1:
 			lLeft=[]; lTop=[]; lRight=[]; lBottom=[]
 			XPLMGetWindowGeometry(inWindowID, lLeft, lTop, lRight, lBottom)
 			left=int(lLeft[0]); top=int(lTop[0]); right=int(lRight[0]); bottom=int(lBottom[0])
@@ -145,22 +150,26 @@ class PythonInterface:
 		pass
 
 	def createEventWindow(self):
-		if self.gWindow == 0:
+		if self.mwindow==0:
+			self.mwindow=1
 			self.gWindow=XPLMCreateWindow(self, self.winPosX, self.winPosY, self.winPosX + self.WINDOW_WIDTH, self.winPosY - self.WINDOW_HEIGHT, 1, self.DrawWindowCB, self.KeyCB, self.MouseClickCB, 0)
 	
 	def closeEventWindow(self):
-		if self.gWindow==1:
+		if self.mwindow==1:
+			print "XDMG = Smashing main window..."
 			XPLMDestroyWindow(self, self.gWindow)
-			self.gWindow = 0
+			self.mwindow=0
 	
 	def createErrWindow(self):
-		if self.eWindow == 0:
+		if self.ewindow == 0:
+			self.ewindow=1
 			self.eWindow=XPLMCreateWindow(self, self.ePosX, self.ePosY, self.ePosX + self.WINDOW_WIDTH, self.ePosY - self.WINDOW_HEIGHT, 1, self.DrawWarnCB, self.KeyCB, self.MouseClickCB, 0)
 	
 	def closeErrWindow(self):
-		if self.eWindow==1:
+		if self.ewindow == 1:
+			print "XDMG = Smashing error window..."
+			self.ewindow=0
 			XPLMDestroyWindow(self, self.eWindow)
-			self.eWindow = 0
 	
 	def MixTape(self, m):
 		XPLMSetDatavf(self.mix_ref, [m, m, m, m, m, m, m, m], 0, self.num_eng)
@@ -193,6 +202,8 @@ class PythonInterface:
 				self.e1="FSE FLIGHT NOT STARTED"
 				self.createErrWindow()
 				return 1
+			else:
+				self.closeErrWindow()
 			mixes=[]
 			XPLMGetDatavf(self.mix_ref, mixes, 0, self.num_eng)
 			if (mixes[0] > 0.95 and altitude > 900):
@@ -204,11 +215,11 @@ class PythonInterface:
 			if self.eng_type[0]==2 or self.eng_type[0]==8: #Turboprop
 				itts=[]
 				XPLMGetDatavf(self.ITT_ref, itts, 0, self.num_eng)
-				if self.r_ITT>0 and itts[0]>self.y_ITT:
+				if self.gh_ITT>0 and itts[0]>self.gh_ITT:
 					self.chtDamage += 1
 				if mixes[0]>0.5 and altitude < 1000:
 					self.mixtureDamage += 1
-				self.msg2="ITT: "+str(round(itts[0]))+"/"+str(round(self.y_ITT))+" dmg: "+str(round(self.chtDamage,2))
+				self.msg2="ITT: "+str(round(itts[0]))+"/"+str(round(self.gh_ITT))+" dmg: "+str(round(self.chtDamage,2))
 			elif self.eng_type[0]==4 or self.eng_type[0]==5: #Jet
 				egts=[]
 				XPLMGetDatavf(self.EGT_ref, egts, 0, self.num_eng)
