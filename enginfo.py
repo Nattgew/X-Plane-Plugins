@@ -17,8 +17,14 @@ class PythonInterface:
 		self.CHT_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_CHT_c")
 		self.ITT_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_ITT_c")
 		self.EGT_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_EGT_c")
+		self.CHTr_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_CHT")
+		self.ITTr_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_ITT")
+		self.EGTr_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_EGT")
 		self.mix_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_mixt")
 		self.num_eng_ref=XPLMFindDataRef("sim/aircraft/engine/acf_num_engines")
+		self.m_EGT_ref=XPLMFindDataRef("sim/aircraft/engine/acf_max_EGT")
+		self.m_ITT_ref=XPLMFindDataRef("sim/aircraft/engine/acf_max_ITT")
+		self.m_CHT_ref=XPLMFindDataRef("sim/aircraft/engine/acf_max_CHT")
 		self.eng_type_ref=XPLMFindDataRef("sim/aircraft/prop/acf_en_type")
 		self.prop_type_ref=XPLMFindDataRef("sim/aircraft/prop/acf_prop_type")
 		self.r_EGT_ref=XPLMFindDataRef("sim/aircraft/limits/red_lo_EGT")
@@ -39,6 +45,9 @@ class PythonInterface:
 		self.yh_CHT_ref=XPLMFindDataRef("sim/aircraft/limits/yellow_hi_CHT")
 		self.g_CHT_ref=XPLMFindDataRef("sim/aircraft/limits/green_lo_CHT")
 		self.gh_CHT_ref=XPLMFindDataRef("sim/aircraft/limits/green_hi_CHT")
+		self.ind_ITT_ref=XPLMFindDataRef("sim/cockpit2/engine/indicators/ITT_deg_C")
+		self.ind_EGT_ref=XPLMFindDataRef("sim/cockpit2/engine/indicators/EGT_deg_C")
+		self.ind_CHT_ref=XPLMFindDataRef("sim/cockpit2/engine/indicators/CHT_deg_C")
 
 		self.started=0
 		self.gWindow=0
@@ -46,6 +55,7 @@ class PythonInterface:
 		self.msg2=""
 		self.msg3=""
 		self.msg4=""
+		self.msg5=""
 		self.winPosX=20
 		self.winPosY=400
 		self.WINDOW_WIDTH=230
@@ -101,6 +111,7 @@ class PythonInterface:
 			XPLMDrawString(color, left+5, top-35, self.msg2, 0, xplmFont_Basic)
 			XPLMDrawString(color, left+5, top-50, self.msg3, 0, xplmFont_Basic)
 			XPLMDrawString(color, left+5, top-65, self.msg4, 0, xplmFont_Basic)
+			XPLMDrawString(color, left+5, top-80, self.msg5, 0, xplmFont_Basic)
 
 	def XPluginStop(self):
 		XPLMUnegisterCommandHandler(self, self.CmdSHConn, 0)
@@ -132,49 +143,65 @@ class PythonInterface:
 		prop_type=[]
 		eng_type=[]
 		rpms=[]
+		iITT=[]
+		iEGT=[]
+		iCHT=[]
 		XPLMGetDatavi(self.eng_type_ref, eng_type, 0, self.num_eng)
 		XPLMGetDatavi(self.prop_type_ref, prop_type, 0, self.num_eng)
 		XPLMGetDatavf(self.RPM_ref, rpms, 0, self.num_eng)
+		XPLMGetDatavf(self.ind_ITT_ref, iITT, 0, self.num_eng)
+		XPLMGetDatavf(self.ind_EGT_ref, iEGT, 0, self.num_eng)
+		XPLMGetDatavf(self.ind_CHT_ref, iCHT, 0, self.num_eng)
 		
 		if eng_type[0]==2 or eng_type[0]==8: #Turboprop
 			itts=[]
 			XPLMGetDatavf(self.ITT_ref, itts, 0, self.num_eng)
+			ittrs=[]
+			XPLMGetDatavf(self.ITTr_ref, ittrs, 0, self.num_eng)
+			m_ITT=XPLMGetDataf(self.m_ITT_ref)
 			r_ITT=XPLMGetDataf(self.r_ITT_ref)
 			rh_ITT=XPLMGetDataf(self.rh_ITT_ref)
 			y_ITT=XPLMGetDataf(self.y_ITT_ref)
 			yh_ITT=XPLMGetDataf(self.yh_ITT_ref)
 			g_ITT=XPLMGetDataf(self.g_ITT_ref)
 			gh_ITT=XPLMGetDataf(self.gh_ITT_ref)
-			self.msg1="ITT: "+str(round(itts[0]))+"  RPM: "+str(round(rpms[0]))
+			self.msg1="ITT: "+str(round(itts[0]))+"/"+str(round(m_ITT))+" r: "+str(round(ittrs[0]))+"  RPM: "+str(round(rpms[0]))
 			self.msg2="R HI: "+str(round(rh_ITT))+"  Y HI: "+str(round(yh_ITT))+"  G HI: "+str(round(gh_ITT))
 			self.msg3="R LO: "+str(round(r_ITT))+"  Y LO: "+str(round(y_ITT))+"  G LO: "+str(round(g_ITT))
 		elif eng_type[0]==4 or eng_type[0]==5: #Jet
 			egts=[]
 			XPLMGetDatavf(self.EGT_ref, egts, 0, self.num_eng)
+			egtrs=[]
+			XPLMGetDatavf(self.EGTr_ref, egtrs, 0, self.num_eng)
+			m_EGT=XPLMGetDataf(self.m_EGT_ref)
 			r_EGT=XPLMGetDataf(self.r_EGT_ref)
 			rh_EGT=XPLMGetDataf(self.rh_EGT_ref)
 			y_EGT=XPLMGetDataf(self.y_EGT_ref)
 			yh_EGT=XPLMGetDataf(self.yh_EGT_ref)
 			g_EGT=XPLMGetDataf(self.g_EGT_ref)
 			gh_EGT=XPLMGetDataf(self.gh_EGT_ref)
-			self.msg1="EGT: "+str(round(egts[0]))+"  RPM: "+str(round(rpms[0]))
+			self.msg1="EGT: "+str(round(egts[0]))+"/"+str(round(m_EGT))+" r: "+str(round(egtrs[0]))+"  RPM: "+str(round(rpms[0]))
 			self.msg2="R HI: "+str(round(rh_EGT))+"  Y HI: "+str(round(yh_EGT))+"  G HI: "+str(round(gh_EGT))
 			self.msg3="R LO: "+str(round(r_EGT))+"  Y LO: "+str(round(y_EGT))+"  G LO: "+str(round(g_EGT))
 		else: #Reciprocating or other gets default
 			chts=[]
 			XPLMGetDatavf(self.CHT_ref, chts, 0, self.num_eng)
+			chtrs=[]
+			XPLMGetDatavf(self.CHTr_ref, chtrs, 0, self.num_eng)
 			self.msg1="CHT: "+str(round(chts[0]))+"  RPM: "+str(round(rpms[0]))
+			m_CHT=XPLMGetDataf(self.m_CHT_ref)
 			r_CHT=XPLMGetDataf(self.r_CHT_ref)
 			rh_CHT=XPLMGetDataf(self.rh_CHT_ref)
 			y_CHT=XPLMGetDataf(self.y_CHT_ref)
 			yh_CHT=XPLMGetDataf(self.yh_CHT_ref)
 			g_CHT=XPLMGetDataf(self.g_CHT_ref)
 			gh_CHT=XPLMGetDataf(self.gh_CHT_ref)
-			self.msg1="CHT: "+str(round(chts[0]))+"  RPM: "+str(round(rpms[0]))
+			self.msg1="CHT: "+str(round(chts[0]))+"/"+str(round(m_CHT))+" r: "+str(round(chtrs[0]))+"  RPM: "+str(round(rpms[0]))
 			self.msg2="R HI: "+str(round(rh_CHT))+"  Y HI: "+str(round(yh_CHT))+"  G HI: "+str(round(gh_CHT))
 			self.msg3="R LO: "+str(round(r_CHT))+"  Y LO: "+str(round(y_CHT))+"  G LO: "+str(round(g_CHT))
 
 		self.msg4="En: "+str(eng_type[0])+" Prop: "+str(prop_type[0])
+		self.msg5="IND: ITT: "+str(round(iITT[0]))+"  EGT: "+str(round(iEGT[0]))+"  CHT: "+str(round(iCHT[0]))
 		print "XDMG = Got info..."
 		self.createEventWindow()
 
