@@ -3,10 +3,12 @@ from XPLMDataAccess import *
 from XPLMDisplay import *
 from XPLMGraphics import *
 from XPLMDefs import *
+from math import *
 
 class PythonInterface:
 
 	def interp(self, y2, y1, x2, x1, xi):
+		print "Interp "+str(y2)+", "+str(y1)+", "+str(x2)+", "+str(x1)+", "+str(xi)
 		result=(y2-y1)/(x2-x1)*(xi-x1)+x1
 		return result
 
@@ -20,27 +22,27 @@ class PythonInterface:
 	
 	def getdelISA(self, alt, T):
 		T_ISA=15-self.gamma_u*alt
-		delISA=T-T_ISA
+		delISA=T-273.15-T_ISA
 		return delISA
 	
 	def getCC(self, DA, wgt, alt, delISA):
 		bestCC="N/A"
 		return bestCC
 		
-	def getOptFL(self, wgt):
+	def getOptFL(self, wgt, AC):
 		optFL="N/A"
 		if AC=="B738":
 			wts=(120, 125, 130, 135, 140, 145, 150, 155, 160, 165, 170, 175, 180)
 			alts=(39700, 38800, 38000, 37200, 36500, 35700, 35000, 34300, 33700, 33000, 32400, 31700, 31100)
 			wt_i=wgt/5000-24
-			wt_il=floor(wt_i)
-			wt_ih=ceil(wt_i)
+			wt_il=int(floor(wt_i))
+			wt_ih=int(ceil(wt_i))
 			bc=self.interp(alts[wt_ih], alts[wt_il], wts[wt_ih], wts[wt_il], wt_i)
 			FLalt=str(round(bc,-2))
 			optFL="FL"+FLalt[0:3]
 		return optFL
 	
-	def getMaxFL(self, wgt, delISA):
+	def getMaxFL(self, wgt, delISA, AC):
 		maxFL="N/A"
 		if AC=="B738":
 			GW=(120, 125, 130, 135, 140, 145, 150, 155, 160, 165, 170, 175, 180)
@@ -54,10 +56,10 @@ class PythonInterface:
 				dI_i=0
 			elif dI_i > 2:
 				dI_i=2
-			wt_il=floor(wt_i)
-			wt_ih=ceil(wt_i)
-			dI_il=floor(dI_i)
-			dI_ih=ceil(dI_i)
+			wt_il=int(floor(wt_i))
+			wt_ih=int(ceil(wt_i))
+			dI_il=int(floor(dI_i))
+			dI_ih=int(ceil(dI_i))
 			
 			ma_l=self.interp(alts[dI_ih][wt_il], alts[dI_il][wt_il], temps[dI_ih], temps[dI_il], delISA)
 			ma_h=self.interp(alts[dI_ih][wt_ih], alts[dI_il][wt_ih], temps[dI_ih], temps[dI_il], delISA)
@@ -68,7 +70,7 @@ class PythonInterface:
 			
 		return maxFL
 	
-	def getCruise(self, DA, wgt, alt, delISA):
+	def getCruise(self, DA, wgt, alt, delISA, AC):
 		bestCruise="N/A"
 		if AC=="B738":
 			if DA>42000:
@@ -91,18 +93,18 @@ class PythonInterface:
 				else: #33000 to ceiling
 					wt_i=wgt/5000-22
 					fl_i=alt/2000-14.5
-				fl_il=floor(fl_i)
-				fl_ih=ceil(fl_i)
-				wt_il=floor(wt_i)
-				wt_ih=ceil(wt_i)
+				fl_il=int(floor(fl_i))
+				fl_ih=int(ceil(fl_i))
+				wt_il=int(floor(wt_i))
+				wt_ih=int(ceil(wt_i))
 				
 				bc_l=self.interp(machs[fl_ih][wt_il], machs[fl_il][wt_il], alts[fl_ih], alts[fl_il], DA/1000)
 				bc_h=self.interp(machs[fl_ih][wt_ih], machs[fl_il][wt_ih], alts[fl_ih], alts[fl_il], DA/1000)
 				bc=self.interp(bc_h, bc_l, GW[wt_ih], GW[wt_il], wgt/1000)
 				
 				bestCruise=str(round(bc,2))
-		elif AC="PC12":
-			
+		elif AC=="PC12":
+			bestCruise="A billion"
 		return bestCruise
 	
 	def getMaxCruise(self, DA, wgt, alt, delISA):
@@ -145,6 +147,8 @@ class PythonInterface:
 		self.msg2=""
 		self.msg3=""
 		self.msg4=""
+		self.msg5=""
+		self.msg6=""
 		self.winPosX=20
 		self.winPosY=800
 		self.WINDOW_WIDTH=230
@@ -175,9 +179,11 @@ class PythonInterface:
 		if self.started == 0:
 			self.started=1
 			self.num_eng=XPLMGetDatai(self.num_eng_ref)
-			XPLMGetDatab(self.acf_desc_ref, acf_desc, 0, 500)
+			XPLMGetDatab(self.acf_desc_ref, self.acf_desc, 0, 500)
+			print self.acf_desc
 			XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 1, 0)
 		else:
+			self.acf_desc=[]
 			self.started=0
 			XPLMUnregisterFlightLoopCallback(self, self.gameLoopCB, 0)
 			self.closeEventWindow()
@@ -195,6 +201,8 @@ class PythonInterface:
 		XPLMDrawString(color, left+5, top-35, self.msg2, 0, xplmFont_Basic)
 		XPLMDrawString(color, left+5, top-50, self.msg3, 0, xplmFont_Basic)
 		XPLMDrawString(color, left+5, top-65, self.msg4, 0, xplmFont_Basic)
+		XPLMDrawString(color, left+5, top-80, self.msg5, 0, xplmFont_Basic)
+		XPLMDrawString(color, left+5, top-95, self.msg6, 0, xplmFont_Basic)
 
 	def XPluginStop(self):
 		XPLMUnregisterHotKey(self, self.gHotKey)
@@ -230,21 +238,26 @@ class PythonInterface:
 		T=XPLMGetDataf(self.temp_ref)+273.15 #deg K
 		alt=XPLMGetDataf(self.alt_ref)*self.mft #m
 		wgt=XPLMGetDataf(self.wgt_ref)*self.kglb #kg
+		if str(self.acf_desc)=="['Boeing 737-800 xversion 482']":
+			AC="B738"
+		else:
+			AC=str(self.acf_desc)
+		self.msg6=AC
 		DenAlt=self.getDA(P,T) #feet
 		DenAltApprox=self.getDA_approx(P,T) #ft
 		delISA=self.getdelISA(alt, T)
 		maxTRQ=self.getMaxTRQ(DenAlt, delISA)
 		cruiseclb=self.getCC(DenAlt, wgt, alt, delISA)
-		cruise=self.getCruise(DenAlt, wgt, alt, delISA)
+		cruise=self.getCruise(DenAlt, wgt, alt, delISA, AC)
 		maxcruise=self.getMaxCruise(DenAlt, wgt, alt, delISA)
-		optFL=self.getOptFL(wgt)
-		maxFL=self.getMaxFL(wgt, delISA)
-		
+		optFL=self.getOptFL(wgt, AC)
+		maxFL=self.getMaxFL(wgt, delISA, AC)
+
 		self.msg1="DA: "+str(round(DenAlt))+" Approx: "+str(round(DenAltApprox))
-		self.msg2="T: "+str(round(T))" dISA: "+str(round(delISA))
-		self.msg3="TRQ: "+str(round(maxTRQ,1))+" CC: "+str(round(cruiseclb))
-		self.msg4="Crs: "+str(round(maxcruise))+" LR: "+cruise
-		self.msg4="opt FL: "+optFL+"max FL: "+maxFL
+		self.msg2="T: "+str(round(T))+" dISA: "+str(round(delISA))
+		self.msg3="TRQ: "+maxTRQ+" CC: "+cruiseclb
+		self.msg4="Crs: "+maxcruise+" LR: "+cruise
+		self.msg5="opt FL: "+optFL+" max FL: "+maxFL
 		self.createEventWindow()
 
 		return 1
