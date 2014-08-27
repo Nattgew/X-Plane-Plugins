@@ -8,7 +8,7 @@ from math import *
 class PythonInterface:
 
 	def CtoF(self, C):
-		F=C*9/5+32
+		F=C*1.8+32
 		return F
 
 	def check_index(self, hi, lo, length):
@@ -26,11 +26,11 @@ class PythonInterface:
 		return (fhi, flo, exact)
 	
 	def interp(self, y2, y1, x2, x1, xi):
-		print "Interp "+str(y2)+", "+str(y1)+", "+str(x2)+", "+str(x1)+", "+str(xi)
 		if y2==y1:
 			result=y1
 		else:
 			result=(y2-y1)/(x2-x1)*(xi-x1)+y1
+		print "Interp "+str(y2)+", "+str(y1)+", "+str(x2)+", "+str(x1)+", "+str(round(xi))+" = "+str(round(result))
 		return result
 	
 	def interp2(self, y1, y2, y3, y4, x1, x2, x3, x4, xi1, xi2):
@@ -50,8 +50,8 @@ class PythonInterface:
 		return density_alt
 	
 	def getdelISA(self, alt, T):
-		T_ISA=15-self.gamma_u*alt
-		delISA=T-273.15-T_ISA
+		T_ISA=15-self.gamma_l*alt
+		delISA=T-T_ISA
 		return delISA
 	
 	def getCC(self, DA, alt, delISA, AC):
@@ -87,7 +87,7 @@ class PythonInterface:
 			else:
 				cc=self.interp2(ias[dis_ih][alt_il], ias[dis_il][alt_il], ias[dis_ih][alt_ih], ias[dis_il][alt_ih], dis[dis_ih], dis[dis_il], alts[alt_ih], alts[alt_il], delISA, alt)
 			
-			bestCC=str(round(cc))
+			bestCC=str(round(cc))+" kias"
 			
 		return bestCC
 		
@@ -154,7 +154,7 @@ class PythonInterface:
 				bestCruise="Descend"
 			elif DA<24000:
 				bestCruise="280 kts"
-			else: # Use LR cruise table
+			else: # Use LR cruise table from manual
 				exactfl=0
 				exactwt=0
 				machs=((.601,.61,.619,.627,.636,.643,.652,.661,.671,.683,.695,.706,.718,.729),	# FL250
@@ -166,6 +166,7 @@ class PythonInterface:
 				(.786,.791,.794,.795,0,0,0,0,0,0,0,0,0,0))										# FL410
 				GW=(110,115,120,125,130,135,140,145,150,155,160,165,170,175)
 				alts=(25,29,33,35,37,39,41)
+				
 				if DA<33000:
 					wt_i=wgt/5000-22
 					fl_i=alt/4000-6.25
@@ -188,8 +189,9 @@ class PythonInterface:
 				else:
 					bc=self.interp2(machs[fl_ih][wt_il], machs[fl_il][wt_il], machs[fl_ih][wt_ih], machs[fl_il][wt_ih], alts[fl_ih], alts[fl_il], GW[wt_ih], GW[wt_il], DA/1000, wgt/1000)
 
-				bestCruise=str(round(bc,2))
-		elif AC=="PC12":
+				bestCruise="M"+str(round(bc,2))
+			
+		elif AC=="PC12": # PIM Section 5
 			exactdi=0
 			exactfl=0
 			exactwt=0
@@ -200,16 +202,16 @@ class PythonInterface:
 			(216,211,206,201,196,191,186,181,176,170,164,159,153,147,140,133),			# 9000lb
 			(214,210,205,201,196,191,186,181,176,171,166,160,155,149,143,137),			# 10000lb
 			(214,209,205,200,196,191,186,181,176,171,166,161,155,150,144,138)),			# 10400lb
-			((),	# 7000lb	-30C
-			(),			# 8000lb
-			(),			# 9000lb
-			(),			# 10000lb
-			()),			# 10400lb
-			((),	# 7000lb	-20C
-			(),			# 8000lb
-			(),			# 9000lb
-			(),			# 10000lb
-			()),			# 10400lb
+			((216,211,205,200,194,189,183,177,171,165,159,152,145,137,130,121),	# 7000lb	-30C
+			(215,210,205,200,194,189,184,178,173,167,161,154,148,141,134,126),			# 8000lb
+			(214,209,204,199,194,189,184,179,174,168,162,157,151,144,138,131),			# 9000lb
+			(212,208,203,199,194,189,184,179,174,169,163,158,152,146,140,134),			# 10000lb
+			(212,207,203,198,194,189,184,179,174,169,164,158,153,147,141,135)),			# 10400lb
+			((214,209,204,198,193,187,181,175,169,163,157,150,143,135,128,119),	# 7000lb	-20C
+			(213,208,203,198,193,187,182,176,171,165,159,152,146,139,132,124),			# 8000lb
+			(212,207,202,197,193,188,182,177,172,166,160,155,148,142,135,128),			# 9000lb
+			(211,206,201,197,192,187,182,177,172,167,161,156,150,144,138,131),			# 10000lb
+			(210,206,201,197,192,187,182,177,172,167,161,156,151,145,139,132)),			# 10400lb
 			((),	# 7000lb	-10C
 			(),			# 8000lb
 			(),			# 9000lb
@@ -262,34 +264,29 @@ class PythonInterface:
 			elif exactfl==1 and exactdi==1:
 				bc=self.interp(ias[dis_il][wgt_ih][alt_il], ias[dis_il][wgt_il][alt_il], GW[wgt_ih], GW[wgt_il], wgt)
 			elif exactwt==1:
-				bc_l=self.interp(
-				bc_h=
-				
-		interp2(self, y1, y2, y3, y4, x1, x2, x3, x4, xi1, xi2):
-		res_l=self.interp(y1, y2, x1, x2, xi1)
-		res_h=self.interp(y3, y4, x1, x2, xi1)
-		result=self.interp(res_h, res_l, x3, x4, xi2)
+				bc=self.interp2(ias[dis_ih][wgt_il][alt_il], ias[dis_il][wgt_il][alt_il], ias[dis_ih][wgt_il][alt_ih], ias[dis_il][wgt_il][alt_ih], dis[dis_ih], dis[dis_il], alts[alt_ih], alts[alt_il], delISA, alt)
 			elif exactfl==1:
-				
+				bc=self.interp2(ias[dis_ih][wgt_il][alt_il], ias[dis_il][wgt_il][alt_il], ias[dis_ih][wgt_ih][alt_il], ias[dis_il][wgt_ih][alt_il], dis[dis_ih], dis[dis_il], GW[wgt_ih], GW[wgt_il], delISA, wgt)
 			elif exactdi==1:
-				
+				bc=self.interp2(ias[dis_il][wgt_ih][alt_il], ias[dis_il][wgt_il][alt_il], ias[dis_il][wgt_ih][alt_ih], ias[dis_il][wgt_il][alt_ih], GW[wgt_ih], GW[wgt_il], alts[alt_ih], alts[alt_il], wgt, alt)
 			else: # Triple ineterpolation here we come
-				bc_
-			
-			bestCruise=str(round(bc))
+				bc_l=self.interp2(ias[dis_ih][wgt_il][alt_il], ias[dis_il][wgt_il][alt_il], ias[dis_ih][wgt_il][alt_ih], ias[dis_il][wgt_il][alt_ih], dis[dis_ih], dis[dis_il], alts[alt_ih], alts[alt_il], delISA, alt)
+				bc_h=self.interp2(ias[dis_ih][wgt_ih][alt_il], ias[dis_il][wgt_ih][alt_il], ias[dis_ih][wgt_ih][alt_ih], ias[dis_il][wgt_ih][alt_ih], dis[dis_ih], dis[dis_il], alts[alt_ih], alts[alt_il], delISA, alt)
+				bc=self.interp(bc_h, bc_l, GW[wgt_ih], GW[wgt_il], wgt)
+			bestCruise=str(round(bc))+" kias"
 			
 		return bestCruise
 	
-	def getMaxCruise(self, DA, wgt, alt, delISA):
+	def getMaxCruise(self, DA, wgt, alt, delISA, AC):
 		maxCruise="N/A"
 		return maxCruise
 	
-	def getMaxTRQ(self, DA, delISA):
+	def getMaxTRQ(self, DA, delISA, AC):
 		maxTRQ="N/A"
 		return maxTRQ
 
 	def XPluginStart(self):
-		self.Name="Long Range Cruise Calculator"
+		self.Name="Performance Calculator"
 		self.Sig= "natt.python.cruise"
 		self.Desc="Calculates the current best climb/cruise info based on POH"
 		self.VERSION="1.0"
@@ -357,16 +354,13 @@ class PythonInterface:
 			self.started=1
 			self.num_eng=XPLMGetDatai(self.num_eng_ref)
 			XPLMGetDatab(self.acf_desc_ref, self.acf_descb, 0, 500)
-			print self.acf_descb
-			XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 1, 0)
+			print str(self.acf_descb)
+			XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 10, 0)
 		else:
 			self.acf_descb=[]
-			self.started=0
 			XPLMUnregisterFlightLoopCallback(self, self.gameLoopCB, 0)
 			self.closeEventWindow()
-
-	# def MyHotKeyCallback2(self, inRefcon):
-		# self.MixTape(0.949)
+			self.started=0
 
 	def DrawWindowCallback(self, inWindowID, inRefcon):
 		if self.started==1:
@@ -402,7 +396,7 @@ class PythonInterface:
 			self.gWindow=XPLMCreateWindow(self, self.winPosX, self.winPosY, self.winPosX + self.WINDOW_WIDTH, self.winPosY - self.WINDOW_HEIGHT, 1, self.DrawWindowCB, self.KeyCB, self.MouseClickCB, 0)
 	
 	def closeEventWindow(self):
-		if self.gWindow==1:
+		if self.started==1:
 			XPLMDestroyWindow(self, self.gWindow)
 			self.gWindow = 0
 	
@@ -416,28 +410,32 @@ class PythonInterface:
 		alt=XPLMGetDataf(self.alt_ref)*self.mft #m -> ft
 		wgt=XPLMGetDataf(self.wgt_ref)*self.kglb #kg -> lb
 		acf_desc=str(self.acf_descb)
-		if acf_desc=="['Boeing 737-800 xversion 482']":
+		if acf_desc[0:27]=="['Boeing 737-800 xversion":
 			AC="B738"
 		elif acf_desc=="['pc12v10']":
 			AC="PC12"
 		else:
 			AC=acf_desc
-		self.msg6=AC
 		DenAlt=self.getDA(P,T) #feet
 		DenAltApprox=self.getDA_approx(P,T) #ft
 		delISA=self.getdelISA(alt, T)
-		maxTRQ=self.getMaxTRQ(DenAlt, delISA)
+		maxTRQ=self.getMaxTRQ(DenAlt, delISA, AC)
 		cruiseclb=self.getCC(DenAlt, alt, delISA, AC)
 		cruise=self.getCruise(DenAlt, wgt, alt, delISA, AC)
-		maxcruise=self.getMaxCruise(DenAlt, wgt, alt, delISA)
+		maxcruise=self.getMaxCruise(DenAlt, wgt, alt, delISA, AC)
 		optFL=self.getOptFL(wgt, AC)
 		maxFL=self.getMaxFL(wgt, delISA, AC)
-
-		self.msg1="DA: "+str(round(DenAlt))+" Ap: "+str(round(DenAltApprox))+"  GW: "+str(round(wgt))
-		self.msg2="T: "+str(round(T))+" dISA: "+str(round(delISA))
+		
+		dIstr=str(round(delISA))
+		if delISA>0:
+			dIstr="+"+dIstr
+			
+		self.msg1="DA: "+str(round(DenAlt))+" Ap: "+str(round(DenAltApprox))+"  GW: "+str(round(wgt))+" lb"
+		self.msg2="T: "+str(round(T))+" dISA: "+dIstr
 		self.msg3="TRQ: "+maxTRQ+" CC: "+cruiseclb
 		self.msg4="Crs: "+maxcruise+" LR: "+cruise
 		self.msg5="opt FL: "+optFL+" max FL: "+maxFL
+		self.msg6=AC
 		self.createEventWindow()
 
-		return 1
+		return 10
