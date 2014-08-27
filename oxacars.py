@@ -57,8 +57,8 @@ class PythonInterface:
 		
 		Item=XPLMAppendMenuItem(XPLMFindPluginsMenu(), "OXACARS py", 0, 1)
 		self.MenuHandlerCB=self.MenuHandler
-		self.Id=XPLMCreateMenu(self, "OXACARS py" , XPLMFindPluginsMenu(), Item, self.MenuHandlerCB,	0)
-		XPLMAppendMenuItem(self.Id, "Open OXACARS", 1, 1)
+		self.OXMenu=XPLMCreateMenu(self, "OXACARS py" , XPLMFindPluginsMenu(), Item, self.MenuHandlerCB,	0)
+		XPLMAppendMenuItem(self.OXMenu, "Open OXACARS", 1, 1)
 		
 		#self.DrawWindowCB=self.DrawWindowCallback
 		#self.KeyCB=self.KeyCallback
@@ -123,7 +123,7 @@ class PythonInterface:
 		
 		self.gWidget=0
 		self.sWidget=0
-		self.MenuItem1=0
+		self.gWidget=0
 		DATA1v1="XACARS|1.1"
 		DATA1v2="XACARS|2.0"
 		# default settings
@@ -204,10 +204,10 @@ class PythonInterface:
 		# If menu selected create our widget dialog
 		if inItemRef==1:
 			print "OX Menu item selected"
-			if self.MenuItem1==0:
+			if self.gWidget==0:
 				print "OX Creating widget"
-				self.CreateWidget(221, 640, 480,525)
-				self.MenuItem1=1
+				self.CreateWidget(50, 712, 974, 662)
+				self.gWidget=1
 			else:
 				if not XPIsWidgetVisible(self.Widget):
 					print "OX Showing widget"
