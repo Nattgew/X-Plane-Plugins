@@ -7,16 +7,45 @@ from math import *
 
 class PythonInterface:
 
+	def CtoF(self, C):
+		F=C*9/5+32
+		return F
+
+	def check_index(self, hi, lo, length):
+		flo=lo
+		fhi=hi
+		exact=0
+		if hi>length:
+			flo=length-1
+			fhi=length
+		elif lo<0:
+			flo=0
+			fhi=1
+		elif lo==hi:
+			exact=1
+		return (fhi, flo, exact)
+	
 	def interp(self, y2, y1, x2, x1, xi):
 		print "Interp "+str(y2)+", "+str(y1)+", "+str(x2)+", "+str(x1)+", "+str(xi)
-		result=(y2-y1)/(x2-x1)*(xi-x1)+x1
+		if y2==y1:
+			result=y1
+		else:
+			result=(y2-y1)/(x2-x1)*(xi-x1)+y1
+		return result
+	
+	def interp2(self, y1, y2, y3, y4, x1, x2, x3, x4, xi1, xi2):
+		res_l=self.interp(y1, y2, x1, x2, xi1)
+		res_h=self.interp(y3, y4, x1, x2, xi1)
+		result=self.interp(res_h, res_l, x3, x4, xi2)
 		return result
 
 	def getDA(self, P, T):
+		T+=273.15
 		density_alt=self.T_SL/self.gamma_l*(1-((P/self.P_SL)/(T/self.T_SL))**(self.gamma_u*self.R/(self.g*self.M-self.gamma_u*self.R)))
 		return density_alt
 	
 	def getDA_approx(self, P, T):
+		T=self.CtoF(T)
 		density_alt=145442.16*(1-(17.326*P/(459.67+T))**0.235)
 		return density_alt
 	
@@ -25,26 +54,68 @@ class PythonInterface:
 		delISA=T-273.15-T_ISA
 		return delISA
 	
-	def getCC(self, DA, wgt, alt, delISA):
+	def getCC(self, DA, alt, delISA, AC):
 		bestCC="N/A"
+		if AC="PC12":
+			exactfl=0
+			exactdi=0
+			alts=(0,5000,10000,15000,20000,25000,30000)
+			ias=((160,160,160,160,160,150,125),	# -40
+			(160,160,160,160,160,150,125),		# -30
+			(160,160,160,160,155,142,125),		# -20
+			(160,160,160,160,148,135,120),		# -10
+			(160,160,160,150,140,130,115),		# +0
+			(160,160,155,140,130,120,110),		# +10
+			(160,155,140,130,120,110,110),		# +20
+			(150,140,130,120,110,110,110))		# +30
+			dis=(-40,-30,-20,-10,0,10,20,30)
+			
+			alt_i=alt/5000
+			alt_il=int(floor(alt_i))
+			alt_ih=int(ceil(alt_i))
+			dis_i=delISA/10+4
+			dis_il=int(floor(dis_i))
+			dis_ih=int(ceil(dis_i))
+			alt_ih, alt_il, exactfl = check_index(alt_ih, alt_il, len(alts))
+			dis_ih, dis_il, exactdi = check_index(dis_ih, dis_il, len(dis))
+			if exactfl==1 and exactdi==1:
+				cc=ias[dis_il][alt_il]
+			elif exactfl==1:
+				cc=self.interp(ias[dis_ih][alt_il], ias[dis_il][alt_il], dis[dis_ih], dis[dis_il], delISA)
+			elif exactdi==1:
+				cc=self.interp(ias[dis_il][alt_ih], ias[dis_il][alt_il], alts[alt_ih], alts[alt_il], alt)
+			else:
+				cc=self.interp2(ias[dis_ih][alt_il], ias[dis_il][alt_il], ias[dis_ih][alt_ih], ias[dis_il][alt_ih], dis[dis_ih], dis[dis_il], alts[alt_ih], alts[alt_il], delISA, alt)
+			
+			bestCC=str(round(cc))
+			
 		return bestCC
 		
 	def getOptFL(self, wgt, AC):
 		optFL="N/A"
 		if AC=="B738":
+			exactwt=0
 			wts=(120, 125, 130, 135, 140, 145, 150, 155, 160, 165, 170, 175, 180)
 			alts=(39700, 38800, 38000, 37200, 36500, 35700, 35000, 34300, 33700, 33000, 32400, 31700, 31100)
 			wt_i=wgt/5000-24
 			wt_il=int(floor(wt_i))
 			wt_ih=int(ceil(wt_i))
-			bc=self.interp(alts[wt_ih], alts[wt_il], wts[wt_ih], wts[wt_il], wt_i)
-			FLalt=str(round(bc,-2))
+			wt_ih, wt_il, exactwt = check_index(wt_ih, wt_il, len(wts))
+			if exactwt==1:
+				oa=alts[wt_il]
+			else:
+				oa=self.interp(alts[wt_ih], alts[wt_il], wts[wt_ih], wts[wt_il], wt_i)
+				
+			FLalt=str(round(oa,-2))
 			optFL="FL"+FLalt[0:3]
+			
 		return optFL
 	
 	def getMaxFL(self, wgt, delISA, AC):
 		maxFL="N/A"
 		if AC=="B738":
+			exactwt=0
+			exactdi=0
 			GW=(120, 125, 130, 135, 140, 145, 150, 155, 160, 165, 170, 175, 180)
 			alts=((41000, 41000, 40500, 39800, 39100, 38500, 37800, 37200, 36600, 36000, 35300, 34600, 33800), # +10C, below
 			(40900, 40200, 39500, 38800, 38200, 37500, 36900, 36200, 35600, 34900, 34000, 33100, 32100), # +15C
@@ -60,11 +131,17 @@ class PythonInterface:
 			wt_ih=int(ceil(wt_i))
 			dI_il=int(floor(dI_i))
 			dI_ih=int(ceil(dI_i))
-			
-			ma_l=self.interp(alts[dI_ih][wt_il], alts[dI_il][wt_il], temps[dI_ih], temps[dI_il], delISA)
-			ma_h=self.interp(alts[dI_ih][wt_ih], alts[dI_il][wt_ih], temps[dI_ih], temps[dI_il], delISA)
-			ma=self.interp(ma_h, ma_l, GW[wt_ih], GW[wt_il], wgt/1000)
-			
+			wt_ih, wt_il, exactwt = check_index(wt_ih, wt_il, len(GW))
+			dI_ih, dI_il, exactdi = check_index(dI_ih, dI_il, len(temps))
+			if exactdi==1 and exactwt==1:
+				ma=alts[dI_il][wt_il]
+			elif exactdi==1:
+				ma=self.interp(alts[dI_il][wt_ih], alts[dI_il][wt_il], GW[wt_ih], GW[wt_il], wgt/1000)
+			elif exactwt==1:
+				ma=self.interp(alts[dI_ih][wt_il], alts[dI_il][wt_il], temps[dI_ih], temps[dI_il], delISA)
+			else:
+				ma=self.interp2(alts[dI_ih][wt_il], alts[dI_il][wt_il], alts[dI_ih][wt_ih], alts[dI_il][wt_ih], temps[dI_ih], temps[dI_il], GW[wt_ih], GW[wt_il], delISA, wgt/1000)
+
 			FLalt=str(round(ma,-2))
 			maxFL="FL"+FLalt[0:3]
 			
@@ -78,6 +155,8 @@ class PythonInterface:
 			elif DA<24000:
 				bestCruise="280 kts"
 			else: # Use LR cruise table
+				exactfl=0
+				exactwt=0
 				machs=((.601,.61,.619,.627,.636,.643,.652,.661,.671,.683,.695,.706,.718,.729),	# FL250
 				(.683,.647,.658,.690,.684,.698,.711,.725,.738,.749,.757,.764,.769,.773),		# FL290
 				(.690,.706,.723,.738,.751,.760,.768,.773,.777,.781,.785,.788,.791,.794),		# FL330
@@ -97,14 +176,108 @@ class PythonInterface:
 				fl_ih=int(ceil(fl_i))
 				wt_il=int(floor(wt_i))
 				wt_ih=int(ceil(wt_i))
+				fl_ih, fl_il, exactfl = check_index(fl_ih, fl_il, len(alts))
+				wt_ih, wt_il, exactwt = check_index(wt_ih, wt_il, len(GW))
 				
-				bc_l=self.interp(machs[fl_ih][wt_il], machs[fl_il][wt_il], alts[fl_ih], alts[fl_il], DA/1000)
-				bc_h=self.interp(machs[fl_ih][wt_ih], machs[fl_il][wt_ih], alts[fl_ih], alts[fl_il], DA/1000)
-				bc=self.interp(bc_h, bc_l, GW[wt_ih], GW[wt_il], wgt/1000)
-				
+				if exactfl==1 and exactwt==1:
+					bc=machs[fl_il][wt_il]
+				elif exactfl==1:
+					bc=self.interp(machs[fl_il][wt_ih], machs[fl_il][wt_il], GW[wt_ih], GW[wt_il], wgt/1000)
+				elif exactwt==1:
+					bc=self.interp(machs[fl_ih][wt_il], machs[fl_il][wt_il], alts[fl_ih], alts[fl_il], DA/1000)
+				else:
+					bc=self.interp2(machs[fl_ih][wt_il], machs[fl_il][wt_il], machs[fl_ih][wt_ih], machs[fl_il][wt_ih], alts[fl_ih], alts[fl_il], GW[wt_ih], GW[wt_il], DA/1000, wgt/1000)
+
 				bestCruise=str(round(bc,2))
 		elif AC=="PC12":
-			bestCruise="A billion"
+			exactdi=0
+			exactfl=0
+			exactwt=0
+			GW=(7000,8000,9000,10000,10400)
+			alts=(0,2000,4000,6000,8000,10000,12000,14000,16000,18000,20000,22000,24000,26000,28000,30000)
+			ias=(((218,212,207,202,196,191,185,179,173,167,160,154,147,139,132,123),	# 7000lb	-40C
+			(217,212,207,202,196,191,186,180,175,169,163,156,150,143,136,129),			# 8000lb
+			(216,211,206,201,196,191,186,181,176,170,164,159,153,147,140,133),			# 9000lb
+			(214,210,205,201,196,191,186,181,176,171,166,160,155,149,143,137),			# 10000lb
+			(214,209,205,200,196,191,186,181,176,171,166,161,155,150,144,138)),			# 10400lb
+			((),	# 7000lb	-30C
+			(),			# 8000lb
+			(),			# 9000lb
+			(),			# 10000lb
+			()),			# 10400lb
+			((),	# 7000lb	-20C
+			(),			# 8000lb
+			(),			# 9000lb
+			(),			# 10000lb
+			()),			# 10400lb
+			((),	# 7000lb	-10C
+			(),			# 8000lb
+			(),			# 9000lb
+			(),			# 10000lb
+			()),			# 10400lb
+			((),	# 7000lb	+0C
+			(),			# 8000lb
+			(),			# 9000lb
+			(),			# 10000lb
+			()),			# 10400lb
+			((),	# 7000lb	+10C
+			(),			# 8000lb
+			(),			# 9000lb
+			(),			# 10000lb
+			()),			# 10400lb
+			((),	# 7000lb	+20C
+			(),			# 8000lb
+			(),			# 9000lb
+			(),			# 10000lb
+			()),			# 10400lb
+			((),	# 7000lb	+30C
+			(),			# 8000lb
+			(),			# 9000lb
+			(),			# 10000lb
+			()))			# 10400lb
+			dis=(-40,-30,-20,-10,0,10,20,30)
+			
+			if wgt>10000:
+				wgt_i=wgt/400-22
+			else:
+				wgt_i=wgt/1000-7
+			wgt_il=int(floor(wgt_i))
+			wgt_ih=int(ceil(wgt_i))
+			alt_i=alt/2000
+			alt_il=int(floor(alt_i))
+			alt_ih=int(ceil(alt_i))
+			dis_i=delISA/10+4
+			dis_il=int(floor(dis_i))
+			dis_ih=int(ceil(dis_i))
+			wgt_ih, wgt_il, exactwt = check_index(wgt_ih, wgt_il, len(GW))
+			alt_ih, alt_il, exactfl = check_index(alt_ih, alt_il, len(alts))
+			dis_ih, dis_il, exactdi = check_index(dis_ih, dis_il, len(dis))
+			
+			if exactwt==1 and exactfl==1 and exactdi==1: # Epic win
+				bc=ias[dis_il][wgt_il][alt_il]
+			elif exactwt==1 and exactfl==1:
+				bc=self.interp(ias[dis_ih][wgt_il][alt_il], ias[dis_il][wgt_il][alt_il], dis[dis_ih], dis[dis_il], delISA)
+			elif exactwt==1 and exactdi==1:
+				bc=self.interp(ias[dis_il][wgt_il][alt_ih], ias[dis_il][wgt_il][alt_il], alts[alt_ih], alts[alt_il], alt)
+			elif exactfl==1 and exactdi==1:
+				bc=self.interp(ias[dis_il][wgt_ih][alt_il], ias[dis_il][wgt_il][alt_il], GW[wgt_ih], GW[wgt_il], wgt)
+			elif exactwt==1:
+				bc_l=self.interp(
+				bc_h=
+				
+		interp2(self, y1, y2, y3, y4, x1, x2, x3, x4, xi1, xi2):
+		res_l=self.interp(y1, y2, x1, x2, xi1)
+		res_h=self.interp(y3, y4, x1, x2, xi1)
+		result=self.interp(res_h, res_l, x3, x4, xi2)
+			elif exactfl==1:
+				
+			elif exactdi==1:
+				
+			else: # Triple ineterpolation here we come
+				bc_
+			
+			bestCruise=str(round(bc))
+			
 		return bestCruise
 	
 	def getMaxCruise(self, DA, wgt, alt, delISA):
@@ -153,19 +326,17 @@ class PythonInterface:
 		self.winPosY=800
 		self.WINDOW_WIDTH=230
 		self.WINDOW_HEIGHT=120
-		self.windowCloseRequest=0
 		self.num_eng=0
-		self.acf_desc=[]
+		self.acf_descb=[]
 
 		self.gameLoopCB=self.gameLoopCallback
 		self.DrawWindowCB=self.DrawWindowCallback
 		self.KeyCB=self.KeyCallback
 		self.MouseClickCB=self.MouseClickCallback
 
-		self.MyHotKeyCB=self.MyHotKeyCallback
-		self.gHotKey=XPLMRegisterHotKey(self, XPLM_VK_C, xplm_DownFlag+xplm_ShiftFlag+xplm_ControlFlag, "Shows best cruise info", self.MyHotKeyCB, 0)
-		# self.MyHotKeyCB2=self.MyHotKeyCallback2
-		# self.gHotKey2=XPLMRegisterHotKey(self, XPLM_VK_M, xplm_DownFlag+xplm_ShiftFlag+xplm_ControlFlag, "Sets mixture below FSE damage threshold", self.MyHotKeyCB2, 0)
+		self.CmdSHConn = XPLMCreateCommand("fsei/flight/perfinfo","Shows or hides performance info")
+		self.CmdSHConnCB  = self.CmdSHConnCallback
+		XPLMRegisterCommandHandler(self, self.CmdSHConn,  self.CmdSHConnCB, 0, 0)
 		
 		return self.Name, self.Sig, self.Desc
 
@@ -175,15 +346,21 @@ class PythonInterface:
 	def KeyCallback(self, inWindowID, inKey, inFlags, inVirtualKey, inRefcon, losingFocus):
 		pass 
 
-	def MyHotKeyCallback(self, inRefcon):
+	def CmdSHConnCallback(self, cmd, phase, refcon):
+		if(phase==0): #KeyDown event
+			print "XDMG = CMD perf info"
+			self.toggleInfo()
+		return 0
+		
+	def toggleInfo(self):
 		if self.started == 0:
 			self.started=1
 			self.num_eng=XPLMGetDatai(self.num_eng_ref)
-			XPLMGetDatab(self.acf_desc_ref, self.acf_desc, 0, 500)
-			print self.acf_desc
+			XPLMGetDatab(self.acf_desc_ref, self.acf_descb, 0, 500)
+			print self.acf_descb
 			XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 1, 0)
 		else:
-			self.acf_desc=[]
+			self.acf_descb=[]
 			self.started=0
 			XPLMUnregisterFlightLoopCallback(self, self.gameLoopCB, 0)
 			self.closeEventWindow()
@@ -192,21 +369,21 @@ class PythonInterface:
 		# self.MixTape(0.949)
 
 	def DrawWindowCallback(self, inWindowID, inRefcon):
-		lLeft=[];	lTop=[]; lRight=[];	lBottom=[]
-		XPLMGetWindowGeometry(inWindowID, lLeft, lTop, lRight, lBottom)
-		left=int(lLeft[0]); top=int(lTop[0]); right=int(lRight[0]); bottom=int(lBottom[0])
-		XPLMDrawTranslucentDarkBox(left,top,right,bottom)
-		color=1.0, 1.0, 1.0
-		XPLMDrawString(color, left+5, top-20, self.msg1, 0, xplmFont_Basic)
-		XPLMDrawString(color, left+5, top-35, self.msg2, 0, xplmFont_Basic)
-		XPLMDrawString(color, left+5, top-50, self.msg3, 0, xplmFont_Basic)
-		XPLMDrawString(color, left+5, top-65, self.msg4, 0, xplmFont_Basic)
-		XPLMDrawString(color, left+5, top-80, self.msg5, 0, xplmFont_Basic)
-		XPLMDrawString(color, left+5, top-95, self.msg6, 0, xplmFont_Basic)
+		if self.started==1:
+			lLeft=[];	lTop=[]; lRight=[];	lBottom=[]
+			XPLMGetWindowGeometry(inWindowID, lLeft, lTop, lRight, lBottom)
+			left=int(lLeft[0]); top=int(lTop[0]); right=int(lRight[0]); bottom=int(lBottom[0])
+			XPLMDrawTranslucentDarkBox(left,top,right,bottom)
+			color=1.0, 1.0, 1.0
+			XPLMDrawString(color, left+5, top-20, self.msg1, 0, xplmFont_Basic)
+			XPLMDrawString(color, left+5, top-35, self.msg2, 0, xplmFont_Basic)
+			XPLMDrawString(color, left+5, top-50, self.msg3, 0, xplmFont_Basic)
+			XPLMDrawString(color, left+5, top-65, self.msg4, 0, xplmFont_Basic)
+			XPLMDrawString(color, left+5, top-80, self.msg5, 0, xplmFont_Basic)
+			XPLMDrawString(color, left+5, top-95, self.msg6, 0, xplmFont_Basic)
 
 	def XPluginStop(self):
-		XPLMUnregisterHotKey(self, self.gHotKey)
-		#XPLMUnregisterHotKey(self, self.gHotKey2)
+		XPLMUnegisterCommandHandler(self, self.CmdSHConn, 0)
 		XPLMUnregisterFlightLoopCallback(self, self.gameLoopCB, 0)
 		self.closeEventWindow()
 		pass
@@ -235,25 +412,28 @@ class PythonInterface:
 		XPLMGetDatavf(self.TRQ_ref, TRQ, 0, self.num_eng)
 		XPLMGetDatavf(self.ITT_ref, ITT, 0, self.num_eng)
 		P=XPLMGetDataf(self.baro_ref) #inHg
-		T=XPLMGetDataf(self.temp_ref)+273.15 #deg K
-		alt=XPLMGetDataf(self.alt_ref)*self.mft #m
-		wgt=XPLMGetDataf(self.wgt_ref)*self.kglb #kg
-		if str(self.acf_desc)=="['Boeing 737-800 xversion 482']":
+		T=XPLMGetDataf(self.temp_ref) #deg C
+		alt=XPLMGetDataf(self.alt_ref)*self.mft #m -> ft
+		wgt=XPLMGetDataf(self.wgt_ref)*self.kglb #kg -> lb
+		acf_desc=str(self.acf_descb)
+		if acf_desc=="['Boeing 737-800 xversion 482']":
 			AC="B738"
+		elif acf_desc=="['pc12v10']":
+			AC="PC12"
 		else:
-			AC=str(self.acf_desc)
+			AC=acf_desc
 		self.msg6=AC
 		DenAlt=self.getDA(P,T) #feet
 		DenAltApprox=self.getDA_approx(P,T) #ft
 		delISA=self.getdelISA(alt, T)
 		maxTRQ=self.getMaxTRQ(DenAlt, delISA)
-		cruiseclb=self.getCC(DenAlt, wgt, alt, delISA)
+		cruiseclb=self.getCC(DenAlt, alt, delISA, AC)
 		cruise=self.getCruise(DenAlt, wgt, alt, delISA, AC)
 		maxcruise=self.getMaxCruise(DenAlt, wgt, alt, delISA)
 		optFL=self.getOptFL(wgt, AC)
 		maxFL=self.getMaxFL(wgt, delISA, AC)
 
-		self.msg1="DA: "+str(round(DenAlt))+" Approx: "+str(round(DenAltApprox))
+		self.msg1="DA: "+str(round(DenAlt))+" Ap: "+str(round(DenAltApprox))+"  GW: "+str(round(wgt))
 		self.msg2="T: "+str(round(T))+" dISA: "+str(round(delISA))
 		self.msg3="TRQ: "+maxTRQ+" CC: "+cruiseclb
 		self.msg4="Crs: "+maxcruise+" LR: "+cruise
