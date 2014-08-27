@@ -157,7 +157,7 @@ class PythonInterface:
 			yh_EGT=XPLMGetDataf(self.yh_EGT_ref)
 			g_EGT=XPLMGetDataf(self.g_EGT_ref)
 			gh_EGT=XPLMGetDataf(self.gh_EGT_ref)
-			self.msg1="EGT: "+str(round(itts[0]))+"  RPM: "+str(round(rpms[0]))
+			self.msg1="EGT: "+str(round(egts[0]))+"  RPM: "+str(round(rpms[0]))
 			self.msg2="R HI: "+str(round(rh_EGT))+"  Y HI: "+str(round(yh_EGT))+"  G HI: "+str(round(gh_EGT))
 			self.msg3="R LO: "+str(round(r_EGT))+"  Y LO: "+str(round(y_EGT))+"  G LO: "+str(round(g_EGT))
 		else: #Reciprocating or other gets default
@@ -170,7 +170,7 @@ class PythonInterface:
 			yh_CHT=XPLMGetDataf(self.yh_CHT_ref)
 			g_CHT=XPLMGetDataf(self.g_CHT_ref)
 			gh_CHT=XPLMGetDataf(self.gh_CHT_ref)
-			self.msg1="CHT: "+str(round(itts[0]))+"  RPM: "+str(round(rpms[0]))
+			self.msg1="CHT: "+str(round(chts[0]))+"  RPM: "+str(round(rpms[0]))
 			self.msg2="R HI: "+str(round(rh_CHT))+"  Y HI: "+str(round(yh_CHT))+"  G HI: "+str(round(gh_CHT))
 			self.msg3="R LO: "+str(round(r_CHT))+"  Y LO: "+str(round(y_CHT))+"  G LO: "+str(round(g_CHT))
 
