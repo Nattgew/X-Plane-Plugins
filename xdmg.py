@@ -24,6 +24,7 @@ class PythonInterface:
 		self.alt_ref=XPLMFindDataRef("sim/flightmodel/position/y_agl")
 		self.eng_type_ref=XPLMFindDataRef("sim/aircraft/prop/acf_en_type")
 		self.prop_type_ref=XPLMFindDataRef("sim/aircraft/prop/acf_prop_type")
+		
 		self.r_ITT_ref=XPLMFindDataRef("sim/aircraft/limits/red_lo_ITT")
 		self.rh_ITT_ref=XPLMFindDataRef("sim/aircraft/limits/red_hi_ITT")
 		self.g_ITT_ref=XPLMFindDataRef("sim/aircraft/limits/green_lo_ITT")
@@ -110,6 +111,9 @@ class PythonInterface:
 			self.r_ITT=XPLMGetDataf(self.r_ITT_ref)
 			self.r_EGT=XPLMGetDataf(self.r_EGT_ref)
 			self.r_CHT=XPLMGetDataf(self.r_CHT_ref)
+			self.m_EGT=XPLMGetDataf(self.m_EGT_ref)
+			self.m_ITT=XPLMGetDataf(self.m_ITT_ref)
+			self.m_CHT=XPLMGetDataf(self.m_CHT_ref)
 			self.defaultcht=XPLMGetDataf(self.OAT_ref)
 			XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 1, 0)
 		else:
@@ -226,19 +230,21 @@ class PythonInterface:
 			if self.eng_type[0]==2 or self.eng_type[0]==8: #Turboprop
 				itts=[]
 				XPLMGetDatavf(self.ITT_ref, itts, 0, self.num_eng)
-				if self.gh_ITT>100 and itts[0]>self.gh_ITT or self.r_ITT>100 and itts[0]>self.r_ITT:
-					self.chtDamage += 1
+				if itts[0]>self.m_ITT:
+					_diff=itts[0]-self.m_ITT
+					self.chtDamage += _diff * 0.25
 				if mixes[0]>0.5 and altitude < 1000:
 					self.mixtureDamage += 0.25
-				self.msg2="ITT: "+str(round(itts[0]))+"/"+str(round(self.gh_ITT))+" dmg: "+str(round(self.chtDamage,2))
+				self.msg2="ITT: "+str(round(itts[0]))+"/"+str(round(self.m_ITT))+" dmg: "+str(round(self.chtDamage,2))
 			elif self.eng_type[0]==4 or self.eng_type[0]==5: #Jet
-				egts=[]
-				XPLMGetDatavf(self.EGT_ref, egts, 0, self.num_eng)
-				if self.gh_EGT>100 and egts[0]>self.gh_EGT or self.r_EGT>100 and egts[0]>self.r_EGT:
-					self.chtDamage += 1
-				if altitude < 1000:
-					self.mixtureDamage += 1
-				self.msg2="EGT: "+str(round(egts[0]))+"/"+str(round(self.gh_EGT))+" dmg: "+str(round(self.chtDamage,2))
+				itts=[]
+				XPLMGetDatavf(self.ITT_ref, itts, 0, self.num_eng)
+				if itts[0]>self.m_ITT:
+					_diff=itts[0]-self.m_ITT
+					self.chtDamage += _diff * 0.25
+				if mixes[0]>0.5 and altitude < 1000:
+					self.mixtureDamage += 0.25
+				self.msg2="ITT: "+str(round(itts[0]))+"/"+str(round(self.m_ITT))+" dmg: "+str(round(self.chtDamage,2))
 			else: #Reciprocating or other gets default
 				if self.defaultcht>0:
 					chts=[]
