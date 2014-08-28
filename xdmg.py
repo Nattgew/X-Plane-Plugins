@@ -38,6 +38,9 @@ class PythonInterface:
 		self.g_CHT_ref=XPLMFindDataRef("sim/aircraft/limits/green_lo_CHT")
 		self.gh_CHT_ref=XPLMFindDataRef("sim/aircraft/limits/green_hi_CHT")
 		self.gs_ref=XPLMFindDataRef("sim/flightmodel/position/groundspeed")
+		self.m_EGT_ref=XPLMFindDataRef("sim/aircraft/engine/acf_max_EGT")
+		self.m_ITT_ref=XPLMFindDataRef("sim/aircraft/engine/acf_max_ITT")
+		self.m_CHT_ref=XPLMFindDataRef("sim/aircraft/engine/acf_max_CHT")
 		self.ias_ref=XPLMFindDataRef("sim/flightmodel/position/indicated_airspeed")
 		self.fly_ref=XPLMFindDataRef("fse/status/flying")
 
