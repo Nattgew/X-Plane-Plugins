@@ -31,7 +31,7 @@ class PythonInterface:
 			result=y1
 		else:
 			result=(y2-y1)/(x2-x1)*(xi-x1)+y1
-		print "Interp "+str(y2)+", "+str(y1)+", "+str(x2)+", "+str(x1)+", "+str(round(xi))+" = "+str(round(result))
+		#print "Interp "+str(y2)+", "+str(y1)+", "+str(x2)+", "+str(x1)+", "+str(round(xi))+" = "+str(round(result))
 		return result
 	
 	def interp2(self, y1, y2, y3, y4, x1, x2, x3, x4, xi1, xi2):
@@ -377,7 +377,7 @@ class PythonInterface:
 			XPLMDrawString(color, left+5, top-95, self.msg6, 0, xplmFont_Basic)
 
 	def XPluginStop(self):
-		if self.started==1
+		if self.started==1:
 			self.toggleInfo()
 		XPLMUnegisterCommandHandler(self, self.CmdSHConn, 0)
 		pass
