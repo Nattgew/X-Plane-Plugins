@@ -13,6 +13,7 @@ class PythonInterface:
 		self.Desc="Shows engine info"
 		self.VERSION="1.0"
 		
+		self.acf_desc_ref=XPLMFindDataRef("sim/aircraft/view/acf_descrip")
 		self.RPM_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_N2_")
 		self.CHT_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_CHT_c")
 		self.ITT_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_ITT_c")
@@ -56,6 +57,7 @@ class PythonInterface:
 		self.msg3=""
 		self.msg4=""
 		self.msg5=""
+		self.msg6=""
 		self.winPosX=20
 		self.winPosY=400
 		self.WINDOW_WIDTH=230
@@ -66,6 +68,7 @@ class PythonInterface:
 		self.mixtureDamage=0
 		self.eng_type=[]
 		self.prop_type=[]
+		self.acf_desc=[]
 
 		#self.gameLoopCB=self.gameLoopCallback
 		self.DrawWindowCB=self.DrawWindowCallback
@@ -92,9 +95,10 @@ class PythonInterface:
 		
 	def showhide(self):
 		if self.started == 0:
-			print "XDMG = Starting..."
+			print "XDMG = Starting eng info..."
 			self.started=1
 			self.num_eng=XPLMGetDatai(self.num_eng_ref)
+			XPLMGetDatab(self.acf_desc_ref, self.acf_desc, 0, 500)
 			self.getInfo()
 		else:
 			self.started=0
@@ -112,6 +116,7 @@ class PythonInterface:
 			XPLMDrawString(color, left+5, top-50, self.msg3, 0, xplmFont_Basic)
 			XPLMDrawString(color, left+5, top-65, self.msg4, 0, xplmFont_Basic)
 			XPLMDrawString(color, left+5, top-80, self.msg5, 0, xplmFont_Basic)
+			XPLMDrawString(color, left+5, top-95, self.msg6, 0, xplmFont_Basic)
 
 	def XPluginStop(self):
 		XPLMUnegisterCommandHandler(self, self.CmdSHConn, 0)
@@ -202,6 +207,7 @@ class PythonInterface:
 
 		self.msg4="En: "+str(eng_type[0])+" Prop: "+str(prop_type[0])
 		self.msg5="IND: ITT: "+str(round(iITT[0]))+"  EGT: "+str(round(iEGT[0]))+"  CHT: "+str(round(iCHT[0]))
+		self.msg6=str(self.acf_desc)
 		print "XDMG = Got info..."
 		self.createEventWindow()
 
