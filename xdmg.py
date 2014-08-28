@@ -107,6 +107,9 @@ class PythonInterface:
 			self.gh_ITT=XPLMGetDataf(self.gh_ITT_ref)
 			self.gh_EGT=XPLMGetDataf(self.gh_EGT_ref)
 			self.gh_CHT=XPLMGetDataf(self.gh_CHT_ref)
+			self.r_ITT=XPLMGetDataf(self.r_ITT_ref)
+			self.r_EGT=XPLMGetDataf(self.r_EGT_ref)
+			self.r_CHT=XPLMGetDataf(self.r_CHT_ref)
 			self.defaultcht=XPLMGetDataf(self.OAT_ref)
 			XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 1, 0)
 		else:
@@ -223,7 +226,7 @@ class PythonInterface:
 			if self.eng_type[0]==2 or self.eng_type[0]==8: #Turboprop
 				itts=[]
 				XPLMGetDatavf(self.ITT_ref, itts, 0, self.num_eng)
-				if self.gh_ITT>0 and itts[0]>self.gh_ITT or self.r_ITT>0 and itts[0]>self.r_ITT:
+				if self.gh_ITT>100 and itts[0]>self.gh_ITT or self.r_ITT>100 and itts[0]>self.r_ITT:
 					self.chtDamage += 1
 				if mixes[0]>0.5 and altitude < 1000:
 					self.mixtureDamage += 0.25
@@ -231,7 +234,7 @@ class PythonInterface:
 			elif self.eng_type[0]==4 or self.eng_type[0]==5: #Jet
 				egts=[]
 				XPLMGetDatavf(self.EGT_ref, egts, 0, self.num_eng)
-				if self.gh_EGT>0 and egts[0]>self.gh_EGT or self.r_EGT>0 and egts[0]>self.r_EGT:
+				if self.gh_EGT>100 and egts[0]>self.gh_EGT or self.r_EGT>100 and egts[0]>self.r_EGT:
 					self.chtDamage += 1
 				if altitude < 1000:
 					self.mixtureDamage += 1
