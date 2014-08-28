@@ -102,6 +102,7 @@ class PythonInterface:
 			self.getInfo()
 		else:
 			self.started=0
+			self.acf_desc=[]
 			self.closeEventWindow()
 			
 	def DrawWindowCallback(self, inWindowID, inRefcon):
