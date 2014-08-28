@@ -54,7 +54,11 @@ class PythonInterface:
 		T_ISA=15-self.gamma_l*alt
 		delISA=T-T_ISA
 		return delISA
-	
+
+	def getVref(self, flaps, wt, DA, T, AC):
+		Vref="N/A"
+		return Vref
+
 	def getV1(self, flaps, wt, DA, T, AC):
 		V1="N/A"
 		if AC=="B738":
