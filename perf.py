@@ -4,6 +4,7 @@ from XPLMDisplay import *
 from XPLMGraphics import *
 from XPLMDefs import *
 from math import *
+from XPLMUtilities import *
 
 class PythonInterface:
 
@@ -56,7 +57,7 @@ class PythonInterface:
 	
 	def getCC(self, DA, alt, delISA, AC):
 		bestCC="N/A"
-		if AC="PC12":
+		if AC=="PC12":
 			exactfl=0
 			exactdi=0
 			alts=(0,5000,10000,15000,20000,25000,30000)
@@ -76,8 +77,8 @@ class PythonInterface:
 			dis_i=delISA/10+4
 			dis_il=int(floor(dis_i))
 			dis_ih=int(ceil(dis_i))
-			alt_ih, alt_il, exactfl = check_index(alt_ih, alt_il, len(alts))
-			dis_ih, dis_il, exactdi = check_index(dis_ih, dis_il, len(dis))
+			alt_ih, alt_il, exactfl = self.check_index(alt_ih, alt_il, len(alts))
+			dis_ih, dis_il, exactdi = self.check_index(dis_ih, dis_il, len(dis))
 			if exactfl==1 and exactdi==1:
 				cc=ias[dis_il][alt_il]
 			elif exactfl==1:
@@ -100,7 +101,7 @@ class PythonInterface:
 			wt_i=wgt/5000-24
 			wt_il=int(floor(wt_i))
 			wt_ih=int(ceil(wt_i))
-			wt_ih, wt_il, exactwt = check_index(wt_ih, wt_il, len(wts))
+			wt_ih, wt_il, exactwt = self.check_index(wt_ih, wt_il, len(wts))
 			if exactwt==1:
 				oa=alts[wt_il]
 			else:
@@ -131,8 +132,8 @@ class PythonInterface:
 			wt_ih=int(ceil(wt_i))
 			dI_il=int(floor(dI_i))
 			dI_ih=int(ceil(dI_i))
-			wt_ih, wt_il, exactwt = check_index(wt_ih, wt_il, len(GW))
-			dI_ih, dI_il, exactdi = check_index(dI_ih, dI_il, len(temps))
+			wt_ih, wt_il, exactwt = self.check_index(wt_ih, wt_il, len(GW))
+			dI_ih, dI_il, exactdi = self.check_index(dI_ih, dI_il, len(temps))
 			if exactdi==1 and exactwt==1:
 				ma=alts[dI_il][wt_il]
 			elif exactdi==1:
@@ -177,8 +178,8 @@ class PythonInterface:
 				fl_ih=int(ceil(fl_i))
 				wt_il=int(floor(wt_i))
 				wt_ih=int(ceil(wt_i))
-				fl_ih, fl_il, exactfl = check_index(fl_ih, fl_il, len(alts))
-				wt_ih, wt_il, exactwt = check_index(wt_ih, wt_il, len(GW))
+				fl_ih, fl_il, exactfl = self.check_index(fl_ih, fl_il, len(alts))
+				wt_ih, wt_il, exactwt = self.check_index(wt_ih, wt_il, len(GW))
 				
 				if exactfl==1 and exactwt==1:
 					bc=machs[fl_il][wt_il]
@@ -212,31 +213,31 @@ class PythonInterface:
 			(212,207,202,197,193,188,182,177,172,166,160,155,148,142,135,128),			# 9000lb
 			(211,206,201,197,192,187,182,177,172,167,161,156,150,144,138,131),			# 10000lb
 			(210,206,201,197,192,187,182,177,172,167,161,156,151,145,139,132)),			# 10400lb
-			((),	# 7000lb	-10C
-			(),			# 8000lb
-			(),			# 9000lb
-			(),			# 10000lb
-			()),			# 10400lb
-			((),	# 7000lb	+0C
-			(),			# 8000lb
-			(),			# 9000lb
-			(),			# 10000lb
-			()),			# 10400lb
-			((),	# 7000lb	+10C
-			(),			# 8000lb
-			(),			# 9000lb
-			(),			# 10000lb
-			()),			# 10400lb
-			((),	# 7000lb	+20C
-			(),			# 8000lb
-			(),			# 9000lb
-			(),			# 10000lb
-			()),			# 10400lb
-			((),	# 7000lb	+30C
-			(),			# 8000lb
-			(),			# 9000lb
-			(),			# 10000lb
-			()))			# 10400lb
+			((212,207,202,197,191,158,179,174,168,162,155,148,141,134,126,117),	# 7000lb	-10C
+			(212,206,201,196,191,185,180,175,169,163,157,150,144,137,130,122),			# 8000lb
+			(210,205,201,196,191,186,181,175,170,164,158,152,146,140,133,126),			# 9000lb
+			(209,204,200,195,190,185,180,175,170,164,159,154,148,142,136,129),			# 10000lb
+			(208,204,199,195,190,185,180,175,170,165,159,154,148,142,136,130)),			# 10400lb
+			((211,206,200,195,189,184,178,172,166,160,153,146,139,132,124,116),	# 7000lb	+0C
+			(210,205,200,194,189,184,178,173,167,131,155,149,142,135,128,120),			# 8000lb
+			(209,204,199,194,189,184,179,173,168,162,156,150,144,138,131,124),			# 9000lb
+			(207,203,198,193,188,183,178,173,168,162,157,151,146,139,133,126),			# 10000lb
+			(207,202,198,193,188,183,178,173,168,163,157,152,147,140,134,127)),			# 10400lb
+			((209,204,199,193,188,182,176,170,164,158,151,145,138,130,123,114),	# 7000lb	+10C
+			(208,203,198,193,187,182,177,171,165,159,153,147,140,134,126,118),			# 8000lb
+			(207,202,197,192,187,182,177,171,166,160,154,148,142,136,129,122),			# 9000lb
+			(205,201,196,192,187,181,176,171,166,161,155,150,143,137,131,123),			# 10000lb
+			(205,200,196,191,186,181,176,171,166,161,155,150,144,138,132,124)),			# 10400lb
+			((208,203,197,192,186,180,175,169,163,156,150,143,136,129,121,112),	# 7000lb	+20C
+			(207,202,196,191,186,181,175,170,163,157,151,145,138,132,124,116),			# 8000lb
+			(205,200,196,191,186,181,175,170,164,158,153,147,141,134,127,119),			# 9000lb
+			(204,199,195,190,185,180,175,169,164,159,153,148,141,135,128,120),			# 10000lb
+			(203,199,194,189,184,179,174,169,164,159,154,148,142,136,129,121)),			# 10400lb
+			((206,201,196,190,185,179,173,167,161,155,148,142,135,127,119,110),	# 7000lb	+30C
+			(205,200,195,190,184,179,174,168,162,156,150,143,137,130,122,114),			# 8000lb
+			(204,199,194,189,184,179,173,168,162,157,151,145,139,132,125,116),			# 9000lb
+			(202,198,193,188,183,178,173,168,162,157,151,146,140,133,126,117),			# 10000lb
+			(202,197,193,188,183,178,173,168,162,157,152,149,140,134,127,118)))			# 10400lb
 			dis=(-40,-30,-20,-10,0,10,20,30)
 			
 			if wgt>10000:
@@ -251,9 +252,9 @@ class PythonInterface:
 			dis_i=delISA/10+4
 			dis_il=int(floor(dis_i))
 			dis_ih=int(ceil(dis_i))
-			wgt_ih, wgt_il, exactwt = check_index(wgt_ih, wgt_il, len(GW))
-			alt_ih, alt_il, exactfl = check_index(alt_ih, alt_il, len(alts))
-			dis_ih, dis_il, exactdi = check_index(dis_ih, dis_il, len(dis))
+			wgt_ih, wgt_il, exactwt = self.check_index(wgt_ih, wgt_il, len(GW))
+			alt_ih, alt_il, exactfl = self.check_index(alt_ih, alt_il, len(alts))
+			dis_ih, dis_il, exactdi = self.check_index(dis_ih, dis_il, len(dis))
 			
 			if exactwt==1 and exactfl==1 and exactdi==1: # Epic win
 				bc=ias[dis_il][wgt_il][alt_il]
@@ -360,7 +361,6 @@ class PythonInterface:
 			self.acf_descb=[]
 			XPLMUnregisterFlightLoopCallback(self, self.gameLoopCB, 0)
 			self.closeEventWindow()
-			self.started=0
 
 	def DrawWindowCallback(self, inWindowID, inRefcon):
 		if self.started==1:
@@ -377,9 +377,9 @@ class PythonInterface:
 			XPLMDrawString(color, left+5, top-95, self.msg6, 0, xplmFont_Basic)
 
 	def XPluginStop(self):
+		if self.started==1
+			self.toggleInfo()
 		XPLMUnegisterCommandHandler(self, self.CmdSHConn, 0)
-		XPLMUnregisterFlightLoopCallback(self, self.gameLoopCB, 0)
-		self.closeEventWindow()
 		pass
 
 	def XPluginEnable(self):
@@ -399,6 +399,7 @@ class PythonInterface:
 		if self.started==1:
 			XPLMDestroyWindow(self, self.gWindow)
 			self.gWindow = 0
+			self.started=0
 	
 	def gameLoopCallback(self, inElapsedSinceLastCall, elapsedSim, counter, refcon):
 		TRQ=[]
@@ -412,7 +413,7 @@ class PythonInterface:
 		acf_desc=str(self.acf_descb)
 		if acf_desc[0:27]=="['Boeing 737-800 xversion":
 			AC="B738"
-		elif acf_desc=="['pc12v10']":
+		elif acf_desc=="['Pilatus PC-12']":
 			AC="PC12"
 		else:
 			AC=acf_desc
