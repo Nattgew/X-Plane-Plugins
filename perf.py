@@ -55,12 +55,69 @@ class PythonInterface:
 		delISA=T-T_ISA
 		return delISA
 	
+	def getV1(self, flaps, wt, DA, T, AC):
+		V1="N/A"
+		if AC=="B738":
+			exactwt=0
+			GW=tuple(range(90,181,10))
+			flapdet=(1,5,15)
+			alts=tuple(range(0,8001,2000))
+			flaps1=1
+			flaps5=1
+			flaps10=1
+			
+			if T < 27 and DA < alts[1] or T < 38 and DA < alts[1] and (-T+38)/5.5 <= DA/1000: # A cyan
+				v1s=((107,114,121,127,133,139,145,150,155,160),	# flaps 1
+				(103,109,116,122,128,134,139,144,149,153),		# flaps 5
+				(99,106,112,118,124,130,135,140,145,150))		# flaps 15
+			elif T < 27 and DA < alts[2] or T < 38 and DA < alts[2] and (-T+38)/11 <= DA/1000-3 or T < 43 and DA < (alts[2]+alts[1])/2 and (-T+43)/(5/3) <= DA/1000: #B yellow
+				v1s=((108,115,122,128,134,140,146,151,156,161),	# flaps 1
+				(104,110,117,123,129,135,140,145,150,154),		# flaps 5
+				(100,107,113,119,125,131,136,141,146,0))		# flaps 15
+			elif T < 27 and DA < alts[3] or T < 38 and DA < alts[3] and (-T+38)/5.5 <= DA/1000-4 or T < 49 and DA < (alts[3]+alts[2])/2 and (-T+49)/2.75 <= DA/1000: #C pink
+				v1s=((109,116,123,129,135,141,147,152,157,162),	# flaps 1
+				(105,111,118,124,130,136,141,146,151,0),		# flaps 5
+				(101,108,114,120,126,132,137,142,0,0))			# flaps 15
+			elif T < 60 and DA/1000 < 160/11 and (-T+60)/4.125 <= DA/1000: #D green
+				v1s=((110,117,124,130,136,142,148,153,158,0),	# flaps 1
+				(106,112,119,125,131,137,142,147,0,0),			# flaps 5
+				(102,109,115,121,127,133,138,0,0,0))			# flaps 15
+			else: #E blue uh oh
+				v1s=((112,119,126,132,138,144,150,155,0,0),		# flaps 1
+				(108,114,121,127,133,139,0,0,0,0),				# flaps 5
+				(104,111,117,123,129,0,0,0,0,0))				# flaps 15
+			
+			if flaps == flaps1:
+				flap_i=0
+			elif flaps == flaps5:
+				flap_i=1
+			elif flaps == flaps15:
+				flap_i=2
+			else:
+				flap_i=-1
+				V1="T/O CONFIG"
+			if flap_i>-1:
+				wgt_i=GW/10000-9
+				wgt_il=int(floor(wgt_i))
+				wgt_ih=int(ceil(wgt_i))
+				wgt_ih, wgt_il, exactwt = self.check_index(wgt_ih, wgt_il, len(GW))
+				
+				v1f=self.interp(v1s[flap_i][wgt_ih], v1s[flap_i][wgt_il], GW[wgt_ih], GW[wgt_il], wgt/1000)
+				V1=str(round(v1f))+" kias"
+				
+		elif AC=="PC12":
+			GW=1
+			flaps=1
+			alts=1
+		return V1
+	
 	def getCC(self, DA, alt, delISA, AC):
 		bestCC="N/A"
 		if AC=="PC12":
 			exactfl=0
 			exactdi=0
-			alts=(0,5000,10000,15000,20000,25000,30000)
+			#alts=(0,5000,10000,15000,20000,25000,30000)
+			alts=tuple(range(0,30001,5000))
 			ias=((160,160,160,160,160,150,125),	# -40
 			(160,160,160,160,160,150,125),		# -30
 			(160,160,160,160,155,142,125),		# -20
@@ -96,7 +153,8 @@ class PythonInterface:
 		optFL="N/A"
 		if AC=="B738":
 			exactwt=0
-			wts=(120, 125, 130, 135, 140, 145, 150, 155, 160, 165, 170, 175, 180)
+			#wts=(120, 125, 130, 135, 140, 145, 150, 155, 160, 165, 170, 175, 180)
+			wts=tuple(range(120,181,5))
 			alts=(39700, 38800, 38000, 37200, 36500, 35700, 35000, 34300, 33700, 33000, 32400, 31700, 31100)
 			wt_i=wgt/5000-24
 			wt_il=int(floor(wt_i))
@@ -117,11 +175,12 @@ class PythonInterface:
 		if AC=="B738":
 			exactwt=0
 			exactdi=0
-			GW=(120, 125, 130, 135, 140, 145, 150, 155, 160, 165, 170, 175, 180)
+			#GW=(120, 125, 130, 135, 140, 145, 150, 155, 160, 165, 170, 175, 180)
+			GW=tuple(range(120,181,5))
 			alts=((41000, 41000, 40500, 39800, 39100, 38500, 37800, 37200, 36600, 36000, 35300, 34600, 33800), # +10C, below
 			(40900, 40200, 39500, 38800, 38200, 37500, 36900, 36200, 35600, 34900, 34000, 33100, 32100), # +15C
 			(39700, 39000, 38300, 37600, 37000, 36200, 35500, 34700, 33800, 32800, 31500, 30300, 29100)) # +20C
-			temps=(10, 15, 20)
+			temps=(10,15,20)
 			wt_i=wgt/5000-24
 			dI_i=delISA/5-2
 			if dI_i < 0:
@@ -165,7 +224,8 @@ class PythonInterface:
 				(.756,.766,.773,.778,.783,.787,.791,.794,.765,.794,0,0,0,0),					# FL370
 				(.774,.780,.785,.789,.793,.795,.795,0,0,0,0,0,0,0),								# FL390
 				(.786,.791,.794,.795,0,0,0,0,0,0,0,0,0,0))										# FL410
-				GW=(110,115,120,125,130,135,140,145,150,155,160,165,170,175)
+				#GW=(110,115,120,125,130,135,140,145,150,155,160,165,170,175)
+				GW=tuple(range(110,176,5))
 				alts=(25,29,33,35,37,39,41)
 				
 				if DA<33000:
@@ -197,7 +257,8 @@ class PythonInterface:
 			exactfl=0
 			exactwt=0
 			GW=(7000,8000,9000,10000,10400)
-			alts=(0,2000,4000,6000,8000,10000,12000,14000,16000,18000,20000,22000,24000,26000,28000,30000)
+			#alts=(0,2000,4000,6000,8000,10000,12000,14000,16000,18000,20000,22000,24000,26000,28000,30000)
+			alts=tuple(range(0,30001,2000))
 			ias=(((218,212,207,202,196,191,185,179,173,167,160,154,147,139,132,123),	# 7000lb	-40C
 			(217,212,207,202,196,191,186,180,175,169,163,156,150,143,136,129),			# 8000lb
 			(216,211,206,201,196,191,186,181,176,170,164,159,153,147,140,133),			# 9000lb
@@ -238,7 +299,8 @@ class PythonInterface:
 			(204,199,194,189,184,179,173,168,162,157,151,145,139,132,125,116),			# 9000lb
 			(202,198,193,188,183,178,173,168,162,157,151,146,140,133,126,117),			# 10000lb
 			(202,197,193,188,183,178,173,168,162,157,152,149,140,134,127,118)))			# 10400lb
-			dis=(-40,-30,-20,-10,0,10,20,30)
+			#dis=(-40,-30,-20,-10,0,10,20,30)
+			dis=tuple(range(-40,31,10))
 			
 			if wgt>10000:
 				wgt_i=wgt/400-22
@@ -270,7 +332,7 @@ class PythonInterface:
 				bc=self.interp2(ias[dis_ih][wgt_il][alt_il], ias[dis_il][wgt_il][alt_il], ias[dis_ih][wgt_ih][alt_il], ias[dis_il][wgt_ih][alt_il], dis[dis_ih], dis[dis_il], GW[wgt_ih], GW[wgt_il], delISA, wgt)
 			elif exactdi==1:
 				bc=self.interp2(ias[dis_il][wgt_ih][alt_il], ias[dis_il][wgt_il][alt_il], ias[dis_il][wgt_ih][alt_ih], ias[dis_il][wgt_il][alt_ih], GW[wgt_ih], GW[wgt_il], alts[alt_ih], alts[alt_il], wgt, alt)
-			else: # Triple ineterpolation here we come
+			else: # Triple interpolation here we come
 				bc_l=self.interp2(ias[dis_ih][wgt_il][alt_il], ias[dis_il][wgt_il][alt_il], ias[dis_ih][wgt_il][alt_ih], ias[dis_il][wgt_il][alt_ih], dis[dis_ih], dis[dis_il], alts[alt_ih], alts[alt_il], delISA, alt)
 				bc_h=self.interp2(ias[dis_ih][wgt_ih][alt_il], ias[dis_il][wgt_ih][alt_il], ias[dis_ih][wgt_ih][alt_ih], ias[dis_il][wgt_ih][alt_ih], dis[dis_ih], dis[dis_il], alts[alt_ih], alts[alt_il], delISA, alt)
 				bc=self.interp(bc_h, bc_l, GW[wgt_ih], GW[wgt_il], wgt)
@@ -282,7 +344,7 @@ class PythonInterface:
 		maxCruise="N/A"
 		return maxCruise
 	
-	def getMaxTRQ(self, DA, delISA, AC):
+	def getMaxPwr(self, DA, delISA, AC):
 		maxTRQ="N/A"
 		return maxTRQ
 
@@ -311,6 +373,10 @@ class PythonInterface:
 		self.temp_ref=XPLMFindDataRef("sim/weather/temperature_ambient_c")
 		self.wgt_ref=XPLMFindDataRef("sim/flightmodel/weight/m_total")
 		self.acf_desc_ref=XPLMFindDataRef("sim/aircraft/view/acf_descrip")
+		self.flap_pos_ref=XPLMFindDataRef("sim/flightmodel2/controls/flap_handle_deploy_ratio") # actual position
+		self.flap_h_pos_ref=XPLMFindDataRef("sim/cockpit2/controls/flap_ratio") # handle position
+		self.geardep_ref=XPLMFindDataRef("sim/aircraft/parts/acf_gear_deploy")
+		self.f_norm_ref=XPLMFindDataRef("sim/flightmodel/forces/fnrml_gear")
 		
 		self.started=0
 		self.gWindow=0
@@ -417,26 +483,40 @@ class PythonInterface:
 			AC="PC12"
 		else:
 			AC=acf_desc
-		DenAlt=self.getDA(P,T) #feet
-		DenAltApprox=self.getDA_approx(P,T) #ft
+		DenAlt=self.getDA(P,T) #ft
+		#DenAltApprox=self.getDA_approx(P,T) #ft
 		delISA=self.getdelISA(alt, T)
-		maxTRQ=self.getMaxTRQ(DenAlt, delISA, AC)
+		maxPwr=self.getMaxPwr(DenAlt, delISA, AC)
 		cruiseclb=self.getCC(DenAlt, alt, delISA, AC)
 		cruise=self.getCruise(DenAlt, wgt, alt, delISA, AC)
 		maxcruise=self.getMaxCruise(DenAlt, wgt, alt, delISA, AC)
 		optFL=self.getOptFL(wgt, AC)
 		maxFL=self.getMaxFL(wgt, delISA, AC)
 		
+		geardep=[]
+		XPLMGetDatavf( self.geardep_ref, geardep, 0, 10)
+		gear_state=0
+		for i in range(10):
+			if geardep[i]==1:
+				gear_state=1
+		Vref="N/A"
+		V1="N/A"
+		if gear_state==1:
+			flaps=XPLMGetDataf(self.flap_h_pos_ref)
+			Vref=self.getVref(flaps, wgt, DenAlt, T, AC)
+			if XPLMGetDataf(self.f_norm_ref) != 0:
+				V1=self.getV1(flaps, wgt, DenAlt, T, AC)
+				
 		dIstr=str(round(delISA))
 		if delISA>0:
 			dIstr="+"+dIstr
 			
-		self.msg1="DA: "+str(round(DenAlt))+" Ap: "+str(round(DenAltApprox))+"  GW: "+str(round(wgt))+" lb"
-		self.msg2="T: "+str(round(T))+" dISA: "+dIstr
-		self.msg3="TRQ: "+maxTRQ+" CC: "+cruiseclb
-		self.msg4="Crs: "+maxcruise+" LR: "+cruise
-		self.msg5="opt FL: "+optFL+" max FL: "+maxFL
-		self.msg6=AC
+		self.msg1="DA: "+str(round(DenAlt))+"  GW: "+str(round(wgt))+" lb"
+		self.msg2="T: "+str(round(T))+"  dISA: "+dIstr
+		self.msg3="Pwr: "+maxPwr+"  CC: "+cruiseclb
+		self.msg4="Crs: "+maxcruise+"  LR: "+cruise
+		self.msg5="FL: "+maxFL+"  FL: "+optFL
+		self.msg6=AC+"  V1: "+V1+"  Vref: "+Vref
 		self.createEventWindow()
 
 		return 10
