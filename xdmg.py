@@ -11,7 +11,7 @@ class PythonInterface:
 		self.Name="XFSE Info"
 		self.Sig= "natt.python.fsei"
 		self.Desc="Shows info for FSE"
-		self.VERSION="1.3"
+		self.VERSION="1.4"
 		
 		self.OAT_ref=XPLMFindDataRef("sim/weather/temperature_ambient_c")
 		self.RPM_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_N2_")
@@ -45,22 +45,18 @@ class PythonInterface:
 		self.fly_ref=XPLMFindDataRef("fse/status/flying")
 
 		self.started=0
-		self.gWindow=0
-		self.eWindow=0
-		self.mwindow=0
-		self.ewindow=0
 		self.err=0
 		self.msg1=""
 		self.msg2=""
 		self.msg3=""
 		self.msg4=""
 		self.e1=""
-		self.winPosX=20
-		self.winPosY=300
-		self.ePosX=20
-		self.ePosY=400
-		self.WINDOW_WIDTH=230
-		self.WINDOW_HEIGHT=90
+		winPosX=20
+		winPosY=300
+		ePosX=20
+		ePosY=400
+		win_w=230
+		win_h=90
 		self.num_eng=0
 		self.runtime=0
 		self.chtDamage=0
@@ -73,6 +69,8 @@ class PythonInterface:
 		self.DrawWarnCB=self.DrawWarnCallback
 		self.KeyCB=self.KeyCallback
 		self.MouseClickCB=self.MouseClickCallback
+		self.gWindow=XPLMCreateWindow(self, winPosX, winPosY, winPosX + win_w, winPosY - win_h, 1, self.DrawWindowCB, self.KeyCB, self.MouseClickCB, 0)
+		self.eWindow=XPLMCreateWindow(self, ePosX, ePosY, ePosX + win_w, ePosY - win_h, 1, self.DrawWarnCB, self.KeyCB, self.MouseClickCB, 0)
 
 		self.CmdSHConn = XPLMCreateCommand("fsei/flight/showhide","Shows or hides FSE damage info")
 		self.CmdSHConnCB  = self.CmdSHConnCallback
@@ -104,7 +102,6 @@ class PythonInterface:
 		
 	def showhide(self):
 		if self.started == 0:
-			self.started=1
 			self.num_eng=XPLMGetDatai(self.num_eng_ref)
 			XPLMGetDatavi(self.eng_type_ref, self.eng_type, 0, self.num_eng)
 			XPLMGetDatavi(self.prop_type_ref, self.prop_type, 0, self.num_eng)
@@ -119,11 +116,11 @@ class PythonInterface:
 			self.m_CHT=XPLMGetDataf(self.m_CHT_ref)
 			self.defaultcht=XPLMGetDataf(self.OAT_ref)
 			XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 1, 0)
+			self.started=1
 		else:
 			self.started=0
+			self.err=0
 			XPLMUnregisterFlightLoopCallback(self, self.gameLoopCB, 0)
-			self.closeEventWindow()
-			self.closeErrWindow()
 			self.prop_type=[]
 			self.eng_type=[]
 			self.runtime=0
@@ -152,10 +149,11 @@ class PythonInterface:
 			XPLMDrawString(color, left+5, top-20, self.e1, 0, xplmFont_Basic)
 	
 	def XPluginStop(self):
-		XPLMUnegisterCommandHandler(self, self.CmdSHConn, 0)
-		XPLMUnegisterCommandHandler(self, self.CmdMxConn, 0)
+		XPLMUnregisterCommandHandler(self, self.CmdSHConn, self.CmdSHConnCB, 0)
+		XPLMUnregisterCommandHandler(self, self.CmdMxConn, self.CmdMxConnCB, 0)
 		XPLMUnregisterFlightLoopCallback(self, self.gameLoopCB, 0)
-		self.closeEventWindow()
+		XPLMDestroyWindow(self, self.gWindow)
+		XPLMDestroyWindow(self, self.eWindow)
 		pass
 
 	def XPluginEnable(self):
@@ -167,102 +165,76 @@ class PythonInterface:
 	def XPluginReceiveMessage(self, inFromWho, inMessage, inParam):
 		pass
 
-	def createEventWindow(self):
-		if self.mwindow==0:
-			self.mwindow=1
-			self.gWindow=XPLMCreateWindow(self, self.winPosX, self.winPosY, self.winPosX + self.WINDOW_WIDTH, self.winPosY - self.WINDOW_HEIGHT, 1, self.DrawWindowCB, self.KeyCB, self.MouseClickCB, 0)
-	
-	def closeEventWindow(self):
-		if self.mwindow==1:
-			print "XDMG = Smashing main window..."
-			XPLMDestroyWindow(self, self.gWindow)
-			self.mwindow=0
-	
-	def createErrWindow(self):
-		if self.ewindow == 0:
-			self.ewindow=1
-			self.eWindow=XPLMCreateWindow(self, self.ePosX, self.ePosY, self.ePosX + self.WINDOW_WIDTH, self.ePosY - self.WINDOW_HEIGHT, 1, self.DrawWarnCB, self.KeyCB, self.MouseClickCB, 0)
-	
-	def closeErrWindow(self):
-		if self.ewindow == 1:
-			print "XDMG = Smashing error window..."
-			self.ewindow=0
-			XPLMDestroyWindow(self, self.eWindow)
-	
 	def MixTape(self, m):
 		XPLMSetDatavf(self.mix_ref, [m, m, m, m, m, m, m, m], 0, self.num_eng)
 
 	def gameLoopCallback(self, inElapsedSinceLastCall, elapsedSim, counter, refcon):
 
 		if (XPLMGetDataf(self.flightTime_ref) > 3.0):
-			# rpms=[]
-			# XPLMGetDatavf(self.RPM_ref, rpms, 0, self.num_eng)
-			# if rpms[0] > 0:
-				# self.runtime+=1
-			# #Let's do some damage
-			# chts=[]
-			# XPLMGetDatavf(self.CHT_ref, chts, 0, self.num_eng)
-			# if self.defaultcht>0:
-				# _diff=abs(chts[0]-self.defaultcht)
-				# if _diff>0:
-					# #COOL THE ENGINES
-					# self.chtDamage+=_diff
-			# self.defaultcht=chts[0]
-			# mixes=[]
-			# XPLMGetDatavf(self.mix_ref, mixes, 0, self.num_eng)
-			# if (mixes[0] > 0.95 and XPLMGetDataf(self.alt_ref) > 1000):
-				# #SMOKIN'
-				# self.mixtureDamage += 1
+			newdmg=0
+			rpms=[]
+			XPLMGetDatavf(self.RPM_ref, rpms, 0, self.num_eng)
+			if rpms[0]>0:
+				self.runtime+=1
 			altitude=XPLMGetDataf(self.alt_ref)*3.33
 			ias=XPLMGetDataf(self.ias_ref)
 			flying=XPLMGetDatai(self.fly_ref)
 			if flying==0 and ias>60 and altitude<20:
 				self.e1="FSE FLIGHT NOT STARTED"
-				self.createErrWindow()
+				self.err=1
 				return 1
 			else:
-				self.closeErrWindow()
+				self.err=0
 			mixes=[]
 			XPLMGetDatavf(self.mix_ref, mixes, 0, self.num_eng)
 			if (mixes[0] > 0.95 and altitude > 900):
-				self.MixTape(0.949)
-			rpms=[]
-			XPLMGetDatavf(self.RPM_ref, rpms, 0, self.num_eng)
-			if rpms[0]>0:
-				self.runtime+=1
-			if self.eng_type[0]==2 or self.eng_type[0]==8: #Turboprop
-				itts=[]
-				XPLMGetDatavf(self.ITT_ref, itts, 0, self.num_eng)
-				if itts[0]>self.m_ITT:
-					_diff=itts[0]-self.m_ITT
-					self.chtDamage += _diff * 0.25
-				if mixes[0]>0.5 and altitude < 1000:
-					self.mixtureDamage += 0.25
-				self.msg2="ITT: "+str(round(itts[0]))+"/"+str(round(self.m_ITT))+" dmg: "+str(round(self.chtDamage,2))
-			elif self.eng_type[0]==4 or self.eng_type[0]==5: #Jet
-				itts=[]
-				XPLMGetDatavf(self.ITT_ref, itts, 0, self.num_eng)
-				if itts[0]>self.m_ITT:
-					_diff=itts[0]-self.m_ITT
-					self.chtDamage += _diff * 0.25
-				if mixes[0]>0.5 and altitude < 1000:
-					self.mixtureDamage += 0.25
-				self.msg2="ITT: "+str(round(itts[0]))+"/"+str(round(self.m_ITT))+" dmg: "+str(round(self.chtDamage,2))
-			else: #Reciprocating or other gets default
+				self.MixTape(0.949)	
+			
+			if newdmg==0:
+				#Let's do some damage
+				chts=[]
+				XPLMGetDatavf(self.CHT_ref, chts, 0, self.num_eng)
 				if self.defaultcht>0:
-					chts=[]
-					XPLMGetDatavf(self.CHT_ref, chts, 0, self.num_eng)
 					_diff=abs(chts[0]-self.defaultcht)
 					if _diff>0:
 						self.chtDamage+=_diff
 				self.defaultcht=chts[0]
-				if (mixes[0] > 0.95 and altitude > 1000):
+				if (mixes[0] > 0.95 and XPLMGetDataf(self.alt_ref) > 1000):
+					#SMOKIN'
 					self.mixtureDamage += 1
-				self.msg2="CHT: "+str(round(chts[0],2))+" dmg: "+str(round(self.chtDamage,2))
+			else:
+				if self.eng_type[0]==2 or self.eng_type[0]==8: #Turboprop
+					itts=[]
+					XPLMGetDatavf(self.ITT_ref, itts, 0, self.num_eng)
+					if itts[0]>self.m_ITT:
+						_diff=itts[0]-self.m_ITT
+						self.chtDamage += _diff * 0.25
+					if mixes[0]>0.5 and altitude < 1000:
+						self.mixtureDamage += 0.25
+					self.msg2="ITT: "+str(round(itts[0]))+"/"+str(round(self.m_ITT))+" dmg: "+str(round(self.chtDamage,2))
+				elif self.eng_type[0]==4 or self.eng_type[0]==5: #Jet
+					itts=[]
+					XPLMGetDatavf(self.ITT_ref, itts, 0, self.num_eng)
+					if itts[0]>self.m_ITT:	#IF WE DON'T COOL THIS FIRE DOWN WE'RE NOT GONNA LAST
+						_diff=itts[0]-self.m_ITT	#COOL THE ENGINES
+						self.chtDamage += _diff * 0.25
+					if mixes[0]>0.5 and altitude < 1000:
+						self.mixtureDamage += 0.25
+					self.msg2="ITT: "+str(round(itts[0]))+"/"+str(round(self.m_ITT))+" dmg: "+str(round(self.chtDamage,2))
+				else: #Reciprocating or other gets default
+					if self.defaultcht>0:
+						chts=[]
+						XPLMGetDatavf(self.CHT_ref, chts, 0, self.num_eng)
+						_diff=abs(chts[0]-self.defaultcht)
+						if _diff>0:
+							self.chtDamage+=_diff
+					self.defaultcht=chts[0]
+					if (mixes[0] > 0.95 and altitude > 1000):
+						self.mixtureDamage += 1
+					self.msg2="CHT: "+str(round(chts[0],2))+" dmg: "+str(round(self.chtDamage,2))
 
 			self.msg1="Run: "+str(self.runtime)+" RPM: "+str(round(rpms[0]))
 			self.msg3="Mix: "+str(round(mixes[0],2))+" dmg: "+str(round(self.mixtureDamage,2))
 			self.msg4="En: "+str(self.eng_type[0])+" Prop: "+str(self.prop_type[0])
-			self.createEventWindow()
 
 		return 1
