@@ -58,10 +58,10 @@ class PythonInterface:
 		self.msg4=""
 		self.msg5=""
 		self.msg6=""
-		self.winPosX=20
-		self.winPosY=400
-		self.WINDOW_WIDTH=230
-		self.WINDOW_HEIGHT=90
+		winPosX=20
+		winPosY=400
+		win_w=230
+		win_h=90
 		self.num_eng=0
 		self.runtime=0
 		self.chtDamage=0
@@ -70,10 +70,10 @@ class PythonInterface:
 		self.prop_type=[]
 		self.acf_desc=[]
 
-		#self.gameLoopCB=self.gameLoopCallback
 		self.DrawWindowCB=self.DrawWindowCallback
 		self.KeyCB=self.KeyCallback
 		self.MouseClickCB=self.MouseClickCallback
+		self.gWindow=XPLMCreateWindow(self, winPosX, winPosY, winPosX + win_w, winPosY - win_h, 1, self.DrawWindowCB, self.KeyCB, self.MouseClickCB, 0)
 
 		self.CmdSHConn = XPLMCreateCommand("fsei/flight/enginfo","Shows or hides engine info")
 		self.CmdSHConnCB  = self.CmdSHConnCallback
@@ -96,14 +96,13 @@ class PythonInterface:
 	def showhide(self):
 		if self.started == 0:
 			print "XDMG = Starting eng info..."
-			self.started=1
 			self.num_eng=XPLMGetDatai(self.num_eng_ref)
 			XPLMGetDatab(self.acf_desc_ref, self.acf_desc, 0, 500)
 			self.getInfo()
+			self.started=1
 		else:
 			self.started=0
 			self.acf_desc=[]
-			self.closeEventWindow()
 			
 	def DrawWindowCallback(self, inWindowID, inRefcon):
 		if self.started==1:
@@ -120,8 +119,10 @@ class PythonInterface:
 			XPLMDrawString(color, left+5, top-95, self.msg6, 0, xplmFont_Basic)
 
 	def XPluginStop(self):
-		XPLMUnegisterCommandHandler(self, self.CmdSHConn, 0)
-		self.closeEventWindow()
+		if self.started==1:
+			self.showhide()
+		XPLMUnregisterCommandHandler(self, self.CmdSHConn, self.CmdSHConnCB, 0)
+		XPLMDestroyWindow(self, self.gWindow)
 		pass
 
 	def XPluginEnable(self):
@@ -132,17 +133,6 @@ class PythonInterface:
 
 	def XPluginReceiveMessage(self, inFromWho, inMessage, inParam):
 		pass
-
-	def createEventWindow(self):
-		if self.gWindow == 0:
-			print "XDMG = Creating window..."
-			self.gWindow=XPLMCreateWindow(self, self.winPosX, self.winPosY, self.winPosX + self.WINDOW_WIDTH, self.winPosY - self.WINDOW_HEIGHT, 1, self.DrawWindowCB, self.KeyCB, self.MouseClickCB, 0)
-	
-	def closeEventWindow(self):
-		if self.gWindow==1:
-			print "XDMG = Smashing window..."
-			XPLMDestroyWindow(self, self.gWindow)
-			self.gWindow = 0
 
 	def getInfo(self):
 
@@ -209,7 +199,5 @@ class PythonInterface:
 		self.msg4="En: "+str(eng_type[0])+" Prop: "+str(prop_type[0])
 		self.msg5="IND: ITT: "+str(round(iITT[0]))+"  EGT: "+str(round(iEGT[0]))+"  CHT: "+str(round(iCHT[0]))
 		self.msg6=str(self.acf_desc)
-		print "XDMG = Got info..."
-		self.createEventWindow()
+		print "XDMG = Got engine info..."
 
-		return 1
