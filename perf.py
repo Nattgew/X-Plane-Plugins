@@ -16,9 +16,9 @@ class PythonInterface:
 		flo=lo
 		fhi=hi
 		exact=0
-		if hi>length:
-			flo=length-1
-			fhi=length
+		if hi>length-1:
+			flo=length-2
+			fhi=length-1
 		elif lo<0:
 			flo=0
 			fhi=1
@@ -57,9 +57,21 @@ class PythonInterface:
 
 	def getVref(self, flaps, wt, DA, T, AC):
 		Vref="N/A"
+		if AC=="PC12":
+			exactwt=0
+			GW=tuple(range(6400,10001,900))
+			vapps=(67,72,76,80,84)
+			
+			wt_i=wgt/900-64/9
+			wt_il=int(floor(wt_i))
+			wt_ih=int(ceil(wt_i))
+			wt_ih, wt_il, exactwt = check_index(wt_ih, wt_il, len(GW))
+
+			vapp=self.interp(vapps[wt_ih], vapps[wt_il], GW[wt_ih], GW[wt_il], wgt)
+			Vref=str(round(vapp))+" kias"
 		return Vref
 
-	def getV1(self, flaps, wt, DA, T, AC):
+	def getV1(self, flaps, wgt, DA, T, AC):
 		V1="N/A"
 		if AC=="B738":
 			exactwt=0
@@ -101,7 +113,7 @@ class PythonInterface:
 				flap_i=-1
 				V1="T/O CONFIG"
 			if flap_i>-1:
-				wgt_i=GW/10000-9
+				wgt_i=wgt/10000-9
 				wgt_il=int(floor(wgt_i))
 				wgt_ih=int(ceil(wgt_i))
 				wgt_ih, wgt_il, exactwt = self.check_index(wgt_ih, wgt_il, len(GW))
@@ -318,10 +330,14 @@ class PythonInterface:
 			dis_i=delISA/10+4
 			dis_il=int(floor(dis_i))
 			dis_ih=int(ceil(dis_i))
+			
 			wgt_ih, wgt_il, exactwt = self.check_index(wgt_ih, wgt_il, len(GW))
 			alt_ih, alt_il, exactfl = self.check_index(alt_ih, alt_il, len(alts))
 			dis_ih, dis_il, exactdi = self.check_index(dis_ih, dis_il, len(dis))
-			
+
+			#print "al: "+str(round(alt))+" wt: "+str(round(wgt))+" di: "+str(round(delISA))
+			#print "index: "+str(alt_il)+" "+str(alt_ih)+" "+str(wgt_il)+" "+str(wgt_ih)+" "+str(dis_il)+" "+str(dis_ih)			
+
 			if exactwt==1 and exactfl==1 and exactdi==1: # Epic win
 				bc=ias[dis_il][wgt_il][alt_il]
 			elif exactwt==1 and exactfl==1:
@@ -426,7 +442,7 @@ class PythonInterface:
 			self.num_eng=XPLMGetDatai(self.num_eng_ref)
 			XPLMGetDatab(self.acf_desc_ref, self.acf_descb, 0, 500)
 			print str(self.acf_descb)
-			XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 10, 0)
+			XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 1, 0)
 		else:
 			self.acf_descb=[]
 			XPLMUnregisterFlightLoopCallback(self, self.gameLoopCB, 0)
@@ -506,10 +522,14 @@ class PythonInterface:
 		Vref="N/A"
 		V1="N/A"
 		if gear_state==1:
+			print "XDMG = Gear down"
 			flaps=XPLMGetDataf(self.flap_h_pos_ref)
-			Vref=self.getVref(flaps, wgt, DenAlt, T, AC)
 			if XPLMGetDataf(self.f_norm_ref) != 0:
+				print "XDMG = On ground"
 				V1=self.getV1(flaps, wgt, DenAlt, T, AC)
+			else:
+				print "XDMG = In air"
+				Vref=self.getVref(flaps, wgt, DenAlt, T, AC)
 				
 		dIstr=str(round(delISA))
 		if delISA>0:
