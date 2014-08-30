@@ -2,7 +2,7 @@ X-Plane Plugins
 ======
 
 Altimeter Helper
-=====
+===
 Simple plugin for X-Plane that shows the altimeter setting each time it is changed, and has a command to set the altimeter automatically.
 
 <b>Key features:</b><br/>
