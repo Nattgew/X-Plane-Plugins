@@ -16,13 +16,13 @@ class PythonInterface:
 		flo=int(floor(i))
 		fhi=int(ceil(i))
 		exact=0
-		if hi>length-1:
+		if fhi>length-1:
 			flo=length-2
 			fhi=length-1
-		elif lo<0:
+		elif flo<0:
 			flo=0
 			fhi=1
-		elif lo==hi:
+		elif flo==fhi:
 			exact=1
 		return (fhi, flo, exact)
 	
@@ -66,7 +66,7 @@ class PythonInterface:
 			wgt_ih, wgt_il, exactwt = self.get_index(wgt_i, len(GW))
 
 			vapp=self.interp(vapps[wgt_ih], vapps[wgt_il], GW[wgt_ih], GW[wgt_il], wgt)
-			Vref=str(round(vapp))+" kias"
+			Vref=str(int(round(vapp)))+" kias"
 		elif AC=="B738":
 			exactwt=0
 			GW=tuple(range(90,181,10))
@@ -76,16 +76,16 @@ class PythonInterface:
 
 			flap_i=-1
 			for i in range(2,5):
-				if flaps == self.flaps_B738[i]
+				if flaps == self.flaps_B738[i]:
 					flap_i=i-2
-			if flap_i==-1
+			if flap_i==-1:
 				Vref="LAND CONFIG"
 			else:
 				wgt_i=wgt/10000-9
 				wgt_ih, wgt_il, exactwt = self.get_index(wgt_i, len(GW))
 				
 				vri=self.interp(vrs[flap_i][wgt_ih], vrs[flap_i][wgt_il], GW[wgt_ih], GW[wgt_il], wgt/1000)
-				Vref=str(round(vri))+" kias"
+				Vref=str(int(round(vri)))+" kias"
 				
 		return Vref
 
@@ -119,19 +119,19 @@ class PythonInterface:
 			
 			flap_i=-1
 			for i in range(3):
-				if flaps == self.flaps_B738[i]
+				if flaps == self.flaps_B738[i]:
 					flap_i=i
-			if flap_i==-1
+			if flap_i==-1:
 				V1="T/O CONFIG"
 			else:
 				wgt_i=wgt/10000-9
 				wgt_ih, wgt_il, exactwt = self.get_index(wgt_i, len(GW))
 				
 				v1f=self.interp(v1s[flap_i][wgt_ih], v1s[flap_i][wgt_il], GW[wgt_ih], GW[wgt_il], wgt/1000)
-				V1=str(round(v1f))+" kias"
+				V1=str(int(round(v1f)))+" kias"
 				
 		elif AC=="PC12":
-			GW=(6400,7300,7200,9100,10000,10450)
+			GW=(6400,7300,8200,9100,10000,10450)
 			vrs=((63,67,71,75,79,81),	# flaps 15
 				(58,62,66,70,73,75))	# flaps 30
 			#vas=((65,70,74,78,82,84), # flaps 15, Accelerate-stop, not used right now
@@ -139,20 +139,20 @@ class PythonInterface:
 			
 			flap_i=-1
 			for i in range(0,2):
-				if flaps == self.flaps_PC12[i]
+				if round(flaps,1) == self.flaps_PC12[i]:
 					flap_i=i
-			if flap_i==-1
+			if flap_i==-1:
 				V1="T/O CONFIG"
 			else:
 				if wgt<10000:
 					wgt_i=wgt/900-64/9
 				else:
-					wgt_i=wgt/450-200/9
+					wgt_i=wgt/450-236/9
 				
 				wgt_ih, wgt_il, exactwt = self.get_index(wgt_i, len(GW))
-				
+				#print 'Interp: %.0f %.0f %.0f %.0f %.0f' % (vrs[flap_i][wgt_ih], vrs[flap_i][wgt_il], GW[wgt_ih], GW[wgt_il], wgt)
 				vr=self.interp(vrs[flap_i][wgt_ih], vrs[flap_i][wgt_il], GW[wgt_ih], GW[wgt_il], wgt)
-				V1=str(round(vr))+" kias"
+				V1=str(int(round(vr)))+" kias"
 			
 		return V1
 	
@@ -185,7 +185,7 @@ class PythonInterface:
 			else:
 				cc=self.interp2(ias[dis_ih][alt_il], ias[dis_il][alt_il], ias[dis_ih][alt_ih], ias[dis_il][alt_ih], dis[dis_ih], dis[dis_il], alts[alt_ih], alts[alt_il], delISA, alt)
 			
-			bestCC=str(round(cc))+" kias"
+			bestCC=str(int(round(cc)))+" kias"
 			
 		return bestCC
 		
@@ -200,8 +200,8 @@ class PythonInterface:
 			if exactwt==1:
 				oa=alts[wt_il]
 			else:
-				oa=self.interp(alts[wt_ih], alts[wt_il], wts[wt_ih], wts[wt_il], wt_i)
-				
+				oa=self.interp(alts[wt_ih], alts[wt_il], wts[wt_ih], wts[wt_il], wgt/1000)
+			
 			FLalt=str(round(oa,-2))
 			optFL="FL"+FLalt[0:3]
 			
@@ -359,7 +359,7 @@ class PythonInterface:
 				bc_l=self.interp2(ias[dis_ih][wgt_il][alt_il], ias[dis_il][wgt_il][alt_il], ias[dis_ih][wgt_il][alt_ih], ias[dis_il][wgt_il][alt_ih], dis[dis_ih], dis[dis_il], alts[alt_ih], alts[alt_il], delISA, alt)
 				bc_h=self.interp2(ias[dis_ih][wgt_ih][alt_il], ias[dis_il][wgt_ih][alt_il], ias[dis_ih][wgt_ih][alt_ih], ias[dis_il][wgt_ih][alt_ih], dis[dis_ih], dis[dis_il], alts[alt_ih], alts[alt_il], delISA, alt)
 				bc=self.interp(bc_h, bc_l, GW[wgt_ih], GW[wgt_il], wgt)
-			bestCruise=str(round(bc))+" kias"
+			bestCruise=str(int(round(bc)))+" kias"
 			
 		return bestCruise
 	
@@ -414,13 +414,13 @@ class PythonInterface:
 		self.msg6=""
 		winPosX=20
 		winPosY=700
-		win_w=230
-		win_h=120
+		win_w=270
+		win_h=110
 		self.num_eng=0
 		self.acf_descb=[]
 		self.eng_type=[]
-		self.flaps_B738=(1,1,1,1,1) #1 5 15 30 40
-		self.flaps_PC12=(1,1,1) #15 30 40?
+		self.flaps_B738=(0.125,0.375,0.625,0.875,1) #1 5 15 30 40
+		self.flaps_PC12=(0.3,0.7,1) #15 30 40?
 
 		self.gameLoopCB=self.gameLoopCallback
 		self.DrawWindowCB=self.DrawWindowCallback
@@ -455,10 +455,10 @@ class PythonInterface:
 			XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 1, 0)
 			self.started=1
 		else:
-			self.started=0
 			self.acf_descb=[]
 			XPLMDestroyWindow(self, self.gWindow)
 			XPLMUnregisterFlightLoopCallback(self, self.gameLoopCB, 0)
+			self.started=1
 
 	def DrawWindowCallback(self, inWindowID, inRefcon):
 		if self.started==1:
@@ -504,13 +504,15 @@ class PythonInterface:
 			N1=[]
 			XPLMGetDatavf(self.N1_ref, N1, 0, self.num_eng)
 			pwr=str(round(N1[0],1))+"% N1"
-		else
+		else:
 			pwr="N/A"
-		if acf_desc[0:27]=="['Boeing 737-800 xversion":
+		#print "B737 part "+acf_desc[0:27]
+		if acf_desc[0:27]=="['Boeing 737-800 xversion 4":
 			AC="B738"
 		elif acf_desc=="['Pilatus PC-12']":
 			AC="PC12"
-			#STMA datarefs
+			torque_psi=0.0088168441*TRQ[0]-0.0091189588
+			pwr=str(round(torque_psi,1))+" psi"
 		else:
 			AC=acf_desc
 		kias=XPLMGetDataf(self.ias_ref)
@@ -547,11 +549,11 @@ class PythonInterface:
 		if delISA>0:
 			dIstr="+"+dIstr
 			
-		self.msg1="DA: "+str(round(DenAlt))+"  GW: "+str(round(wgt))+" lb"
-		self.msg2="T: "+str(round(T))+"  dISA: "+dIstr
+		self.msg1="DA: "+str(int(round(DenAlt)))+"  GW: "+str(int(round(wgt)))+" lb"
+		self.msg2="T: "+str(int(round(T)))+"  dISA: "+dIstr
 		self.msg3="Pwr: "+maxPwr+"  CC: "+cruiseclb+"  Thr: "+pwr
 		self.msg4="Crs: "+maxcruise+"  LR: "+cruise+"  kts: "+speed
-		self.msg5="FL: "+maxFL+"  FL: "+optFL
+		self.msg5="FL: "+maxFL+"  FL: "+optFL#+" Flaps: "+str(flaps)
 		self.msg6=AC+"  V1: "+V1+"  Vref: "+Vref
 
 		return 10

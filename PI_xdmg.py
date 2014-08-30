@@ -56,7 +56,7 @@ class PythonInterface:
 		ePosX=20
 		ePosY=400
 		win_w=230
-		win_h=90
+		win_h=80
 		self.num_eng=0
 		self.runtime=0
 		self.chtDamage=0
@@ -202,6 +202,7 @@ class PythonInterface:
 				if (mixes[0] > 0.95 and XPLMGetDataf(self.alt_ref) > 1000):
 					#SMOKIN'
 					self.mixtureDamage += 1
+				self.msg2="CHT: "+str(round(chts[0],2))+" dmg: "+str(round(self.chtDamage,2))
 			else:
 				if self.eng_type[0]==2 or self.eng_type[0]==8: #Turboprop
 					itts=[]
