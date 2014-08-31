@@ -47,9 +47,8 @@ class PythonInterface:
 		self.baro_set_ref=XPLMFindDataRef("sim/cockpit/misc/barometer_setting")
 		self.baro_act_ref=XPLMFindDataRef("sim/weather/barometer_sealevel_inhg")
 		self.baro_am_ref=XPLMFindDataRef("sim/weather/barometer_current_inhg")
-		#self.flightTimeRef=XPLMFindDataRef("sim/time/total_flight_time_sec")
 		self.alt_act_ref=XPLMFindDataRef("sim/flightmodel/position/elevation")
-		self.alt_ind_ref=XPLMFindDataRef("sim/cockpit2/gauges/indicators/altitude_ft_pilot")
+		self.alt_ind_ref=XPLMFindDataRef("sim/flightmodel/misc/h_ind")
 		self.vvi_ref=XPLMFindDataRef("sim/flightmodel/position/vh_ind_fpm")
 		
 		self.mft=3.2808399
@@ -69,7 +68,6 @@ class PythonInterface:
 		self.MouseClickCB=self.MouseClickCallback
 		self.gWindow=XPLMCreateWindow(self, winPosX, winPosY, winPosX + win_w, winPosY - win_h, 1, self.DrawWindowCB, self.KeyCB, self.MouseClickCB, 0)
 		
-		#print "Registering loopback"
 		self.gameLoopCB=self.gameLoopCallback
 		XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 1, 0)
 		
@@ -147,7 +145,6 @@ class PythonInterface:
 				alt=self.setBaro(XPLMGetDataf(self.baro_act_ref))
 		
 		alt_err=self.getAlt(bar-bar_act,0)
-		#print "Altimeter off by "+str(int(round(alt_err)))+" ft"
 		if abs(alt_err)>250:
 			alt_err_str=self.getSign(alt_err)+str(round(alt_err))
 			self.msg1="Altimeter off by "+alt_err_str+" feet!"
