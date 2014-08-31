@@ -13,24 +13,30 @@ class PythonInterface:
 			sign="+"
 		return sign
 	
+	def getAlt(self, SL, AM):
+		alt=1000*(SL-AM)
+		return alt
+	
 	def setBaro(self, bar_new):
-		alt_old=XPLMGetDataf(self.alt_ind_ref)
 		bar_old=XPLMGetDataf(self.baro_set_ref)
+		bar_am=XPLMGetDataf(self.baro_am_ref)
 		XPLMSetDataf(self.baro_set_ref, bar_new)
 		del_baro_set=bar_new-bar_old
-		alt_new=1000.0000238427*bar_new-29480.049077438
-		del_alt_ind=alt_new-alt_old
-		
+		alt_new=self.getAlt(bar_new,bar_am)
+				
 		del_baro_str=self.getSign(del_baro_set)+str(round(del_baro_set,2))
-		del_alt_str=self.getSign(del_alt_ind)+str(int(round(del_alt_ind)))
 		
 		print "Altimeter changed to: " + str(round(bar_new,2))
 		#print "From "+str(int(round(alt_old)))+" to "+str(int(round(alt_new)))
-		self.msg1="Altimeter  " + str(round(bar_new,2))
-		self.msg2=del_alt_str+" ft   "+del_baro_str+" inHg"
+		self.msg1="Altimeter  " + str(round(bar_new,2))+"  "+del_baro_str+" inHg"
 		self.remainingShowTime=self.showTime
 		
 		return alt_new
+	
+	def showBaro(self, bar_new):
+		self.msg1="Altimeter  " + str(round(bar_new,2))
+		self.remainingShowTime=self.showTime
+		pass
 
 	def XPluginStart(self):
 		self.Name="Altimeter Helper 1.2"
@@ -40,6 +46,7 @@ class PythonInterface:
 		
 		self.baro_set_ref=XPLMFindDataRef("sim/cockpit/misc/barometer_setting")
 		self.baro_act_ref=XPLMFindDataRef("sim/weather/barometer_sealevel_inhg")
+		self.baro_am_ref=XPLMFindDataRef("sim/weather/barometer_current_inhg")
 		#self.flightTimeRef=XPLMFindDataRef("sim/time/total_flight_time_sec")
 		self.alt_act_ref=XPLMFindDataRef("sim/flightmodel/position/elevation")
 		self.alt_ind_ref=XPLMFindDataRef("sim/cockpit2/gauges/indicators/altitude_ft_pilot")
@@ -47,13 +54,12 @@ class PythonInterface:
 		
 		self.mft=3.2808399
 		self.msg1=""
-		self.msg2=""
 		self.remainingShowTime=0
 		self.showTime=3
 		winPosX=20
 		winPosY=500
-		win_w=170
-		win_h=50
+		win_w=200
+		win_h=35
 		self.last_alt=XPLMGetDataf(self.alt_ind_ref)
 		self.trans_alt=18000
 		self.last_bar=XPLMGetDataf(self.baro_set_ref)
@@ -86,8 +92,11 @@ class PythonInterface:
 				newbaro=29.92
 			else:
 				newbaro=XPLMGetDataf(self.baro_act_ref)
-			self.last_bar=newbaro
-			alt=self.setBaro(newbaro)
+			if round(newbaro,2)!=round(XPLMGetDataf(self.baro_set_ref),2):
+				self.last_bar=newbaro
+				alt=self.setBaro(newbaro)
+			else:
+				self.showBaro(newbaro)
 		return 0
 
 	def DrawWindowCallback(self, inWindowID, inRefcon):
@@ -98,7 +107,6 @@ class PythonInterface:
 			XPLMDrawTranslucentDarkBox(left,top,right,bottom)
 			color=1.0, 1.0, 1.0
 			gResult=XPLMDrawString(color, left+5, top-20, self.msg1, 0, xplmFont_Basic)
-			gResult2=XPLMDrawString(color, left+5, top-35, self.msg2, 0, xplmFont_Basic)
 
 	def XPluginStop(self):
 		XPLMUnregisterCommandHandler(self, self.CmdSHConn, self.CmdSHConnCB, 0)
@@ -124,6 +132,8 @@ class PythonInterface:
 		vvi=XPLMGetDataf(self.vvi_ref)
 		alt_act=XPLMGetDataf(self.alt_act_ref)*self.mft
 		bar=XPLMGetDataf(self.baro_set_ref)
+		bar_am=XPLMGetDataf(self.baro_am_ref)
+		bar_act=XPLMGetDataf(self.baro_act_ref)
 		
 		if alt >= self.trans_alt and self.last_alt < self.trans_alt:
 			# Climbing through 18000
@@ -136,20 +146,22 @@ class PythonInterface:
 			if vvi <= -500 or (vvi > -500 and alt < self.trans_alt - 250):
 				alt=self.setBaro(XPLMGetDataf(self.baro_act_ref))
 		
-		alt_err=alt-alt_act
+		alt_err=self.getAlt(bar-bar_act,0)
+		#print "Altimeter off by "+str(int(round(alt_err)))+" ft"
 		if abs(alt_err)>250:
 			alt_err_str=self.getSign(alt_err)+str(round(alt_err))
-			self.msg1="Update altimeter setting!"
-			self.msg2="Indicated off by "+alt_err_str+" feet!"
+			self.msg1="Altimeter off by "+alt_err_str+" feet!"
 			self.remainingShowTime=self.showTime
 			
 		if round(self.last_bar,2)!=round(bar,2):
 			#print "Setting changed from "+str(round(self.last_bar,2))+" to "+str(round(bar,2))
-			alt=self.setBaro(bar)
+			alt=self.showBaro(bar)
 
 		self.last_alt=alt
 		self.last_bar=bar
-		#print str(alt)+"  "+str(bar)
+		
+		#ind=self.getAlt(bar,bar_am)
+		#diff=ind-alt
+		#print str(ind)+" vs "+str(alt)+" diff "+str(diff)
 
 		return 0.1
-		
