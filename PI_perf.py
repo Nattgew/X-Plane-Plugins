@@ -417,6 +417,7 @@ class PythonInterface:
 		win_w=270
 		win_h=110
 		self.num_eng=0
+		self.TO_pwr=0
 		self.acf_descb=[]
 		self.eng_type=[]
 		self.flaps_B738=(0.125,0.375,0.625,0.875,1) #1 5 15 30 40
@@ -513,6 +514,15 @@ class PythonInterface:
 			AC="PC12"
 			torque_psi=0.0088168441*TRQ[0]-0.0091189588
 			pwr=str(round(torque_psi,1))+" psi"
+			if torque_psi>37:
+				self.TO_pwr+=inElapsedSinceLastCall
+				TO_pwr_remain=300-self.TO_pwr
+				TPR_m=int(TO_pwr_remain/60)
+				TPR_s=int(TO_pwr_remain%60)
+				TO_str=str(TPR_m)+":"+str(TPR_s)+" TO pwr remain"
+			else:
+				self.TO_pwr=0
+				TO_str=""
 		else:
 			AC=acf_desc
 		kias=XPLMGetDataf(self.ias_ref)
@@ -545,12 +555,12 @@ class PythonInterface:
 				#print "XDMG = In air"
 				Vref=self.getVref(flaps, wgt, DenAlt, T, AC)
 						
-		dIstr=str(round(delISA))
+		dIstr=str(int(round(delISA)))+"C"
 		if delISA>0:
 			dIstr="+"+dIstr
 			
 		self.msg1="DA: "+str(int(round(DenAlt)))+"  GW: "+str(int(round(wgt)))+" lb"
-		self.msg2="T: "+str(int(round(T)))+"  dISA: "+dIstr
+		self.msg2="T: "+str(int(round(T)))+"C  dISA: "+dIstr+"  "+TO_str
 		self.msg3="Pwr: "+maxPwr+"  CC: "+cruiseclb+"  Thr: "+pwr
 		self.msg4="Crs: "+maxcruise+"  LR: "+cruise+"  kts: "+speed
 		self.msg5="FL: "+maxFL+"  FL: "+optFL#+" Flaps: "+str(flaps)
