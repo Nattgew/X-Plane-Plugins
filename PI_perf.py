@@ -28,10 +28,12 @@ class PythonInterface:
 	
 	def interp(self, y2, y1, x2, x1, xi):
 		if y2==y1:
+			
 			result=y1
 		else:
 			result=(y2-y1)/(x2-x1)*(xi-x1)+y1
 		#print "Interp "+str(y2)+", "+str(y1)+", "+str(x2)+", "+str(x1)+", "+str(round(xi))+" = "+str(round(result))
+		#print "Interp result: "+str(result)
 		return result
 	
 	def interp2(self, y1, y2, y3, y4, x1, x2, x3, x4, xi1, xi2):
@@ -58,21 +60,24 @@ class PythonInterface:
 	def getVref(self, flaps, wgt, DA, T, AC):
 		Vref="N/A"
 		if AC=="PC12": # Flaps 40
+			self.vr=1
 			exactwt=0
 			GW=tuple(range(6400,10001,900))
-			vapps=(67,72,76,80,84)
+			vapps=(67.0,72.0,76.0,80.0,84.0)
 			
 			wgt_i=wgt/900-64/9
 			wgt_ih, wgt_il, exactwt = self.get_index(wgt_i, len(GW))
-
+			self.Dstarted=1
 			vapp=self.interp(vapps[wgt_ih], vapps[wgt_il], GW[wgt_ih], GW[wgt_il], wgt)
+			self.Dstarted=0
+			#print 'Vref %.0f %.0f %.0f %.0f %.0f = %.0f' % (vapps[wgt_ih], vapps[wgt_il], GW[wgt_ih], GW[wgt_il], wgt, vapp)
 			Vref=str(int(round(vapp)))+" kias"
 		elif AC=="B738":
 			exactwt=0
 			GW=tuple(range(90,181,10))
-			vrs=((122,129,135,142,148,154,159,164,169,174),		# flaps 15
-				(116,123,129,135,141,146,151,156,160,165),		# flaps 30
-				(109,116,122,128,133,139,144,148,153,157))		# flaps 40
+			vrs=((122.0,129.0,135.0,142.0,148.0,154.0,159.0,164.0,169.0,174),		# flaps 15
+				(116.0,123.0,129.0,135.0,141.0,146.0,151.0,156.0,160.0,165),		# flaps 30
+				(109.0,116.0,122,128.0,133.0,139.0,144.0,148.0,153.0,157))		# flaps 40
 
 			flap_i=-1
 			for i in range(2,5):
@@ -97,25 +102,25 @@ class PythonInterface:
 			alts=tuple(range(0,8001,2000))
 			
 			if T < 27 and DA < alts[1] or T < 38 and DA < alts[1] and (-T+38)/5.5 <= DA/1000: # A cyan
-				v1s=((107,114,121,127,133,139,145,150,155,160),	# flaps 1
-					(103,109,116,122,128,134,139,144,149,153),	# flaps 5
-					(99,106,112,118,124,130,135,140,145,150))	# flaps 15
+				v1s=((107.0,114.0,121.0,127.0,133.0,139.0,145.0,150.0,155.0,160.0),	# flaps 1
+					(103.0,109.0,116.0,122.0,128.0,134.0,139.0,144.0,149.0,153.0),	# flaps 5
+					(99.0,106.0,112.0,118.0,124.0,130.0,135.0,140.0,145.0,150.0))	# flaps 15
 			elif T < 27 and DA < alts[2] or T < 38 and DA < alts[2] and (-T+38)/11 <= DA/1000-3 or T < 43 and DA < (alts[2]+alts[1])/2 and (-T+43)/(5/3) <= DA/1000: #B yellow
-				v1s=((108,115,122,128,134,140,146,151,156,161),	# flaps 1
-					(104,110,117,123,129,135,140,145,150,154),	# flaps 5
-					(100,107,113,119,125,131,136,141,146,0))	# flaps 15
+				v1s=((108.0,115,122.0,128.0,134.0,140.0,146.0,151.0,156.0,161.0),	# flaps 1
+					(104.0,110.0,117.0,123.0,129.0,135.0,140.0,145.0,150.0,154.0),	# flaps 5
+					(100.0,107.0,113.0,119.0,125.0,131.0,136.0,141.0,146.0,0))	# flaps 15
 			elif T < 27 and DA < alts[3] or T < 38 and DA < alts[3] and (-T+38)/5.5 <= DA/1000-4 or T < 49 and DA < (alts[3]+alts[2])/2 and (-T+49)/2.75 <= DA/1000: #C pink
-				v1s=((109,116,123,129,135,141,147,152,157,162),	# flaps 1
-					(105,111,118,124,130,136,141,146,151,0),	# flaps 5
-					(101,108,114,120,126,132,137,142,0,0))		# flaps 15
+				v1s=((109.0,116.0,123.0,129.0,135.0,141.0,147.0,152.0,157.0,162.0),	# flaps 1
+					(105.0,111.0,118.0,124.0,130.0,136.0,141.0,146.0,151.0,0),	# flaps 5
+					(101.0,108.0,114.0,120.0,126.0,132.0,137.0,142.0,0,0))		# flaps 15
 			elif T < 60 and DA/1000 < 160/11 and (-T+60)/4.125 <= DA/1000: #D green
-				v1s=((110,117,124,130,136,142,148,153,158,0),	# flaps 1
-					(106,112,119,125,131,137,142,147,0,0),		# flaps 5
-					(102,109,115,121,127,133,138,0,0,0))		# flaps 15
+				v1s=((110.0,117.0,124.0,130.0,136.0,142.0,148.0,153.0,158.0,0),	# flaps 1
+					(106.0,112.0,119.0,125.0,131.0,137.0,142.0,147.0,0,0),		# flaps 5
+					(102.0,109.0,115.0,121.0,127.0,133.0,138.0,0,0,0))		# flaps 15
 			else: #E blue uh oh
-				v1s=((112,119,126,132,138,144,150,155,0,0),		# flaps 1
-					(108,114,121,127,133,139,0,0,0,0),			# flaps 5
-					(104,111,117,123,129,0,0,0,0,0))			# flaps 15
+				v1s=((112.0,119.0,126.0,132.0,138.0,144.0,150.0,155.0,0,0),		# flaps 1
+					(108.0,114.0,121.0,127.0,133.0,139.0,0,0,0,0),			# flaps 5
+					(104.0,111.0,117.0,123.0,129.0,0,0,0,0,0))			# flaps 15
 			
 			flap_i=-1
 			for i in range(3):
@@ -162,15 +167,15 @@ class PythonInterface:
 			exactfl=0
 			exactdi=0
 			alts=tuple(range(0,30001,5000))
-			ias=((160,160,160,160,160,150,125),	# -40
-				(160,160,160,160,160,150,125),	# -30
-				(160,160,160,160,155,142,125),	# -20
-				(160,160,160,160,148,135,120),	# -10
-				(160,160,160,150,140,130,115),	# +0
-				(160,160,155,140,130,120,110),	# +10
-				(160,155,140,130,120,110,110),	# +20
-				(150,140,130,120,110,110,110))	# +30
-			dis=(-40,-30,-20,-10,0,10,20,30)
+			ias=((160.0,160.0,160.0,160.0,160.0,150.0,125.0),	# -40
+				(160.0,160.0,160.0,160.0,160.0,150.0,125.0),	# -30
+				(160.0,160.0,160.0,160.0,155.0,142.0,125.0),	# -20
+				(160.0,160.0,160.0,160.0,148.0,135.0,120.0),	# -10
+				(160.0,160.0,160.0,150.0,140.0,130.0,115.0),	# +0
+				(160.0,160.0,155.0,140.0,130.0,120.0,110.0),	# +10
+				(160.0,155.0,140.0,130.0,120.0,110.0,110.0),	# +20
+				(150.0,140.0,130.0,120.0,110.0,110.0,110.0))	# +30
+			dis=(-40.0,-30.0,-20.0,-10.0,0.0,10.0,20.0,30.0)
 			
 			alt_i=alt/5000
 			dis_i=delISA/10+4
@@ -387,7 +392,10 @@ class PythonInterface:
 		self.kglb=2.20462262
 		self.mft=3.2808399
 		self.mkt=1.94384
-		
+		#self.d=chr(0x2103)
+		#self.d=u'\xb0'.encode('cp1252')
+		self.d=""
+			
 		self.N1_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_N1_")
 		self.EGT_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_EGT_c")
 		self.ITT_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_ITT_c")
@@ -404,8 +412,10 @@ class PythonInterface:
 		self.flap_h_pos_ref=XPLMFindDataRef("sim/cockpit2/controls/flap_ratio") # handle position
 		self.geardep_ref=XPLMFindDataRef("sim/aircraft/parts/acf_gear_deploy")
 		self.f_norm_ref=XPLMFindDataRef("sim/flightmodel/forces/fnrml_gear")
+		self.gear_h_pos_ref=XPLMFindDataRef("sim/cockpit2/controls/gear_handle_down")
 		
 		self.started=0
+		self.Dstarted=0
 		self.msg1="Starting..."
 		self.msg2=""
 		self.msg3=""
@@ -433,6 +443,10 @@ class PythonInterface:
 		self.CmdSHConnCB  = self.CmdSHConnCallback
 		XPLMRegisterCommandHandler(self, self.CmdSHConn,  self.CmdSHConnCB, 0, 0)
 		
+		self.CmdSDConn = XPLMCreateCommand("fsei/flight/descinfo","Shows or hides descent/landing info")
+		self.CmdSDConnCB  = self.CmdSDConnCallback
+		XPLMRegisterCommandHandler(self, self.CmdSDConn,  self.CmdSDConnCB, 0, 0)
+		
 		return self.Name, self.Sig, self.Desc
 
 	def MouseClickCallback(self, inWindowID, x, y, inMouse, inRefcon):
@@ -446,7 +460,13 @@ class PythonInterface:
 			print "XDMG = CMD perf info"
 			self.toggleInfo()
 		return 0
-		
+
+	def CmdSDConnCallback(self, cmd, phase, refcon):
+		if(phase==0): #KeyDown event
+			print "XDMG = CMD desc info"
+			self.toggleDInfo()
+		return 0
+	
 	def toggleInfo(self):
 		if self.started == 0:
 			self.num_eng=XPLMGetDatai(self.num_eng_ref)
@@ -460,6 +480,12 @@ class PythonInterface:
 			XPLMDestroyWindow(self, self.gWindow)
 			XPLMUnregisterFlightLoopCallback(self, self.gameLoopCB, 0)
 			self.started=1
+			
+	def toggleDInfo(self):
+		if self.Dstarted==0:
+			self.Dstarted=1
+		else:
+			self.Dstarted=0
 
 	def DrawWindowCallback(self, inWindowID, inRefcon):
 		if self.started==1:
@@ -526,7 +552,7 @@ class PythonInterface:
 		else:
 			AC=acf_desc
 		kias=XPLMGetDataf(self.ias_ref)
-		speed=str(round(kias))+" kias"
+		speed=str(int(round(kias)))+" kias"
 		DenAlt=self.getDA(P,T) #ft
 		#DenAltApprox=self.getDA_approx(P,T) #ft
 		delISA=self.getdelISA(alt, T)
@@ -537,12 +563,13 @@ class PythonInterface:
 		optFL=self.getOptFL(wgt, AC)
 		maxFL=self.getMaxFL(wgt, delISA, AC)
 		
-		geardep=[]
-		XPLMGetDatavf( self.geardep_ref, geardep, 0, 10)
-		gear_state=0
-		for i in range(10):
-			if geardep[i]==1:
-				gear_state=1
+		gears=[]
+		XPLMGetDatavf(self.geardep_ref, gears, 0, 10)
+		#print "Gear "+str(gears[0])
+		if gears[0]==1:
+			gear_state=1
+		else:
+			gear_state=0
 		Vref="N/A"
 		V1="N/A"
 		if gear_state==1:
@@ -555,15 +582,15 @@ class PythonInterface:
 				#print "XDMG = In air"
 				Vref=self.getVref(flaps, wgt, DenAlt, T, AC)
 						
-		dIstr=str(int(round(delISA)))+"C"
+		dIstr=str(int(round(delISA)))+" "+self.d+"C"
 		if delISA>0:
 			dIstr="+"+dIstr
 			
-		self.msg1="DA: "+str(int(round(DenAlt)))+"  GW: "+str(int(round(wgt)))+" lb"
-		self.msg2="T: "+str(int(round(T)))+"C  dISA: "+dIstr+"  "+TO_str
+		self.msg1=AC+"  DA: "+str(int(round(DenAlt)))+" ft  GW: "+str(int(round(wgt)))+" lb"
+		self.msg2="T: "+str(int(round(T)))+" "+self.d+"C  ISA +/-: "+dIstr+"  "+TO_str
 		self.msg3="Pwr: "+maxPwr+"  CC: "+cruiseclb+"  Thr: "+pwr
-		self.msg4="Crs: "+maxcruise+"  LR: "+cruise+"  kts: "+speed
+		self.msg4="Crs: "+maxcruise+"  LR: "+cruise+"  AS: "+speed
 		self.msg5="FL: "+maxFL+"  FL: "+optFL#+" Flaps: "+str(flaps)
-		self.msg6=AC+"  V1: "+V1+"  Vref: "+Vref
+		self.msg6="V1: "+V1+"  Vref: "+Vref
 
 		return 10
