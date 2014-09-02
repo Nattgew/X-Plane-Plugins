@@ -56,9 +56,51 @@ class PythonInterface:
 		T_ISA=15-self.gamma_l*alt
 		delISA=T-T_ISA
 		return delISA
-
+	
+	def getDpro(self, AC):
+		if AC=="B738":
+			profile="M.78 to FL350, M.75 to 280kt"
+		elif AC=="PC12":
+			profile="2000 fpm at lower of M.48/236 kias"
+		else:
+			profile="Have fun"
+		return profile
+	def getDesc(self, dist, alt, dalt, DA, AC):
+		if AC=="B738":
+			ddist_nm=(alt-dalt)*1000/3
+			ddist=str(int(round(ddist_nm)))+" nm"
+		elif AC=="PC12":
+			exactalt=0
+			exactisa=0
+			alts=tuple(range(5000,30001,5000))
+			isas=tuple(range(-40,30,10))
+			dnms=((9.6,20.0,31.0,0,0,0), 			# -40
+				(9.9,20.2,31.8,43.3,0,0),			# -30
+				(10.0,20.7,32.2,44.1,55.8,0),		# -20
+				(10.1,21.1,32.8,45.0,56.8,68.4),	# -10
+				(10.3,21.6,33.8,46.0,58.0,70.0),	# 0
+				(10.5,21.9,34.2,46.8,59.2,71.3),	# 10
+				(10.8,22.2,34.8,47.8,60.2,72.4),	# 20
+				(11.0,22.5,35.5,48.3,61.4,73.9))	# 30
+			alt_i=alt/5000-1
+			isa_i=isa/10+4
+			alt_ih, alt_il, exactalt = self.get_index(alt_i, len(alts))
+			isa_ih, isa_il, exactisa = self.get_index(isa_i, len(isas))
+			
+			if exactalt==1 and exactisa==1:
+				ddist_nm=dnms[isa_il][alt_il]
+			elif exactalt==1:
+				ddist_nm=self.interp(dnms[isa_ih][alt_il], dnms[isa_il][alt_il], isas[isa_ih], isas[isa_il], delISA)
+			elif exactisa==1:
+				ddist_nm=self.interp(dnms[isa_il][alt_ih], dnms[isa_il][alt_il], alts[alt_ih], alts[alt_il], DA)
+			else:
+				ddist_nm=self.interp2(dnms[isa_ih][alt_il], dnms[isa_il][alt_il], dnms[isa_ih][alt_ih], dnms[isa_il][alt_ih], isas[isa_ih], isas[isa_il], alts[alt_ih], alts[alt_il], delISA, DA)
+			ddist=str(int(round(ddist_nm)))+" nm"
+		else:
+			ddist="N/A"
+		return ddist
+	
 	def getVref(self, flaps, wgt, DA, T, AC):
-		Vref="N/A"
 		if AC=="PC12": # Flaps 40
 			self.vr=1
 			exactwt=0
@@ -91,11 +133,11 @@ class PythonInterface:
 				
 				vri=self.interp(vrs[flap_i][wgt_ih], vrs[flap_i][wgt_il], GW[wgt_ih], GW[wgt_il], wgt/1000)
 				Vref=str(int(round(vri)))+" kias"
-				
+		else:
+			ddist="N/A"
 		return Vref
 
 	def getV1(self, flaps, wgt, DA, T, AC):
-		V1="N/A"
 		if AC=="B738":
 			exactwt=0
 			GW=tuple(range(90,181,10))
@@ -152,17 +194,17 @@ class PythonInterface:
 				if wgt<10000:
 					wgt_i=wgt/900-64/9
 				else:
-					wgt_i=wgt/450-236/9
+					wgt_i=wgt/450-164/9
 				
 				wgt_ih, wgt_il, exactwt = self.get_index(wgt_i, len(GW))
 				#print 'Interp: %.0f %.0f %.0f %.0f %.0f' % (vrs[flap_i][wgt_ih], vrs[flap_i][wgt_il], GW[wgt_ih], GW[wgt_il], wgt)
 				vr=self.interp(vrs[flap_i][wgt_ih], vrs[flap_i][wgt_il], GW[wgt_ih], GW[wgt_il], wgt)
 				V1=str(int(round(vr)))+" kias"
-			
+		else:
+			V1="N/A"
 		return V1
 	
 	def getCC(self, DA, alt, delISA, AC):
-		bestCC="N/A"
 		if AC=="PC12":
 			exactfl=0
 			exactdi=0
@@ -191,7 +233,8 @@ class PythonInterface:
 				cc=self.interp2(ias[dis_ih][alt_il], ias[dis_il][alt_il], ias[dis_ih][alt_ih], ias[dis_il][alt_ih], dis[dis_ih], dis[dis_il], alts[alt_ih], alts[alt_il], delISA, alt)
 			
 			bestCC=str(int(round(cc)))+" kias"
-			
+		else:
+			bestCC="N/A"
 		return bestCC
 		
 	def getOptFL(self, wgt, AC):
@@ -213,7 +256,6 @@ class PythonInterface:
 		return optFL
 	
 	def getMaxFL(self, wgt, delISA, AC):
-		maxFL="N/A"
 		if AC=="B738":
 			exactwt=0
 			exactdi=0
@@ -241,11 +283,11 @@ class PythonInterface:
 
 			FLalt=str(round(ma,-2))
 			maxFL="FL"+FLalt[0:3]
-			
+		else:
+			maxFL="N/A"
 		return maxFL
 	
 	def getCruise(self, DA, wgt, alt, delISA, AC):
-		bestCruise="N/A"
 		if AC=="B738":
 			if DA>42000:
 				bestCruise="Descend"
@@ -281,7 +323,6 @@ class PythonInterface:
 					bc=self.interp(machs[fl_ih][wt_il], machs[fl_il][wt_il], alts[fl_ih], alts[fl_il], DA/1000)
 				else:
 					bc=self.interp2(machs[fl_ih][wt_il], machs[fl_il][wt_il], machs[fl_ih][wt_ih], machs[fl_il][wt_ih], alts[fl_ih], alts[fl_il], GW[wt_ih], GW[wt_il], DA/1000, wgt/1000)
-
 				bestCruise="M"+str(round(bc,2))
 			
 		elif AC=="PC12": # PIM Section 5
@@ -365,7 +406,8 @@ class PythonInterface:
 				bc_h=self.interp2(ias[dis_ih][wgt_ih][alt_il], ias[dis_il][wgt_ih][alt_il], ias[dis_ih][wgt_ih][alt_ih], ias[dis_il][wgt_ih][alt_ih], dis[dis_ih], dis[dis_il], alts[alt_ih], alts[alt_il], delISA, alt)
 				bc=self.interp(bc_h, bc_l, GW[wgt_ih], GW[wgt_il], wgt)
 			bestCruise=str(int(round(bc)))+" kias"
-			
+		else:
+			bestCruise="N/A"
 		return bestCruise
 	
 	def getMaxCruise(self, DA, wgt, alt, delISA, AC):
@@ -413,6 +455,10 @@ class PythonInterface:
 		self.geardep_ref=XPLMFindDataRef("sim/aircraft/parts/acf_gear_deploy")
 		self.f_norm_ref=XPLMFindDataRef("sim/flightmodel/forces/fnrml_gear")
 		self.gear_h_pos_ref=XPLMFindDataRef("sim/cockpit2/controls/gear_handle_down")
+		#self.gps_dme_ref=XPLMFindDataRef("sim/cockpit2/radios/indicators/gps_dme_distance_nm")
+		self.gps_time_ref=XPLMFindDataRef("sim/cockpit/radios/gps_dme_time_secs")
+		self.gps_dist_ref=XPLMFindDataRef("sim/cockpit/radios/gps_dme_dist_m")
+		self.mach_ref=XPLMFindDataRef("sim/flightmodel/misc/machno")
 		
 		self.started=0
 		self.Dstarted=0
@@ -421,11 +467,14 @@ class PythonInterface:
 		self.msg3=""
 		self.msg4=""
 		self.msg5=""
-		self.msg6=""
+		self.dmsg1=""
+		self.dmsg2=""
+		self.dmsg3=""
 		winPosX=20
 		winPosY=700
 		win_w=270
 		win_h=110
+		win2PosY=600
 		self.num_eng=0
 		self.TO_pwr=0
 		self.acf_descb=[]
@@ -435,9 +484,11 @@ class PythonInterface:
 
 		self.gameLoopCB=self.gameLoopCallback
 		self.DrawWindowCB=self.DrawWindowCallback
+		self.DrawDWindowCB=self.DrawDWindowCallback
 		self.KeyCB=self.KeyCallback
 		self.MouseClickCB=self.MouseClickCallback
 		self.gWindow=XPLMCreateWindow(self, winPosX, winPosY, winPosX + win_w, winPosY - win_h, 1, self.DrawWindowCB, self.KeyCB, self.MouseClickCB, 0)
+		self.dWindow=XPLMCreateWindow(self, winPosX, win2PosY, winPosX + win_w, winPosY - win_h, 1, self.DrawDWindowCB, self.KeyCB, self.MouseClickCB, 0)
 
 		self.CmdSHConn = XPLMCreateCommand("fsei/flight/perfinfo","Shows or hides performance info")
 		self.CmdSHConnCB  = self.CmdSHConnCallback
@@ -477,11 +528,12 @@ class PythonInterface:
 			self.started=1
 		else:
 			self.acf_descb=[]
-			XPLMDestroyWindow(self, self.gWindow)
 			XPLMUnregisterFlightLoopCallback(self, self.gameLoopCB, 0)
 			self.started=1
 			
 	def toggleDInfo(self):
+		if self.started==0:
+			self.toggleInfo()
 		if self.Dstarted==0:
 			self.Dstarted=1
 		else:
@@ -499,12 +551,29 @@ class PythonInterface:
 			XPLMDrawString(color, left+5, top-50, self.msg3, 0, xplmFont_Basic)
 			XPLMDrawString(color, left+5, top-65, self.msg4, 0, xplmFont_Basic)
 			XPLMDrawString(color, left+5, top-80, self.msg5, 0, xplmFont_Basic)
-			XPLMDrawString(color, left+5, top-95, self.msg6, 0, xplmFont_Basic)
+
+	def DrawDWindowCallback(self, inWindowID, inRefcon):
+		if self.started==1:
+			lLeft=[];	lTop=[]; lRight=[];	lBottom=[]
+			XPLMGetWindowGeometry(inWindowID, lLeft, lTop, lRight, lBottom)
+			left=int(lLeft[0]); top=int(lTop[0]); right=int(lRight[0]); bottom=int(lBottom[0])
+			XPLMDrawTranslucentDarkBox(left,top,right,bottom)
+			color=1.0, 1.0, 1.0
+			XPLMDrawString(color, left+5, top-20, self.msg1, 0, xplmFont_Basic)
+			XPLMDrawString(color, left+5, top-35, self.msg2, 0, xplmFont_Basic)
+			XPLMDrawString(color, left+5, top-50, self.dmsg1, 0, xplmFont_Basic)
+			XPLMDrawString(color, left+5, top-65, self.dmsg2, 0, xplmFont_Basic)
+			XPLMDrawString(color, left+5, top-80, self.dmsg3, 0, xplmFont_Basic)
 
 	def XPluginStop(self):
 		if self.started==1:
 			self.toggleInfo()
+		if self.Dstarted==1:
+			self.toggleDInfo()
 		XPLMUnregisterCommandHandler(self, self.CmdSHConn, self.CmdSHConnCB, 0)
+		XPLMUnregisterCommandHandler(self, self.CmdSDConn, self.CmdSDConnCB, 0)
+		XPLMDestroyWindow(self, self.gWindow)
+		XPLMDestroyWindow(self, self.dWindow)
 		pass
 
 	def XPluginEnable(self):
@@ -523,6 +592,16 @@ class PythonInterface:
 		alt=XPLMGetDataf(self.alt_ref)*self.mft #m -> ft
 		wgt=XPLMGetDataf(self.wgt_ref)*self.kglb #kg -> lb
 		acf_desc=str(self.acf_descb)
+		alt_ind=XPLMGetDataf(self.alt_ind_ref)
+		
+		kias=XPLMGetDataf(self.ias_ref)
+		speed=str(int(round(kias)))+" kias"
+		mach=XPLMGetDataf(self.mach_ref)
+		machstr="M"+str(round(mach,2))
+		DenAlt=self.getDA(P,T) #ft
+		#DenAltApprox=self.getDA_approx(P,T) #ft
+		delISA=self.getdelISA(alt, T)
+		
 		if self.eng_type[0]==2 or self.eng_type[0]==8: #Turboprop
 			TRQ=[]
 			XPLMGetDatavf(self.TRQ_ref, TRQ, 0, self.num_eng)
@@ -533,7 +612,7 @@ class PythonInterface:
 			pwr=str(round(N1[0],1))+"% N1"
 		else:
 			pwr="N/A"
-		#print "B737 part "+acf_desc[0:27]
+		
 		if acf_desc[0:27]=="['Boeing 737-800 xversion 4":
 			AC="B738"
 		elif acf_desc=="['Pilatus PC-12']":
@@ -551,18 +630,14 @@ class PythonInterface:
 				TO_str=""
 		else:
 			AC=acf_desc
-		kias=XPLMGetDataf(self.ias_ref)
-		speed=str(int(round(kias)))+" kias"
-		DenAlt=self.getDA(P,T) #ft
-		#DenAltApprox=self.getDA_approx(P,T) #ft
-		delISA=self.getdelISA(alt, T)
+
 		maxPwr=self.getMaxPwr(DenAlt, delISA, AC)
 		cruiseclb=self.getCC(DenAlt, alt, delISA, AC)
-		cruise=self.getCruise(DenAlt, wgt, alt, delISA, AC)
+		cruise=self.getCruise(DenAlt, wgt, alt_ind, delISA, AC)
 		maxcruise=self.getMaxCruise(DenAlt, wgt, alt, delISA, AC)
 		optFL=self.getOptFL(wgt, AC)
 		maxFL=self.getMaxFL(wgt, delISA, AC)
-		
+
 		gears=[]
 		XPLMGetDatavf(self.geardep_ref, gears, 0, 10)
 		#print "Gear "+str(gears[0])
@@ -578,19 +653,29 @@ class PythonInterface:
 			if XPLMGetDataf(self.f_norm_ref) != 0:
 				#print "XDMG = On ground"
 				V1=self.getV1(flaps, wgt, DenAlt, T, AC)
-			else:
+			elif self.Dstarted==1:
 				#print "XDMG = In air"
 				Vref=self.getVref(flaps, wgt, DenAlt, T, AC)
 						
 		dIstr=str(int(round(delISA)))+" "+self.d+"C"
 		if delISA>0:
 			dIstr="+"+dIstr
-			
+
 		self.msg1=AC+"  DA: "+str(int(round(DenAlt)))+" ft  GW: "+str(int(round(wgt)))+" lb"
-		self.msg2="T: "+str(int(round(T)))+" "+self.d+"C  ISA +/-: "+dIstr+"  "+TO_str
+		self.msg2="T: "+str(int(round(T)))+" "+self.d+"C  ISA +/-: "+dIstr+"  "+TO_str+machstr
 		self.msg3="Pwr: "+maxPwr+"  CC: "+cruiseclb+"  Thr: "+pwr
 		self.msg4="Crs: "+maxcruise+"  LR: "+cruise+"  AS: "+speed
-		self.msg5="FL: "+maxFL+"  FL: "+optFL#+" Flaps: "+str(flaps)
-		self.msg6="V1: "+V1+"  Vref: "+Vref
-
+		self.msg5="FL: "+maxFL+"  FL: "+optFL+"V1: "+V1#+" Flaps: "+str(flaps)
+		
+		if self.Dstarted==1:
+			#destid= Get destination nav ID
+			#dalt= Get altitude of destination
+			#time=XPLMGetDataf(self.gps_time_ref)
+			dist=XPLMGetDataf(self.gps_dist_ref)*self.mft/6076
+			ddist=self.getDesc(dist, alt, dalt, DenAlt, AC)
+			dprof=self.getDpro(AC)
+			self.dmsg1="Descend at: "+ddist
+			self.dmsg2=""
+			self.dmsg3="Vref: "+Vref
+		
 		return 10
