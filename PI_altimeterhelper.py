@@ -71,7 +71,7 @@ class PythonInterface:
 		self.gameLoopCB=self.gameLoopCallback
 		XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 1, 0)
 		
-		self.CmdSHConn = XPLMCreateCommand("althelp/tools/set_altimeter","Sets altimeter for current position and altitude")
+		self.CmdSHConn = XPLMCreateCommand("althelp/set_altimeter","Sets altimeter for current position and altitude")
 		self.CmdSHConnCB  = self.CmdSHConnCallback
 		XPLMRegisterCommandHandler(self, self.CmdSHConn,  self.CmdSHConnCB, 0, 0)
 		
@@ -137,12 +137,14 @@ class PythonInterface:
 			# Climbing through 18000
 			print "Climbing through transition alt"
 			if vvi >= 500 or (vvi < 500 and alt > self.trans_alt + 250):
-				alt=self.setBaro(29.92)
+				bar=29.92
+				alt=self.setBaro(bar)
 		elif alt < self.trans_alt and self.last_alt >= self.trans_alt:
 			# Descending through 18000
 			print "Descending through transition alt"
 			if vvi <= -500 or (vvi > -500 and alt < self.trans_alt - 250):
-				alt=self.setBaro(XPLMGetDataf(self.baro_act_ref))
+				bar=XPLMGetDataf(self.baro_act_ref)
+				alt=self.setBaro(bar)
 		
 		alt_err=self.getAlt(bar-bar_act,0)
 		if abs(alt_err)>250:
