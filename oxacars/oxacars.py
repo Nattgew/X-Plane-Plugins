@@ -15,7 +15,9 @@ from XPStandardWidgets import *
 from XPWidgetDefs import *
 from XPWidgets import *
 
-#include <time.h>
+#add self. to caption widgets?
+#replace button press code with functions
+#test return from Post function for success
 
 class PythonInterface:
 
@@ -45,8 +47,8 @@ class PythonInterface:
 		decpart=decdegrees - degrees
 		minutes=decpart * 60
 
-		locstring=hemi + degrees + " " + str(round(minutes,4))
-
+		locstring=hemi+degrees+" "+str(round(minutes,4))
+		
 		return locstring
 
 	def XPluginStart(self):
@@ -201,7 +203,6 @@ class PythonInterface:
 		pass
 
 	def MenuHandler(self, inMenuRef, inItemRef):
-		# If menu selected create our widget dialog
 		if inItemRef==1:
 			print "OX Menu item selected"
 			if self.gWidget==0:
@@ -244,10 +245,9 @@ class PythonInterface:
 
 	def CreateWidget(self, x, y, w, h):
 		
-		x2=x + w
-		y2=y - h
+		x2=x+w
+		y2=y-h
 
-	# Create the Main Widget window.
 		self.OXWidget=XPCreateWidget(x, y, x2, y2,
 			1, # Visible
 			"OXACARS py", # desc
@@ -255,10 +255,8 @@ class PythonInterface:
 			0, # no container
 			xpWidgetClass_MainWindow)
 
-	# Add Close Box to the Main Widget
 		XPSetWidgetProperty(self.OXWidget, xpProperty_MainWindowHasCloseBoxes, 1)
 
-	# Add widgets and stuff
 		FltNoCap=XPCreateWidget(x+20, y-40, x+80, y-60, 1, "Flight No.", 0, self.OXWidget, xpWidgetClass_Caption)
 
 		self.FltNoText=XPCreateWidget(x+100, y-40, x+180, y-60, 1, "", 0, self.OXWidget, xpWidgetClass_TextField)
@@ -385,11 +383,9 @@ class PythonInterface:
 		self.SendButton=XPCreateWidget(x+20, y-480, x+140, y-500, 1, "Send", 0, self.OXWidget, xpWidgetClass_Button)
 		XPSetWidgetProperty(self.SendButton, xpProperty_ButtonType, xpPushButton)
 
-	# Register our widget handler
 		print "OX Widget created"
 		self.OXHandlerCB=self.OXHandler
 		XPAddWidgetCallback(self, self.OXWidget, self.OXHandlerCB)
-
 
 	def OXHandler(self, inMessage, inWidget,    inParam1, inParam2):
 		if inMessage==xpMessage_CloseButtonPushed:
@@ -398,28 +394,21 @@ class PythonInterface:
 				XPHideWidget(self.OXWidget)
 				return 1
 
-		# Test for a button pressed
 		if inMessage==xpMsg_PushButtonPressed:
 			if inParam1==self.ACARSInfoButton:
 				# ?DATA1=XACARS|1.1&DATA2=XAC1001
 				# ?DATA1=XACARS|2.0&DATA2=pid&DATA3=flightplan&DATA4=pid&DATA5=password
 
 				print "OXACARS - Assembling query URL..."
-				#char * durl=malloc(snprintf(NULL, 0, "%s?DATA1=%s&DATA2=%s", fdurl, DATA1v1, PID) + 1)
 				#sprintf(durl, "%s?DATA1=%s&DATA2=%s", fdurl, DATA1v1, PID)
 
 				durl="DATA1="+DATA1v2+"&DATA2="+PID+"&DATA3=flightplan&DATA4="+PID+"&DATA5="+Ppass
-
-				print "OXACARS - Will attempt to get " + durl
-				
+				print "OXACARS - Will attempt to get "+durl
 				getInfo=self.XACARSpost(self.fdurl,durl)
 
-				#But I don't wanna explode...
 				print "OXACARS - Now attempting to parse response..."
-
 				p=getInfo.split('\n')
 				n_spaces=0
-				
 				fd=[]
 				fd[n_spaces-1]=p
 
@@ -433,22 +422,21 @@ class PythonInterface:
 				self.cargo= fd[6]
 				self.pax= fd[5]
 
-				# print "OXACARS - Dep: %s Arr: %s Altn: %s\n", Dep, Arr, Altn)
-				#print "OXACARS - Route: %s\n", Route)
-				#print "OXACARS - Alt: %s Plan: %s Type: %s\n", Alt, Plan, ACType)
-				#print "OXACARS - Pax: %s Cargo: %s\n", pax, cargo)
+				#print 'OXACARS - Dep: %s Arr: %s Altn: %s\n", Dep, Arr, Altn)
+				#print 'OXACARS - Route: %s\n", Route)
+				#print 'OXACARS - Alt: %s Plan: %s Type: %s\n", Alt, Plan, ACType)
+				#print 'OXACARS - Pax: %s Cargo: %s\n', pax, cargo)
 
-				XPSetWidgetDescriptor(self, self.DepText, self.Dep)
-				XPSetWidgetDescriptor(self, self.ArrText, self.Arr)
-				XPSetWidgetDescriptor(self, self.AltnText, self.Altn)
-				XPSetWidgetDescriptor(self, self.RtText, self.Route)
-				XPSetWidgetDescriptor(self, self.PlanText, self.Plan)
-				XPSetWidgetDescriptor(self, self.TypeText, self.ACType)
-				XPSetWidgetDescriptor(self, self.CargoText, self.cargo)
-				XPSetWidgetDescriptor(self, self.PaxText, self.pax)
+				XPSetWidgetDescriptor(self.DepText, self.Dep)
+				XPSetWidgetDescriptor(self.ArrText, self.Arr)
+				XPSetWidgetDescriptor(self.AltnText, self.Altn)
+				XPSetWidgetDescriptor(self.RtText, self.Route)
+				XPSetWidgetDescriptor(self.PlanText, self.Plan)
+				XPSetWidgetDescriptor(self.TypeText, self.ACType)
+				XPSetWidgetDescriptor(self.CargoText, self.cargo)
+				XPSetWidgetDescriptor(self.PaxText, self.pax)
 
 			if inParam1==self.SettingsButton:
-				# open settings stuff
 				print "OXACARS - You pressed the Settings button..."
 				if sWidget==0:
 					self.CreateSettingsWidget(100, 712, 600, 662) #left, top, right, bottom.
@@ -461,14 +449,14 @@ class PythonInterface:
 				if self.chkBrk()==1:
 					print "OXACARS - PARKING BRAKE IS SET"
 					return 0
-				self.num_eng=XPLMGetDatai( self.num_eng_ref)
-				print "OXACARS - Found " + self.num_eng + "engines..."
+				self.num_eng=XPLMGetDatai(self.num_eng_ref)
+				print "OXACARS - Found "+self.num_eng+" engines..."
 				if self.isAllEngineStopped()==0:
 					print "OXACARS - SHUT OFF ENGINES"
 					return 0
 
 				print "OXACARS - Gathering flight info..."
-				XPLMGetDatab( self.tailnum_ref, self.tailnum, 0, 40)
+				XPLMGetDatab(self.tailnum_ref, self.tailnum, 0, 40)
 
 				XPGetWidgetDescriptor(self.PaxText, self.pax, 3)
 				XPGetWidgetDescriptor(self.FltNoText, self.fltno, 8)
@@ -491,15 +479,15 @@ class PythonInterface:
 				BEGlat=self.degdm(BEG_lat, 0)
 				BEGlon=self.degdm(BEG_lon, 1)
 				
-				FW=BEG_f * self.kglb
-				Elev=BEG_alt * self.mft
+				FW=BEG_f*self.kglb
+				Elev=BEG_alt*self.mft
 				
 				self.FOB_prev=FW
 				#DATA1=XACARS|2.0&DATA2=BEGINFLIGHT&DATA3=pid||pid|73W||KMDW~PEKUE~OBENE~MONNY~IANNA~FSD~J16~BIL~J136~MLP~GLASR9~KSEA|N34 34.2313 E69 11.6551|5866||||107|180|15414|0|IFR|0|password|&DATA4=
 				#surl="DATA1="+self.DATA1v2+"&DATA2=BEGINFLIGHT&DATA3="+self.uname+"||"+self.fltno+"|"+self.Type+"||"+self.Dep+"~"+self.Route.replace(" ", "~")+"~"+self.Arr+"|"+BEGlat+" "+BEGlon+"|"+str(round(Elev))+"||||"+str(round(FW))+"|"+str(round(hdgm))+"|"+str(round(wndh))+str(round(wndk))+"|0|"+self.Plan+"|0|"+self.Ppass+"|&DATA4="
 				surl='DATA1=%s&DATA2=BEGINFLIGHT&DATA3=%s||%s|%s||%s~%s~%s|%s %s|%.0f||||%.0f|%.0f|%.0f%.0f|0|%s|0|%s|&DATA4=' % (self.DATA1v2, self.uname, self.fltno, self.Type, self.Dep, self.Route.replace(" ", "~"), self.Arr, BEGlat, BEGlon, Elev, FW, hdgm, wndh, wndk, self.Plan, self.Ppass)
 				
-				print "OXACARS - Will send url " + surl
+				print "OXACARS - Will send url "+surl
 				
 				getInfo=self.XACARSpost(self.acarsurl,surl)
 
@@ -556,34 +544,34 @@ class PythonInterface:
 
 				purl="DATA1="+DATA1v1+"&DATA2="+DATA2
 
-				print "OXACARS - Will send url "+ purl
+				print "OXACARS - Will send url "+purl
 
 				sendInfo=self.XACARSpost(self.pirepurl,purl)
 
-	def MyFlightLoopCallback(self,):
+	def MyFlightLoopCallback(self, inElapsedSinceLastCall, elapsedSim, counter, refcon):
 		schg=0
 		cold=0
 		gear_state=1
 		IAS=XPLMGetDataf(self.ias_ref)
 		C_now=XPLMGetDataf(self.vvi_ref)
-		Alt=XPLMGetDatad(self.alt_ref) * self.mft
+		Alt=XPLMGetDatad(self.alt_ref)*self.mft
 
 		if ( self.OFF==1 and self.ON==0):
 			# Track max values
 			I_now=XPLMGetDataf(self.ias_ref)
-			G_now=XPLMGetDataf(self.gs_ref) * mkt
+			G_now=XPLMGetDataf(self.gs_ref)*mkt
 			if C_now > self.maxC:
 				self.maxC=C_now
-				XPSetWidgetDescriptor(self.maxCdisp, str(round(maxC)))
+				XPSetWidgetDescriptor(self.maxCdisp, str(int(round(maxC))))
 			elif C_now < self.maxD:
 				self.maxD=C_now;
-				XPSetWidgetDescriptor(self.maxDdisp, str(round(maxD)))
+				XPSetWidgetDescriptor(self.maxDdisp, str(int(round(maxD))))
 			if I_now > self.maxI:
 				self.maxI=I_now
-				XPSetWidgetDescriptor(self.maxIdisp, str(round(maxI)))
+				XPSetWidgetDescriptor(self.maxIdisp, str(int(round(maxI))))
 			if G_now > self.maxG:
 				self.maxG=G_now
-				XPSetWidgetDescriptor(self.maxGdisp, str(round(maxG)))
+				XPSetWidgetDescriptor(self.maxGdisp, str(int(round(maxG))))
 
 		iter=self.Counter % ( 60 * self.ival);
 		cstate=1
@@ -645,7 +633,7 @@ class PythonInterface:
 			wndk=XPLMGetDataf(self.wndk_ref)
 			OAT=XPLMGetDataf(self.t_amb_ref)
 			TAT=XPLMGetDataf(self.t_le_ref)
-			FOB=XPLMGetDataf(self.wt_f_tot_ref) * self.kglb
+			FOB=XPLMGetDataf(self.wt_f_tot_ref)*self.kglb
 			dist=0
 			dist_down=0
 			dist_togo=0 # this would be too hard
@@ -663,7 +651,7 @@ class PythonInterface:
 			ztime=strftime("%H:%MZ", tstamp)
 
 			if self.msg==100:# roll ACARS message index
-				self.msgc=chr(ord(self.msgc) + 1)
+				self.msgc=chr(ord(self.msgc)+1)
 				self.msg=1
 				
 			msgstr='M%02d%c' % (self.msg, self.msgc)
@@ -675,33 +663,33 @@ class PythonInterface:
 
 			lat=XPLMGetDatad(self.lat_ref)
 			lon=XPLMGetDatad(self.lon_ref)
-			dlat=self.degdm(lat, 0)
-			dlon=self.degdm(lon, 1)
+			dlat=self.degdm(lat,0)
+			dlon=self.degdm(lon,1)
 			
 			POS='POS %s %s\n' % (dlat,dlon)
 
 			if schg==1: # OUT
-				TAW=XPLMGetDataf(self.wt_tot_ref) * self.kglb
+				TAW=XPLMGetDataf(self.wt_tot_ref)*self.kglb
 				self.OUT_f=FOB
-				self.ZFW=TAW - self.OUT_f
+				self.ZFW=TAW-self.OUT_f
 				self.OUT_time=tstamp
 				self.OUTlat=dlat
 				self.OUTlon=dlon
 				self.OUTalt=Alt
-				XPSetWidgetDescriptor(self.ZFWdisp, str(round(self.ZFW)))
-				XPSetWidgetDescriptor(self.OUTlatdisp, self.OUTlat)
-				XPSetWidgetDescriptor(self.OUTlondisp, self.OUTlon)
-				XPSetWidgetDescriptor(self.OUTaltdisp, str(round(OUTalt)))
+				XPSetWidgetDescriptor(self.ZFWdisp,str(int(round(self.ZFW))))
+				XPSetWidgetDescriptor(self.OUTlatdisp,self.OUTlat)
+				XPSetWidgetDescriptor(self.OUTlondisp,self.OUTlon)
+				XPSetWidgetDescriptor(self.OUTaltdisp,str(int(round(OUTalt))))
 				print "OXACARS - Building OUT report..."
 				#messg="OUT "+ztime+" /ZFW "+str(round(self.ZFW))+" /FOB "+str(round(self.OUT_f))+" /TAW "+str(round(TAW))+"\n/AP "+self.Dep+"\n/"+POS+"/ALT "+str(round(self.OUTalt))+"\n"+com
 				messg='OUT %s /ZFW %.0f /FOB %.0f /TAW %.0f\n/AP %s\n/%s/ALT %.0f\n%s' % (ztime, self.ZFW, self.OUT_f, TAW, self.Dep, POS, self.OUTalt, com)
 			elif schg==2: # OFF
 				self.OFF_f=FOB
-				self.TOW=XPLMGetDataf(self.wt_tot_ref) * self.kglb
+				self.TOW=XPLMGetDataf(self.wt_tot_ref)*self.kglb
 				XPLMGetDatavf( self.en1_ref, n1, 0, self.num_eng)
 				XPLMGetDatavf( self.en2_ref, n2, 0, self.num_eng)
 				self.OFF_time=tstamp
-				XPSetWidgetDescriptor(self.TOWdisp, str(round(self.TOW)))
+				XPSetWidgetDescriptor(self.TOWdisp,str(int(round(self.TOW))))
 				print "OXACARS - Building OFF report..."
 				#messg="OFF "+ztime+" /FOB "+str(round(self.OFF_f))+" /TOW "+str(round(self.TOW))+"\n/"+POS+"/ALT "+str(round(Alt))+"\n"+com
 				messg='OFF %s /FOB %.0f /TOW %.0f\n/%s/ALT %.0f\n%s' % (ztime, self.OFF_f, self.TOW, POS, Alt, com);
@@ -713,11 +701,11 @@ class PythonInterface:
 				XPLMGetDatavf(self.en1_ref, n1, 0, self.num_eng)
 				XPLMGetDatavf(self.en2_ref, n2, 0, self.num_eng)
 				self.ON_f=FOB
-				self.LW=XPLMGetDataf(self.wt_tot_ref) * self.kglb
+				self.LW=XPLMGetDataf(self.wt_tot_ref)*self.kglb
 				self.ON_time=tstamp
-				self.FF=(self.OFF_f - self.ON_f)
-				XPSetWidgetDescriptor(self.LWdisp, str(round(self.LW)))
-				XPSetWidgetDescriptor(self.FFdisp, str(round(self.FF)))
+				self.FF=(self.OFF_f-self.ON_f)
+				XPSetWidgetDescriptor(self.LWdisp,str(int(round(self.LW))))
+				XPSetWidgetDescriptor(self.FFdisp,str(int(round(self.FF))))
 				print "OXACARS - Building ON report..."
 				#messg="ON "+ztime+" /FOB "+str(round(self.ON_f))+" /LAW "+str(round(self.LW))+"\n/AP "+self.Arr+"\n/"+POS+"/ALT "+str(round(Alt))+"\n"+com
 				messg='ON %s /FOB %.0f /LAW %.0f\n/AP %s\n/%s/ALT %.0f\n%s' % (ztime, self.ON_f, self.LW, self.Arr, POS, Alt, com)
@@ -726,23 +714,23 @@ class PythonInterface:
 			elif schg==4: # IN
 				#WTF what happened to the IN report?
 				self.IN_f=FOB
-				self.BF=(self.OUT_f - self.IN_f)
+				self.BF=(self.OUT_f-self.IN_f)
 				self.IN_time=tstamp
-				self.blocktime=self.stohhmm(self.IN_time - self.OUT_time) # (hh:mm)
-				self.flighttime=self.stohhmm(self.ON_time - self.OFF_time) # (hh:mm)
-				self.DT=strftime("%d.%m.%Y %H:%M", self.OUT_time) # (dd.mm.yyyy hh:mm)
-				XPSetWidgetDescriptor(self.BTdisp, self.blocktime)
-				XPSetWidgetDescriptor(self.FTdisp, self.flighttime)
-				XPSetWidgetDescriptor(self.DTdisp, self.DT)
+				self.blocktime=self.stohhmm(self.IN_time-self.OUT_time) # (hh:mm)
+				self.flighttime=self.stohhmm(self.ON_time-self.OFF_time) # (hh:mm)
+				self.DT=strftime("%d.%m.%Y %H:%M",self.OUT_time) # (dd.mm.yyyy hh:mm)
+				XPSetWidgetDescriptor(self.BTdisp,self.blocktime)
+				XPSetWidgetDescriptor(self.FTdisp,self.flighttime)
+				XPSetWidgetDescriptor(self.DTdisp,self.DT)
 				self.INlat=dlat
 				self.INlon=dlon
 				self.INalt=Alt
 				self.IN_net_s=XPLMGetDataf(self.net_ref)
-				dist=XPLMGetDataf(self.dist_trav_ref) * self.mft / 6076
-				XPSetWidgetDescriptor(self.BFdisp, str(round(self.BF)))
-				XPSetWidgetDescriptor(self.INlatdisp, self.INlat)
-				XPSetWidgetDescriptor(self.INlondisp, self.INlon)
-				XPSetWidgetDescriptor(self.INaltdisp, str(round(self.INalt)))
+				dist=XPLMGetDataf(self.dist_trav_ref)*self.mft/6076
+				XPSetWidgetDescriptor(self.BFdisp,str(int(round(self.BF))))
+				XPSetWidgetDescriptor(self.INlatdisp,self.INlat)
+				XPSetWidgetDescriptor(self.INlondisp,self.INlon)
+				XPSetWidgetDescriptor(self.INaltdisp,str(int(round(self.INalt))))
 				print "OXACARS - Building IN report..."
 				#messg="BLOCK TIME "+self.blocktime+" /FUEL "+str(round(self.BF))+"\nFLIGHT TIME "+self.flighttime+" /FUEL "+str(round(self.FF))+"\nFLIGHT DISTANCE "+str(round(dist))+"\n"
 				messg='BLOCK TIME %s /FUEL %.0f\nFLIGHT TIME %s /FUEL %.0f\nFLIGHT DISTANCE %.0f\n' % (self.blocktime, self.BF, self.flighttime, self.FF, dist)
@@ -777,5 +765,4 @@ class PythonInterface:
 		self.C_then=C_now # in case we land before next loop
 		self.Counter+=1 # increment loop counter
 
-		# Return 1.0 to indicate that we want to be called again in 1 second.
 		return 1.0
