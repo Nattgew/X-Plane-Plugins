@@ -65,7 +65,7 @@ class PythonInterface:
 			profile="Have fun"
 		return profile
 	
-	def getDesc(self, dist, alt, dalt, DA, AC):
+	def getDesc(self, dist, alt, dalt, DA, delISA, AC):
 		if AC=="B738":
 			ddist_nm=(alt-dalt)*1000/3
 			ddist=str(int(round(ddist_nm)))+" nm"
@@ -83,7 +83,7 @@ class PythonInterface:
 				(10.8,22.2,34.8,47.8,60.2,72.4),	# 20
 				(11.0,22.5,35.5,48.3,61.4,73.9))	# 30
 			alt_i=alt/5000-1
-			isa_i=isa/10+4
+			isa_i=delISA/10+4
 			alt_ih, alt_il, exactalt = self.get_index(alt_i, len(alts))
 			isa_ih, isa_il, exactisa = self.get_index(isa_i, len(isas))
 			
@@ -476,6 +476,7 @@ class PythonInterface:
 		self.gps_dist_ref=XPLMFindDataRef("sim/cockpit/radios/gps_dme_dist_m")
 		self.gps_dest_index_ref=XPLMFindDataRef("sim/cockpit/gps/destination_index")
 		self.mach_ref=XPLMFindDataRef("sim/flightmodel/misc/machno")
+		self.alt_ind_ref=XPLMFindDataRef("sim/flightmodel/misc/h_ind")
 		
 		self.started=0
 		self.Dstarted=0
@@ -490,7 +491,7 @@ class PythonInterface:
 		winPosX=20
 		winPosY=700
 		win_w=270
-		win_h=110
+		win_h=90
 		win2PosY=600
 		self.num_eng=0
 		self.TO_pwr=0
@@ -624,8 +625,7 @@ class PythonInterface:
 				self.TO_pwr-=inElapsedSinceLastCall
 				TPR_m=int(self.TO_pwr/60)
 				TPR_s=int(self.TO_pwr%60)
-				TO_str=str(TPR_m)+":"+str(TPR_s)+"  TO pwr remain"
-				TO_str='%d:%02d' % (TPR_m, TPR_s)
+				TO_str='  %d:%02d TO pwr remain' % (TPR_m, TPR_s)
 			else:
 				self.TO_pwr=300
 				TO_str=""
@@ -673,10 +673,11 @@ class PythonInterface:
 		else:
 			destid=XPLMGetDatai(self.gps_dest_index_ref)
 			#dalt= Get altitude of destination
+			dalt=0
 			#time=XPLMGetDataf(self.gps_time_ref)
 			dist=XPLMGetDataf(self.gps_dist_ref)*self.mft/6076
 			if dist<9000 and dist>0:
-				ddist=self.getDesc(dist, alt, dalt, DenAlt, AC)
+				ddist=self.getDesc(dist, alt, dalt, DenAlt, delISA, AC)
 			else:
 				ddist="No Dest"
 			dprof=self.getDpro(AC)
