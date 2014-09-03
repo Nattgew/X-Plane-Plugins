@@ -15,16 +15,13 @@ class PythonInterface:
 	def get_index(self, i, length):
 		flo=int(floor(i))
 		fhi=int(ceil(i))
-		exact=0
 		if fhi>length-1:
 			flo=length-2
 			fhi=length-1
 		elif flo<0:
 			flo=0
 			fhi=1
-		elif flo==fhi:
-			exact=1
-		return (fhi, flo, exact)
+		return (fhi, flo)
 	
 	def interp(self, y2, y1, x2, x1, xi):
 		if y2==y1:
@@ -46,11 +43,6 @@ class PythonInterface:
 		density_alt=self.T_SL/self.gamma_l*(1-((P/self.P_SL)/(T/self.T_SL))**(self.gamma_u*self.R/(self.g*self.M-self.gamma_u*self.R)))
 		return density_alt
 	
-	def getDA_approx(self, P, T):
-		T=self.CtoF(T)
-		density_alt=145442.16*(1-(17.326*P/(459.67+T))**0.235)
-		return density_alt
-	
 	def getdelISA(self, alt, T):
 		T_ISA=15-self.gamma_l*alt
 		delISA=T-T_ISA
@@ -70,8 +62,6 @@ class PythonInterface:
 			ddist_nm=(alt-dalt)*1000/3
 			ddist=str(int(round(ddist_nm)))+" nm"
 		elif AC=="PC12":
-			exactalt=0
-			exactisa=0
 			alts=tuple(range(5000,30001,5000))
 			isas=tuple(range(-40,30,10))
 			dnms=((9.6,20.0,31.0,0,0,0), 			# -40
@@ -84,17 +74,10 @@ class PythonInterface:
 				(11.0,22.5,35.5,48.3,61.4,73.9))	# 30
 			alt_i=alt/5000-1
 			isa_i=delISA/10+4
-			alt_ih, alt_il, exactalt = self.get_index(alt_i, len(alts))
-			isa_ih, isa_il, exactisa = self.get_index(isa_i, len(isas))
-			
-			if exactalt==1 and exactisa==1:
-				ddist_nm=dnms[isa_il][alt_il]
-			elif exactalt==1:
-				ddist_nm=self.interp(dnms[isa_ih][alt_il], dnms[isa_il][alt_il], isas[isa_ih], isas[isa_il], delISA)
-			elif exactisa==1:
-				ddist_nm=self.interp(dnms[isa_il][alt_ih], dnms[isa_il][alt_il], alts[alt_ih], alts[alt_il], DA)
-			else:
-				ddist_nm=self.interp2(dnms[isa_ih][alt_il], dnms[isa_il][alt_il], dnms[isa_ih][alt_ih], dnms[isa_il][alt_ih], isas[isa_ih], isas[isa_il], alts[alt_ih], alts[alt_il], delISA, DA)
+			alt_ih, alt_il = self.get_index(alt_i, len(alts))
+			isa_ih, isa_il = self.get_index(isa_i, len(isas))
+
+			ddist_nm=self.interp2(dnms[isa_ih][alt_il], dnms[isa_il][alt_il], dnms[isa_ih][alt_ih], dnms[isa_il][alt_ih], isas[isa_ih], isas[isa_il], alts[alt_ih], alts[alt_il], delISA, DA)
 			ddist=str(int(round(ddist_nm)))+" nm"
 		else:
 			ddist="N/A"
@@ -103,25 +86,18 @@ class PythonInterface:
 	def getVref(self, flaps, wgt, DA, T, AC):
 		if AC=="PC12": # Flaps 40
 			self.vr=1
-			exactwt=0
 			GW=tuple(range(6400,10001,900))
 			vapps=(67.0,72.0,76.0,80.0,84.0)
-			
 			wgt_i=wgt/900-64/9
-			wgt_ih, wgt_il, exactwt = self.get_index(wgt_i, len(GW))
-			if exactwt==1:
-				vapp=vapps[wgt_il]
-			else:
-				vapp=self.interp(vapps[wgt_ih], vapps[wgt_il], GW[wgt_ih], GW[wgt_il], wgt)
+			wgt_ih, wgt_il = self.get_index(wgt_i, len(GW))
+			vapp=self.interp(vapps[wgt_ih], vapps[wgt_il], GW[wgt_ih], GW[wgt_il], wgt)
 			#print 'Vref %.0f %.0f %.0f %.0f %.0f = %.0f' % (vapps[wgt_ih], vapps[wgt_il], GW[wgt_ih], GW[wgt_il], wgt, vapp)
 			Vref=str(int(round(vapp)))+" kias"
 		elif AC=="B738":
-			exactwt=0
 			GW=tuple(range(90,181,10))
 			vrs=((122.0,129.0,135.0,142.0,148.0,154.0,159.0,164.0,169.0,174),		# flaps 15
 				(116.0,123.0,129.0,135.0,141.0,146.0,151.0,156.0,160.0,165),		# flaps 30
 				(109.0,116.0,122,128.0,133.0,139.0,144.0,148.0,153.0,157))		# flaps 40
-
 			flap_i=-1
 			for i in range(2,5):
 				if flaps == self.flaps_B738[i]:
@@ -130,11 +106,8 @@ class PythonInterface:
 				Vref="LAND CONFIG"
 			else:
 				wgt_i=wgt/10000-9
-				wgt_ih, wgt_il, exactwt = self.get_index(wgt_i, len(GW))
-				if exactwt==1:
-					vri=vrs[flap_i][wgt_il]
-				else:
-					vri=self.interp(vrs[flap_i][wgt_ih], vrs[flap_i][wgt_il], GW[wgt_ih], GW[wgt_il], wgt/1000)
+				wgt_ih, wgt_il = self.get_index(wgt_i, len(GW))
+				vri=self.interp(vrs[flap_i][wgt_ih], vrs[flap_i][wgt_il], GW[wgt_ih], GW[wgt_il], wgt/1000)
 				Vref=str(int(round(vri)))+" kias"
 		else:
 			ddist="N/A"
@@ -142,10 +115,8 @@ class PythonInterface:
 
 	def getV1(self, flaps, wgt, DA, T, AC):
 		if AC=="B738":
-			exactwt=0
 			GW=tuple(range(90,181,10))
 			alts=tuple(range(0,8001,2000))
-			
 			if T < 27 and DA < alts[1] or T < 38 and DA < alts[1] and (-T+38)/5.5 <= DA/1000: # A cyan
 				v1s=((107.0,114.0,121.0,127.0,133.0,139.0,145.0,150.0,155.0,160.0),	# flaps 1
 					(103.0,109.0,116.0,122.0,128.0,134.0,139.0,144.0,149.0,153.0),	# flaps 5
@@ -166,7 +137,6 @@ class PythonInterface:
 				v1s=((112.0,119.0,126.0,132.0,138.0,144.0,150.0,155.0,0,0),		# flaps 1
 					(108.0,114.0,121.0,127.0,133.0,139.0,0,0,0,0),			# flaps 5
 					(104.0,111.0,117.0,123.0,129.0,0,0,0,0,0))			# flaps 15
-			
 			flap_i=-1
 			for i in range(3):
 				if flaps == self.flaps_B738[i]:
@@ -175,27 +145,21 @@ class PythonInterface:
 				V1="T/O CONFIG"
 			else:
 				wgt_i=wgt/10000-9
-				wgt_ih, wgt_il, exactwt = self.get_index(wgt_i, len(GW))
-				
+				wgt_ih, wgt_il = self.get_index(wgt_i, len(GW))
 				if v1s[flap_i][wgt_ih]==0:
 					if v1s[flap_i][wgt_il]!=0:
 						v1f=v1s[flap_i][wgt_il]
 					else:
 						V1="> V1max"
 				else:
-					if exactwt==1:
-						v1f=v1s[flap_i][wgt_il]
-					else:
-						v1f=self.interp(v1s[flap_i][wgt_ih], v1s[flap_i][wgt_il], GW[wgt_ih], GW[wgt_il], wgt/1000)
+					v1f=self.interp(v1s[flap_i][wgt_ih], v1s[flap_i][wgt_il], GW[wgt_ih], GW[wgt_il], wgt/1000)
 					V1=str(int(round(v1f)))+" kias"
-		
 		elif AC=="PC12":
 			GW=(6400,7300,8200,9100,10000,10450)
 			vrs=((63,67,71,75,79,81),	# flaps 15
 				(58,62,66,70,73,75))	# flaps 30
 			#vas=((65,70,74,78,82,84), # flaps 15, Accelerate-stop, not used right now
 			#(59,63,67,71,74,76)) # flaps 30
-			
 			flap_i=-1
 			for i in range(0,2):
 				if round(flaps,1) == self.flaps_PC12[i]:
@@ -207,13 +171,9 @@ class PythonInterface:
 					wgt_i=wgt/900-64/9
 				else:
 					wgt_i=wgt/450-164/9
-				
-				wgt_ih, wgt_il, exactwt = self.get_index(wgt_i, len(GW))
+				wgt_ih, wgt_il = self.get_index(wgt_i, len(GW))
 				#print 'Interp: %.0f %.0f %.0f %.0f %.0f' % (vrs[flap_i][wgt_ih], vrs[flap_i][wgt_il], GW[wgt_ih], GW[wgt_il], wgt)
-				if exactwt==1:
-					vr=vrs[flap_i][wgt_il]
-				else:
-					vr=self.interp(vrs[flap_i][wgt_ih], vrs[flap_i][wgt_il], GW[wgt_ih], GW[wgt_il], wgt)
+				vr=self.interp(vrs[flap_i][wgt_ih], vrs[flap_i][wgt_il], GW[wgt_ih], GW[wgt_il], wgt)
 				V1=str(int(round(vr)))+" kias"
 		else:
 			V1="N/A"
@@ -221,8 +181,6 @@ class PythonInterface:
 	
 	def getCC(self, DA, alt, delISA, AC):
 		if AC=="PC12":
-			exactfl=0
-			exactdi=0
 			alts=tuple(range(0,30001,5000))
 			ias=((160.0,160.0,160.0,160.0,160.0,150.0,125.0),	# -40
 				(160.0,160.0,160.0,160.0,160.0,150.0,125.0),	# -30
@@ -233,20 +191,11 @@ class PythonInterface:
 				(160.0,155.0,140.0,130.0,120.0,110.0,110.0),	# +20
 				(150.0,140.0,130.0,120.0,110.0,110.0,110.0))	# +30
 			dis=(-40.0,-30.0,-20.0,-10.0,0.0,10.0,20.0,30.0)
-			
 			alt_i=alt/5000
 			dis_i=delISA/10+4
-			alt_ih, alt_il, exactfl = self.get_index(alt_i, len(alts))
-			dis_ih, dis_il, exactdi = self.get_index(dis_i, len(dis))
-			if exactfl==1 and exactdi==1:
-				cc=ias[dis_il][alt_il]
-			elif exactfl==1:
-				cc=self.interp(ias[dis_ih][alt_il], ias[dis_il][alt_il], dis[dis_ih], dis[dis_il], delISA)
-			elif exactdi==1:
-				cc=self.interp(ias[dis_il][alt_ih], ias[dis_il][alt_il], alts[alt_ih], alts[alt_il], alt)
-			else:
-				cc=self.interp2(ias[dis_ih][alt_il], ias[dis_il][alt_il], ias[dis_ih][alt_ih], ias[dis_il][alt_ih], dis[dis_ih], dis[dis_il], alts[alt_ih], alts[alt_il], delISA, alt)
-			
+			alt_ih, alt_il = self.get_index(alt_i, len(alts))
+			dis_ih, dis_il = self.get_index(dis_i, len(dis))
+			cc=self.interp2(ias[dis_ih][alt_il], ias[dis_il][alt_il], ias[dis_ih][alt_ih], ias[dis_il][alt_ih], dis[dis_ih], dis[dis_il], alts[alt_ih], alts[alt_il], delISA, alt)
 			bestCC=str(int(round(cc)))+" kias"
 		else:
 			bestCC="N/A"
@@ -254,27 +203,19 @@ class PythonInterface:
 		
 	def getOptFL(self, wgt, AC):
 		if AC=="B738":
-			exactwt=0
 			wts=tuple(range(120,181,5))
 			alts=(39700, 38800, 38000, 37200, 36500, 35700, 35000, 34300, 33700, 33000, 32400, 31700, 31100)
 			wt_i=wgt/5000-24
-			wt_ih, wt_il, exactwt = self.get_index(wt_i, len(wts))
-			if exactwt==1:
-				oa=alts[wt_il]
-			else:
-				oa=self.interp(alts[wt_ih], alts[wt_il], wts[wt_ih], wts[wt_il], wgt/1000)
-			
+			wt_ih, wt_il = self.get_index(wt_i, len(wts))
+			oa=self.interp(alts[wt_ih], alts[wt_il], wts[wt_ih], wts[wt_il], wgt/1000)
 			FLalt=str(round(oa,-2))
 			optFL="FL"+FLalt[0:3]
 		else:
 			optFL="N/A"
-			
 		return optFL
 	
 	def getMaxFL(self, wgt, delISA, AC):
 		if AC=="B738":
-			exactwt=0
-			exactdi=0
 			GW=tuple(range(120,181,5))
 			alts=((41000, 41000, 40500, 39800, 39100, 38500, 37800, 37200, 36600, 36000, 35300, 34600, 33800),	# +10C, below
 				(40900, 40200, 39500, 38800, 38200, 37500, 36900, 36200, 35600, 34900, 34000, 33100, 32100),	# +15C
@@ -286,17 +227,9 @@ class PythonInterface:
 				dI_i=0
 			elif dI_i > 2:
 				dI_i=2
-			wt_ih, wt_il, exactwt = self.get_index(wt_i, len(GW))
-			dI_ih, dI_il, exactdi = self.get_index(dI_i, len(temps))
-			if exactdi==1 and exactwt==1:
-				ma=alts[dI_il][wt_il]
-			elif exactdi==1:
-				ma=self.interp(alts[dI_il][wt_ih], alts[dI_il][wt_il], GW[wt_ih], GW[wt_il], wgt/1000)
-			elif exactwt==1:
-				ma=self.interp(alts[dI_ih][wt_il], alts[dI_il][wt_il], temps[dI_ih], temps[dI_il], delISA)
-			else:
-				ma=self.interp2(alts[dI_ih][wt_il], alts[dI_il][wt_il], alts[dI_ih][wt_ih], alts[dI_il][wt_ih], temps[dI_ih], temps[dI_il], GW[wt_ih], GW[wt_il], delISA, wgt/1000)
-
+			wt_ih, wt_il = self.get_index(wt_i, len(GW))
+			dI_ih, dI_il = self.get_index(dI_i, len(temps))
+			ma=self.interp2(alts[dI_ih][wt_il], alts[dI_il][wt_il], alts[dI_ih][wt_ih], alts[dI_il][wt_ih], temps[dI_ih], temps[dI_il], GW[wt_ih], GW[wt_il], delISA, wgt/1000)
 			FLalt=str(round(ma,-2))
 			maxFL="FL"+FLalt[0:3]
 		else:
@@ -310,8 +243,6 @@ class PythonInterface:
 			elif DA<24000:
 				bestCruise="280 kts"
 			else: # Use LR cruise table from manual
-				exactfl=0
-				exactwt=0
 				machs=((.601,.61,.619,.627,.636,.643,.652,.661,.671,.683,.695,.706,.718,.729),	# FL250
 					(.683,.647,.658,.690,.684,.698,.711,.725,.738,.749,.757,.764,.769,.773),	# FL290
 					(.690,.706,.723,.738,.751,.760,.768,.773,.777,.781,.785,.788,.791,.794),	# FL330
@@ -321,30 +252,18 @@ class PythonInterface:
 					(.786,.791,.794,.795,0,0,0,0,0,0,0,0,0,0))									# FL410
 				GW=tuple(range(110,176,5))
 				alts=(25,29,33,35,37,39,41)
-				
 				if DA<33000:
 					wt_i=wgt/5000-22
 					fl_i=alt/4000-6.25
 				else: #33000 to ceiling
 					wt_i=wgt/5000-22
 					fl_i=alt/2000-14.5
-				fl_ih, fl_il, exactfl = self.get_index(fl_i, len(alts))
-				wt_ih, wt_il, exactwt = self.get_index(wt_i, len(GW))
-				
-				if exactfl==1 and exactwt==1:
-					bc=machs[fl_il][wt_il]
-				elif exactfl==1:
-					bc=self.interp(machs[fl_il][wt_ih], machs[fl_il][wt_il], GW[wt_ih], GW[wt_il], wgt/1000)
-				elif exactwt==1:
-					bc=self.interp(machs[fl_ih][wt_il], machs[fl_il][wt_il], alts[fl_ih], alts[fl_il], DA/1000)
-				else:
-					bc=self.interp2(machs[fl_ih][wt_il], machs[fl_il][wt_il], machs[fl_ih][wt_ih], machs[fl_il][wt_ih], alts[fl_ih], alts[fl_il], GW[wt_ih], GW[wt_il], DA/1000, wgt/1000)
+				fl_ih, fl_il = self.get_index(fl_i, len(alts))
+				wt_ih, wt_il = self.get_index(wt_i, len(GW))
+				bc=self.interp2(machs[fl_ih][wt_il], machs[fl_il][wt_il], machs[fl_ih][wt_ih], machs[fl_il][wt_ih], alts[fl_ih], alts[fl_il], GW[wt_ih], GW[wt_il], DA/1000, wgt/1000)
 				bestCruise="M"+str(round(bc,2))
 			
 		elif AC=="PC12": # PIM Section 5
-			exactdi=0
-			exactfl=0
-			exactwt=0
 			GW=(7000,8000,9000,10000,10400)
 			alts=tuple(range(0,30001,2000))
 			ias=(((218,212,207,202,196,191,185,179,173,167,160,154,147,139,132,123),	# 7000lb	-40C
@@ -388,39 +307,20 @@ class PythonInterface:
 				(202,198,193,188,183,178,173,168,162,157,151,146,140,133,126,117),		# 10000lb
 				(202,197,193,188,183,178,173,168,162,157,152,149,140,134,127,118)))		# 10400lb
 			dis=tuple(range(-40,31,10))
-			
 			if wgt>10000:
 				wgt_i=wgt/400-22
 			else:
 				wgt_i=wgt/1000-7
 			alt_i=alt/2000
 			dis_i=delISA/10+4
-			
-			wgt_ih, wgt_il, exactwt = self.get_index(wgt_i, len(GW))
-			alt_ih, alt_il, exactfl = self.get_index(alt_i, len(alts))
-			dis_ih, dis_il, exactdi = self.get_index(dis_i, len(dis))
-
+			wgt_ih, wgt_il = self.get_index(wgt_i, len(GW))
+			alt_ih, alt_il = self.get_index(alt_i, len(alts))
+			dis_ih, dis_il = self.get_index(dis_i, len(dis))
 			#print "al: "+str(round(alt))+" wt: "+str(round(wgt))+" di: "+str(round(delISA))
 			#print "index: "+str(alt_il)+" "+str(alt_ih)+" "+str(wgt_il)+" "+str(wgt_ih)+" "+str(dis_il)+" "+str(dis_ih)			
-
-			if exactwt==1 and exactfl==1 and exactdi==1: # Epic win
-				bc=ias[dis_il][wgt_il][alt_il]
-			elif exactwt==1 and exactfl==1:
-				bc=self.interp(ias[dis_ih][wgt_il][alt_il], ias[dis_il][wgt_il][alt_il], dis[dis_ih], dis[dis_il], delISA)
-			elif exactwt==1 and exactdi==1:
-				bc=self.interp(ias[dis_il][wgt_il][alt_ih], ias[dis_il][wgt_il][alt_il], alts[alt_ih], alts[alt_il], alt)
-			elif exactfl==1 and exactdi==1:
-				bc=self.interp(ias[dis_il][wgt_ih][alt_il], ias[dis_il][wgt_il][alt_il], GW[wgt_ih], GW[wgt_il], wgt)
-			elif exactwt==1:
-				bc=self.interp2(ias[dis_ih][wgt_il][alt_il], ias[dis_il][wgt_il][alt_il], ias[dis_ih][wgt_il][alt_ih], ias[dis_il][wgt_il][alt_ih], dis[dis_ih], dis[dis_il], alts[alt_ih], alts[alt_il], delISA, alt)
-			elif exactfl==1:
-				bc=self.interp2(ias[dis_ih][wgt_il][alt_il], ias[dis_il][wgt_il][alt_il], ias[dis_ih][wgt_ih][alt_il], ias[dis_il][wgt_ih][alt_il], dis[dis_ih], dis[dis_il], GW[wgt_ih], GW[wgt_il], delISA, wgt)
-			elif exactdi==1:
-				bc=self.interp2(ias[dis_il][wgt_ih][alt_il], ias[dis_il][wgt_il][alt_il], ias[dis_il][wgt_ih][alt_ih], ias[dis_il][wgt_il][alt_ih], GW[wgt_ih], GW[wgt_il], alts[alt_ih], alts[alt_il], wgt, alt)
-			else: # Triple interpolation here we come
-				bc_l=self.interp2(ias[dis_ih][wgt_il][alt_il], ias[dis_il][wgt_il][alt_il], ias[dis_ih][wgt_il][alt_ih], ias[dis_il][wgt_il][alt_ih], dis[dis_ih], dis[dis_il], alts[alt_ih], alts[alt_il], delISA, alt)
-				bc_h=self.interp2(ias[dis_ih][wgt_ih][alt_il], ias[dis_il][wgt_ih][alt_il], ias[dis_ih][wgt_ih][alt_ih], ias[dis_il][wgt_ih][alt_ih], dis[dis_ih], dis[dis_il], alts[alt_ih], alts[alt_il], delISA, alt)
-				bc=self.interp(bc_h, bc_l, GW[wgt_ih], GW[wgt_il], wgt)
+			bc_l=self.interp2(ias[dis_ih][wgt_il][alt_il], ias[dis_il][wgt_il][alt_il], ias[dis_ih][wgt_il][alt_ih], ias[dis_il][wgt_il][alt_ih], dis[dis_ih], dis[dis_il], alts[alt_ih], alts[alt_il], delISA, alt)
+			bc_h=self.interp2(ias[dis_ih][wgt_ih][alt_il], ias[dis_il][wgt_ih][alt_il], ias[dis_ih][wgt_ih][alt_ih], ias[dis_il][wgt_ih][alt_ih], dis[dis_ih], dis[dis_il], alts[alt_ih], alts[alt_il], delISA, alt)
+			bc=self.interp(bc_h, bc_l, GW[wgt_ih], GW[wgt_il], wgt)
 			bestCruise=str(int(round(bc)))+" kias"
 		else:
 			bestCruise="N/A"
@@ -671,9 +571,11 @@ class PythonInterface:
 			self.msg5="FL: "+maxFL+"  FL: "+optFL+"  V1: "+V1#+" Flaps: "+str(flaps)
 		
 		else:
-			destid=XPLMGetDatai(self.gps_dest_index_ref)
-			#dalt= Get altitude of destination
+			destindex=XPLMGetDatai(self.gps_dest_index_ref)
+			destid=""
 			dalt=0
+			XPLMGetFMSEntryInfo(self, destindex, 0, destid, 0, dalt, 0, 0)
+			print "Going to index "+str(destindex)+", "+destid+", "+str(dalt)+" MSL"
 			#time=XPLMGetDataf(self.gps_time_ref)
 			dist=XPLMGetDataf(self.gps_dist_ref)*self.mft/6076
 			if dist<9000 and dist>0:
