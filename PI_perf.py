@@ -5,6 +5,7 @@ from XPLMGraphics import *
 from XPLMDefs import *
 from math import *
 from XPLMUtilities import *
+from XPLMNavigation import *
 
 class PythonInterface:
 
@@ -517,6 +518,7 @@ class PythonInterface:
 		
 		if acf_desc[0:27]=="['Boeing 737-800 xversion 4":
 			AC="B738"
+			TO_str=""
 		elif acf_desc=="['Pilatus PC-12']":
 			AC="PC12"
 			torque_psi=0.0088168441*TRQ[0]-0.0091189588
@@ -574,8 +576,14 @@ class PythonInterface:
 			destindex=XPLMGetDatai(self.gps_dest_index_ref)
 			destid=""
 			dalt=0
-			XPLMGetFMSEntryInfo(self, destindex, 0, destid, 0, dalt, 0, 0)
-			print "Going to index "+str(destindex)+", "+destid+", "+str(dalt)+" MSL"
+			#print "Getting entry info..."
+			#XPLMGetFMSEntryInfo(destindex, 0, destid, 0, dalt, 0, 0)
+			#print type(dalt)
+			#print type(destid)
+			#print str(destindex)
+			#print destid
+			print dalt
+			#print "Going to index "+str(destindex)+", "+destid+", "+str(dalt)+" MSL"
 			#time=XPLMGetDataf(self.gps_time_ref)
 			dist=XPLMGetDataf(self.gps_dist_ref)*self.mft/6076
 			if dist<9000 and dist>0:
