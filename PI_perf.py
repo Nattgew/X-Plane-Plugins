@@ -95,14 +95,13 @@ class PythonInterface:
 		
 		self.started=0
 		self.Dstarted=0
-		self.msg1="Starting..."
-		self.msg2=""
-		self.msg3=""
-		self.msg4=""
-		self.msg5=""
-		self.dmsg1=""
-		self.dmsg2=""
-		self.dmsg3=""
+		for i in range(0,5):
+			self.msg[i]=""
+		self.msg[0]="Starting..."
+		# self.msg[1]=""
+		# self.msg[2]=""
+		# self.msg[3]=""
+		# self.msg[4]=""
 		winPosX=20
 		winPosY=700
 		win_w=270
@@ -155,7 +154,7 @@ class PythonInterface:
 			XPLMGetDatab(self.acf_desc_ref, self.acf_descb, 0, 500)
 			XPLMGetDatavi(self.eng_type_ref, self.eng_type, 0, self.num_eng)
 			#print str(self.acf_descb)
-			XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 1, 0)
+			XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 0.25, 0)
 			self.started=1
 		else:
 			self.acf_descb=[]
@@ -177,11 +176,13 @@ class PythonInterface:
 			left=int(lLeft[0]); top=int(lTop[0]); right=int(lRight[0]); bottom=int(lBottom[0])
 			XPLMDrawTranslucentDarkBox(left,top,right,bottom)
 			color=1.0, 1.0, 1.0
-			XPLMDrawString(color, left+5, top-20, self.msg1, 0, xplmFont_Basic)
-			XPLMDrawString(color, left+5, top-35, self.msg2, 0, xplmFont_Basic)
-			XPLMDrawString(color, left+5, top-50, self.msg3, 0, xplmFont_Basic)
-			XPLMDrawString(color, left+5, top-65, self.msg4, 0, xplmFont_Basic)
-			XPLMDrawString(color, left+5, top-80, self.msg5, 0, xplmFont_Basic)
+			for i in range(0,5):
+				XPLMDrawString(color, left+5, top-(20-15*i), self.msg[i], 0, xplmFont_Basic)
+			# XPLMDrawString(color, left+5, top-20, self.msg1, 0, xplmFont_Basic)
+			# XPLMDrawString(color, left+5, top-35, self.msg2, 0, xplmFont_Basic)
+			# XPLMDrawString(color, left+5, top-50, self.msg3, 0, xplmFont_Basic)
+			# XPLMDrawString(color, left+5, top-65, self.msg4, 0, xplmFont_Basic)
+			# XPLMDrawString(color, left+5, top-80, self.msg5, 0, xplmFont_Basic)
 
 	def XPluginStop(self):
 		if self.started==1:
@@ -271,8 +272,8 @@ class PythonInterface:
 		if delISA>0:
 			dIstr="+"+dIstr
 
-		self.msg1=AC+"  DA: "+str(int(round(DenAlt)))+" ft  GW: "+str(int(round(wgt)))+" lb"
-		self.msg2="T: "+str(int(round(T)))+" "+self.d+"C  ISA +/-: "+dIstr+TO_str+machstr
+		self.msg[0]=AC+"  DA: "+str(int(round(DenAlt)))+" ft  GW: "+str(int(round(wgt)))+" lb"
+		self.msg[1]="T: "+str(int(round(T)))+" "+self.d+"C  ISA +/-: "+dIstr+TO_str+machstr
 			
 		if self.Dstarted==0:
 			maxPwr=self.getMaxPwr(DenAlt, delISA, AC)
@@ -282,9 +283,9 @@ class PythonInterface:
 			optFL=self.getOptFL(wgt, AC)
 			maxFL=self.getMaxFL(wgt, delISA, AC)
 			
-			self.msg3="Pwr: "+maxPwr+"  CC: "+cruiseclb+"  Thr: "+pwr
-			self.msg4="Crs: "+maxcruise+"  LR: "+cruise+"  AS: "+speed
-			self.msg5="FL: "+maxFL+"  FL: "+optFL+"  V1: "+V1#+" Flaps: "+str(flaps)
+			self.msg[2]="Pwr: "+maxPwr+"  CC: "+cruiseclb+"  Thr: "+pwr
+			self.msg[3]="Crs: "+maxcruise+"  LR: "+cruise+"  AS: "+speed
+			self.msg[4]="FL: "+maxFL+"  FL: "+optFL+"  V1: "+V1#+" Flaps: "+str(flaps)
 		
 		else:
 			#destindex=XPLMGetDatai(self.gps_dest_index_ref)
@@ -315,9 +316,9 @@ class PythonInterface:
 				ddist="No Dest"
 			dprof=self.getDpro(AC)
 			
-			self.msg3="Descend at: "+ddist
-			self.msg4=dprof
-			self.msg5="Vref: "+Vref
+			self.msg[2]="Descend at: "+ddist
+			self.msg[3]=dprof
+			self.msg[4]="Vref: "+Vref
 		
 		return 10
 	
