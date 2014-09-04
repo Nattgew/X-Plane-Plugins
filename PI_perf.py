@@ -495,7 +495,7 @@ class PythonInterface:
 		alt=XPLMGetDataf(self.alt_ref)*self.mft #m -> ft
 		wgt=XPLMGetDataf(self.wgt_ref)*self.kglb #kg -> lb
 		acf_desc=str(self.acf_descb)
-		alt_ind=XPLMGetDataf(self.alt_ind_ref)
+		alt_ind=XPLMGetDataf(self.alt_ind_ref) #ft
 		
 		kias=XPLMGetDataf(self.ias_ref)
 		speed=str(int(round(kias)))+" kias"
@@ -573,19 +573,28 @@ class PythonInterface:
 			self.msg5="FL: "+maxFL+"  FL: "+optFL+"  V1: "+V1#+" Flaps: "+str(flaps)
 		
 		else:
-			destindex=XPLMGetDatai(self.gps_dest_index_ref)
+			#destindex=XPLMGetDatai(self.gps_dest_index_ref)
+			destindex=XPLMGetDisplayedFMSEntry()
 			destid=""
 			dalt=0
-			#print "Getting entry info..."
-			#XPLMGetFMSEntryInfo(destindex, 0, destid, 0, dalt, 0, 0)
+			print "Getting entry info..."
+			# XPLMGetFMSEntryInfo(
+			   # int                  inIndex,    
+			   # XPLMNavType *        outType,    /* Can be NULL */
+			   # char *               outID,    /* Can be NULL */
+			   # XPLMNavRef *         outRef,    /* Can be NULL */
+			   # int *                outAltitude,    /* Can be NULL */
+			   # float *              outLat,    /* Can be NULL */
+			   # float *              outLon);    /* Can be NULL */
+			XPLMGetFMSEntryInfo(destindex, None, destid, None, dalt, None, None)
 			#print type(dalt)
 			#print type(destid)
 			#print str(destindex)
 			#print destid
 			print dalt
-			#print "Going to index "+str(destindex)+", "+destid+", "+str(dalt)+" MSL"
 			#time=XPLMGetDataf(self.gps_time_ref)
-			dist=XPLMGetDataf(self.gps_dist_ref)*self.mft/6076
+			dist=XPLMGetDataf(self.gps_dist_ref)#*self.mft/6076
+			print "Going to index "+str(destindex)+", "+destid+", "+str(dalt)+" MSL, dist "+str(dist)" nm"
 			if dist<9000 and dist>0:
 				ddist=self.getDesc(dist, alt, dalt, DenAlt, delISA, AC)
 			else:
