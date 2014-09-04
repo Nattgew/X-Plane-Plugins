@@ -57,9 +57,9 @@ class PythonInterface:
 		self.Desc="XACARS plugin for the 64-bit Linux"
 		self.VERSION="1.0"
 		
-		Item=XPLMAppendMenuItem(XPLMFindPluginsMenu(), "OXACARS py", 0, 1)
+		OXItem=XPLMAppendMenuItem(XPLMFindPluginsMenu(), "OXACARS py", 0, 1)
 		self.MenuHandlerCB=self.MenuHandler
-		self.OXMenu=XPLMCreateMenu(self, "OXACARS py" , XPLMFindPluginsMenu(), Item, self.MenuHandlerCB,	0)
+		self.OXMenu=XPLMCreateMenu(self, "OXACARS py" , XPLMFindPluginsMenu(), OXItem, self.MenuHandlerCB,	0)
 		XPLMAppendMenuItem(self.OXMenu, "Open OXACARS", 1, 1)
 		
 		#self.DrawWindowCB=self.DrawWindowCallback
@@ -387,7 +387,7 @@ class PythonInterface:
 		self.OXHandlerCB=self.OXHandler
 		XPAddWidgetCallback(self, self.OXWidget, self.OXHandlerCB)
 
-	def OXHandler(self, inMessage, inWidget,    inParam1, inParam2):
+	def OXHandler(self, inMessage, inWidget, inParam1, inParam2):
 		if inMessage==xpMessage_CloseButtonPushed:
 			print "Client window closed"
 			if self.gWidget==1:
@@ -396,45 +396,7 @@ class PythonInterface:
 
 		if inMessage==xpMsg_PushButtonPressed:
 			if inParam1==self.ACARSInfoButton:
-				# ?DATA1=XACARS|1.1&DATA2=XAC1001
-				# ?DATA1=XACARS|2.0&DATA2=pid&DATA3=flightplan&DATA4=pid&DATA5=password
-
-				print "OXACARS - Assembling query URL..."
-				#sprintf(durl, "%s?DATA1=%s&DATA2=%s", fdurl, DATA1v1, PID)
-
-				durl="DATA1="+DATA1v2+"&DATA2="+PID+"&DATA3=flightplan&DATA4="+PID+"&DATA5="+Ppass
-				print "OXACARS - Will attempt to get "+durl
-				getInfo=self.XACARSpost(self.fdurl,durl)
-
-				print "OXACARS - Now attempting to parse response..."
-				p=getInfo.split('\n')
-				n_spaces=0
-				fd=[]
-				fd[n_spaces-1]=p
-
-				self.Dep=fd[1]
-				self.Arr= fd[2]
-				self.Altn= fd[3]
-				#self.Alt= fd[9] #or not
-				self.Route= fd[4]
-				self.ACType= fd[8]
-				self.Plan= fd[7]
-				self.cargo= fd[6]
-				self.pax= fd[5]
-
-				#print 'OXACARS - Dep: %s Arr: %s Altn: %s\n", Dep, Arr, Altn)
-				#print 'OXACARS - Route: %s\n", Route)
-				#print 'OXACARS - Alt: %s Plan: %s Type: %s\n", Alt, Plan, ACType)
-				#print 'OXACARS - Pax: %s Cargo: %s\n', pax, cargo)
-
-				XPSetWidgetDescriptor(self.DepText, self.Dep)
-				XPSetWidgetDescriptor(self.ArrText, self.Arr)
-				XPSetWidgetDescriptor(self.AltnText, self.Altn)
-				XPSetWidgetDescriptor(self.RtText, self.Route)
-				XPSetWidgetDescriptor(self.PlanText, self.Plan)
-				XPSetWidgetDescriptor(self.TypeText, self.ACType)
-				XPSetWidgetDescriptor(self.CargoText, self.cargo)
-				XPSetWidgetDescriptor(self.PaxText, self.pax)
+				self.getACARSInfo()
 
 			if inParam1==self.SettingsButton:
 				print "OXACARS - You pressed the Settings button..."
@@ -455,54 +417,8 @@ class PythonInterface:
 					print "OXACARS - SHUT OFF ENGINES"
 					return 0
 
-				print "OXACARS - Gathering flight info..."
-				XPLMGetDatab(self.tailnum_ref, self.tailnum, 0, 40)
-
-				XPGetWidgetDescriptor(self.PaxText, self.pax, 3)
-				XPGetWidgetDescriptor(self.FltNoText, self.fltno, 8)
-				XPGetWidgetDescriptor(self.TypeText, self.Type, 4)
-				XPGetWidgetDescriptor(self.FLText, self.Alt, 5)
-				XPGetWidgetDescriptor(self.PlanText, self.Plan, 3)
-				XPGetWidgetDescriptor(self.DepText, self.Dep, 4)
-				XPGetWidgetDescriptor(self.ArrText, self.Arr, 4)
-				XPGetWidgetDescriptor(self.AltnText, self.Altn, 4)
-				XPGetWidgetDescriptor(self.CargoText, self.cargo, 6)
-				XPGetWidgetDescriptor(self.RtText, self.Route, 255)
-
-				hdgm=XPLMGetDataf(self.hdgm_ref)
-				wndh=XPLMGetDataf(self.wndh_ref)
-				wndk=XPLMGetDataf(self.wndk_ref)
-				BEG_lat=XPLMGetDatad(self.lat_ref) # N/Sxx xx.xxxx
-				BEG_lon=XPLMGetDatad(self.lon_ref) #http://data.x-plane.com/designers.html#Hint_LatLonFormat
-				BEG_alt=XPLMGetDatad(self.alt_ref)
-				BEG_f=XPLMGetDataf(self.wt_f_tot_ref)
-				BEGlat=self.degdm(BEG_lat, 0)
-				BEGlon=self.degdm(BEG_lon, 1)
+				self.startFlight()
 				
-				FW=BEG_f*self.kglb
-				Elev=BEG_alt*self.mft
-				
-				self.FOB_prev=FW
-				#DATA1=XACARS|2.0&DATA2=BEGINFLIGHT&DATA3=pid||pid|73W||KMDW~PEKUE~OBENE~MONNY~IANNA~FSD~J16~BIL~J136~MLP~GLASR9~KSEA|N34 34.2313 E69 11.6551|5866||||107|180|15414|0|IFR|0|password|&DATA4=
-				#surl="DATA1="+self.DATA1v2+"&DATA2=BEGINFLIGHT&DATA3="+self.uname+"||"+self.fltno+"|"+self.Type+"||"+self.Dep+"~"+self.Route.replace(" ", "~")+"~"+self.Arr+"|"+BEGlat+" "+BEGlon+"|"+str(round(Elev))+"||||"+str(round(FW))+"|"+str(round(hdgm))+"|"+str(round(wndh))+str(round(wndk))+"|0|"+self.Plan+"|0|"+self.Ppass+"|&DATA4="
-				surl='DATA1=%s&DATA2=BEGINFLIGHT&DATA3=%s||%s|%s||%s~%s~%s|%s %s|%.0f||||%.0f|%.0f|%.0f%.0f|0|%s|0|%s|&DATA4=' % (self.DATA1v2, self.uname, self.fltno, self.Type, self.Dep, self.Route.replace(" ", "~"), self.Arr, BEGlat, BEGlon, Elev, FW, hdgm, wndh, wndk, self.Plan, self.Ppass)
-				
-				print "OXACARS - Will send url "+surl
-				
-				getInfo=self.XACARSpost(self.acarsurl,surl)
-
-				XPSetWidgetProperty(self.PaxText, xpProperty_TextFieldType, xpTextTranslucent)
-				XPSetWidgetProperty(self.FltNoText, xpProperty_TextFieldType, xpTextTranslucent)
-				XPSetWidgetProperty(self.TypeText, xpProperty_TextFieldType, xpTextTranslucent)
-				XPSetWidgetProperty(self.FLText, xpProperty_TextFieldType, xpTextTranslucent)
-				XPSetWidgetProperty(self.PlanText, xpProperty_TextFieldType, xpTextTranslucent)
-				XPSetWidgetProperty(self.DepText, xpProperty_TextFieldType, xpTextTranslucent)
-				XPSetWidgetProperty(self.ArrText, xpProperty_TextFieldType, xpTextTranslucent)
-				XPSetWidgetProperty(self.AltnText, xpProperty_TextFieldType, xpTextTranslucent)
-				XPSetWidgetProperty(self.CargoText, xpProperty_TextFieldType, xpTextTranslucent)
-				XPSetWidgetProperty(self.RtText, xpProperty_TextFieldType, xpTextTranslucent)
-
-				XPLMRegisterFlightLoopCallback(self, self.MyFlightLoopCB, 1.0, 0)
 				print "OXACARS - Registered loop callback, startup complete"
 
 			if inParam1==self.SendButton:
@@ -510,43 +426,9 @@ class PythonInterface:
 
 				if self.testvalues==1:
 					print "OXACARS - Defining flight variables..."
-					self.OUT_time=1394204887
-					self.IN_time=1394214827
-					self.OFF_time=1394204987
-					self.ON_time=1394214887
-					self.OUT_f=10000.0
-					self.OFF_f=9500.0
-					self.OFF_w=150000.0
-					self.ON_f=2200.0
-					self.ON_w=142700.0
-					self.IN_f=2100.0
-					self.OUT_lat=45.43210 # N/Sxx xx.xxxx N/E > 0, S/W < 0
-					self.OUT_lon=-95.43210 # E/Wxx xx.xxxx
-					self.OUT_alt=135.0
-					self.IN_lat=44.43210
-					self.IN_lon=-90.43210
-					self.IN_alt=583.1
-					self.maxC=4000.0
-					self.maxD=3000.0
-					self.maxI=288.0
-					self.maxG=100.0
+					self.setTestVars()
 
-				#http://www.xacars.net/index.php?Client-Server-Protocol
-				#print "Online seconds: " + self.IN_net_s
-				# if ( IN_net_s > (IN_time - OUT_time)): # or...?
-				# strcpy(online, "VATSIM")
-				# else :
-				online="OFFLINE"
-
-				print "OXACARS - This is a lot of information..."
-				#DATA2=self.PID+"~"+self.Ppass+"~"+self.fltno+"~"+self.Type+"~"+self.Alt+"~"+self.Plan+"~"+self.Dep+"~"+self.Arr+"~"+self.Altn+"~"+self.DT+"~"+self.blocktime+"~"+self.flighttime+"~"+str(round(self.BF))+"~"+str(round(self.FF))+"~"+self.pax+"~"+self.cargo+"~"+self.online+"~"+str(self.OUT_time)+"~"+str(self.OFF_time)+"~"+str(self.ON_time)+"~"+str(self.IN_time)+"~"+str(round(self.ZFW))+"~"+str(round(self.TOW))+"~"+str(round(self.LW))+"~"+self.OUTlat+"~"+self.OUTlon+"~"+str(round(self.OUTalt))+"~"+self.INlat+"~"+self.INlon"~"+str(round(self.INalt))+"~"+str(round(self.maxC))+"~"+str(round(-self.maxD))+"~"+str(round(self.maxI))+"~"+str(round(self.maxG))
-				DATA2='%s~%s~%s~%s~%s~%s~%s~%s~%s~%s~%s~%s~%.0f~%.0f~%s~%s~%s~%lu~%lu~%lu~%lu~%.0f~%.0f~%.0f~%s~%s~%.0f~%s~%s~%.0f~%.0f~%.0f~%.0f~%.0f' % (self.PID, self.Ppass, self.fltno, self.Type, self.Alt, self.Plan, self.Dep, self.Arr, self.Altn, self.DT, self.blocktime, self.flighttime, self.BF, self.FF, self.pax, self.cargo, self.online, self.OUT_time, self.OFF_time, self.ON_time, self.IN_time, self.ZFW, self.TOW, self.LW, self.OUTlat, self.OUTlon, self.OUTalt, self.INlat, self.INlon, self.INalt, self.maxC, -self.maxD, self.maxI, self.maxG)
-
-				purl="DATA1="+DATA1v1+"&DATA2="+DATA2
-
-				print "OXACARS - Will send url "+purl
-
-				sendInfo=self.XACARSpost(self.pirepurl,purl)
+				self.sendFlightInfo()
 
 	def MyFlightLoopCallback(self, inElapsedSinceLastCall, elapsedSim, counter, refcon):
 		schg=0
@@ -556,7 +438,7 @@ class PythonInterface:
 		C_now=XPLMGetDataf(self.vvi_ref)
 		Alt=XPLMGetDatad(self.alt_ref)*self.mft
 
-		if ( self.OFF==1 and self.ON==0):
+		if (self.OFF==1 and self.ON==0):
 			# Track max values
 			I_now=XPLMGetDataf(self.ias_ref)
 			G_now=XPLMGetDataf(self.gs_ref)*mkt
@@ -573,7 +455,7 @@ class PythonInterface:
 				self.maxG=G_now
 				XPSetWidgetDescriptor(self.maxGdisp, str(int(round(maxG))))
 
-		iter=self.Counter % ( 60 * self.ival);
+		iter=self.Counter % (60 * self.ival);
 		cstate=1
 		if iter==0:
 			if C_now > 500:
@@ -590,37 +472,37 @@ class PythonInterface:
 				schg=10
 			#print "Clb: "+str(round(C_now))+" cstate: "+str(cstate)+" state: "+str(state)+" newstate: "+str(newstate)
 		
-		if ( XPLMGetDatai(self.sim_speed_ref) > 1 or XPLMGetDatai(self.grd_speed_ref) > 1): # looks like we've got a time traveller here, welcome to the future
+		if XPLMGetDatai(self.sim_speed_ref) > 1 or XPLMGetDatai(self.grd_speed_ref) > 1: # looks like we've got a time traveller here, welcome to the future
 			self.delorean=1
 
-		if ( Alt < 10000 and IAS > 270): # the FAA will hear about this!
+		if Alt < 10000 and IAS > 270: # the FAA will hear about this!
 			self.capt_yaeger=1
 		
-		if ( self.OUT==0 or self.ON==1 and self.IN==0):
+		if self.OUT==0 or self.ON==1 and self.IN==0:
 			cold=self.isAllEngineStopped()
 
-		if ( self.OUT==1 and self.OFF==0 or self.OFF==1 and self.ON==0):
+		if self.OUT==1 and self.OFF==0 or self.OFF==1 and self.ON==0
 			geardep=[]
-			XPLMGetDatavf( self.geardep_ref, geardep, 0, 10)
+			XPLMGetDatavf(self.geardep_ref, geardep, 0, 10)
 			gear_state=0
 			for i in range(10):
 				if geardep[i]==1:
 					gear_state=1
 		
-		if ( self.OUT==0 and cold==0):
+		if self.OUT==0 and cold==0:
 			# print "OXACARS - Detected OUT state..."
 			self.OUT=1
 			schg=1
-		elif ( self.OFF==0 and self.OUT==1 and gear_state==0):
+		elif self.OFF==0 and self.OUT==1 and gear_state==0:
 			# print "OXACARS - Detected OFF state..."
 			self.OFF=1
 			schg=2
-		elif ( self.ON==0 and self.OFF==1 and XPLMGetDataf(self.f_norm_ref) != 0 and gear_state==1):
+		elif self.ON==0 and self.OFF==1 and XPLMGetDataf(self.f_norm_ref) != 0 and gear_state==1:
 			# print "OXACARS - Detected ON state..."
 			self.ON=1
 			schg=3
 			Lrate=C_then
-		elif ( ON==1 and IN==0 and cold==1 and self.chkBrk()==1):
+		elif ON==1 and IN==0 and cold==1 and self.chkBrk()==1:
 			# print "OXACARS - Detected IN state..."
 			self.IN=1
 			schg=4
@@ -647,8 +529,8 @@ class PythonInterface:
 				self.capt_smith=1 # hooked up with a tanker, did you?
 			
 			tstamp=gmtime()
-			zdate=strftime("%m/%d/%Y", tstamp)
-			ztime=strftime("%H:%MZ", tstamp)
+			zdate=strftime("%m/%d/%Y",tstamp)
+			ztime=strftime("%H:%MZ",tstamp)
 
 			if self.msg==100:# roll ACARS message index
 				self.msgc=chr(ord(self.msgc)+1)
@@ -686,8 +568,8 @@ class PythonInterface:
 			elif schg==2: # OFF
 				self.OFF_f=FOB
 				self.TOW=XPLMGetDataf(self.wt_tot_ref)*self.kglb
-				XPLMGetDatavf( self.en1_ref, n1, 0, self.num_eng)
-				XPLMGetDatavf( self.en2_ref, n2, 0, self.num_eng)
+				XPLMGetDatavf(self.en1_ref, n1, 0, self.num_eng)
+				XPLMGetDatavf(self.en2_ref, n2, 0, self.num_eng)
 				self.OFF_time=tstamp
 				XPSetWidgetDescriptor(self.TOWdisp,str(int(round(self.TOW))))
 				print "OXACARS - Building OFF report..."
@@ -766,3 +648,135 @@ class PythonInterface:
 		self.Counter+=1 # increment loop counter
 
 		return 1.0
+
+	def getACARSInfo(self):
+		# ?DATA1=XACARS|1.1&DATA2=XAC1001
+		# ?DATA1=XACARS|2.0&DATA2=pid&DATA3=flightplan&DATA4=pid&DATA5=password
+
+		print "OXACARS - Assembling query URL..."
+		#sprintf(durl, "%s?DATA1=%s&DATA2=%s", fdurl, DATA1v1, PID)
+
+		durl="DATA1="+DATA1v2+"&DATA2="+PID+"&DATA3=flightplan&DATA4="+PID+"&DATA5="+Ppass
+		print "OXACARS - Will attempt to get "+durl
+		getInfo=self.XACARSpost(self.fdurl,durl)
+
+		print "OXACARS - Now attempting to parse response..."
+		if len(getInfo.getElementsByTagName('result'))>0:
+			p=getInfo.getElementsByTagName('result')[0].firstChild.data
+			print "OXACARS - server returned: "+p
+			
+			fd=p.split('\n')
+			
+			self.Dep=fd[1]
+			self.Arr= fd[2]
+			self.Altn= fd[3]
+			#self.Alt= fd[9] #or not
+			self.Route= fd[4]
+			self.ACType= fd[8]
+			self.Plan= fd[7]
+			self.cargo= fd[6]
+			self.pax= fd[5]
+
+			#print 'OXACARS - Dep: %s Arr: %s Altn: %s\n", Dep, Arr, Altn)
+			#print 'OXACARS - Route: %s\n", Route)
+			#print 'OXACARS - Alt: %s Plan: %s Type: %s\n", Alt, Plan, ACType)
+			#print 'OXACARS - Pax: %s Cargo: %s\n', pax, cargo)
+
+			XPSetWidgetDescriptor(self.DepText, self.Dep)
+			XPSetWidgetDescriptor(self.ArrText, self.Arr)
+			XPSetWidgetDescriptor(self.AltnText, self.Altn)
+			XPSetWidgetDescriptor(self.RtText, self.Route)
+			XPSetWidgetDescriptor(self.PlanText, self.Plan)
+			XPSetWidgetDescriptor(self.TypeText, self.ACType)
+			XPSetWidgetDescriptor(self.CargoText, self.cargo)
+			XPSetWidgetDescriptor(self.PaxText, self.pax)
+	
+	def startFlight(self):
+		print "OXACARS - Gathering flight info..."
+		XPLMGetDatab(self.tailnum_ref, self.tailnum, 0, 40)
+
+		XPGetWidgetDescriptor(self.PaxText, self.pax, 3)
+		XPGetWidgetDescriptor(self.FltNoText, self.fltno, 8)
+		XPGetWidgetDescriptor(self.TypeText, self.Type, 4)
+		XPGetWidgetDescriptor(self.FLText, self.Alt, 5)
+		XPGetWidgetDescriptor(self.PlanText, self.Plan, 3)
+		XPGetWidgetDescriptor(self.DepText, self.Dep, 4)
+		XPGetWidgetDescriptor(self.ArrText, self.Arr, 4)
+		XPGetWidgetDescriptor(self.AltnText, self.Altn, 4)
+		XPGetWidgetDescriptor(self.CargoText, self.cargo, 6)
+		XPGetWidgetDescriptor(self.RtText, self.Route, 255)
+
+		hdgm=XPLMGetDataf(self.hdgm_ref)
+		wndh=XPLMGetDataf(self.wndh_ref)
+		wndk=XPLMGetDataf(self.wndk_ref)
+		BEG_lat=XPLMGetDatad(self.lat_ref) # N/Sxx xx.xxxx
+		BEG_lon=XPLMGetDatad(self.lon_ref) #http://data.x-plane.com/designers.html#Hint_LatLonFormat
+		BEG_alt=XPLMGetDatad(self.alt_ref)
+		BEG_f=XPLMGetDataf(self.wt_f_tot_ref)
+		BEGlat=self.degdm(BEG_lat, 0)
+		BEGlon=self.degdm(BEG_lon, 1)
+		
+		FW=BEG_f*self.kglb
+		Elev=BEG_alt*self.mft
+		
+		self.FOB_prev=FW
+		#DATA1=XACARS|2.0&DATA2=BEGINFLIGHT&DATA3=pid||pid|73W||KMDW~PEKUE~OBENE~MONNY~IANNA~FSD~J16~BIL~J136~MLP~GLASR9~KSEA|N34 34.2313 E69 11.6551|5866||||107|180|15414|0|IFR|0|password|&DATA4=
+		#surl="DATA1="+self.DATA1v2+"&DATA2=BEGINFLIGHT&DATA3="+self.uname+"||"+self.fltno+"|"+self.Type+"||"+self.Dep+"~"+self.Route.replace(" ", "~")+"~"+self.Arr+"|"+BEGlat+" "+BEGlon+"|"+str(round(Elev))+"||||"+str(round(FW))+"|"+str(round(hdgm))+"|"+str(round(wndh))+str(round(wndk))+"|0|"+self.Plan+"|0|"+self.Ppass+"|&DATA4="
+		surl='DATA1=%s&DATA2=BEGINFLIGHT&DATA3=%s||%s|%s||%s~%s~%s|%s %s|%.0f||||%.0f|%.0f|%.0f%.0f|0|%s|0|%s|&DATA4=' % (self.DATA1v2, self.uname, self.fltno, self.Type, self.Dep, self.Route.replace(" ", "~"), self.Arr, BEGlat, BEGlon, Elev, FW, hdgm, wndh, wndk, self.Plan, self.Ppass)
+		
+		print "OXACARS - Will send url "+surl
+		
+		start=self.XACARSpost(self.acarsurl,surl)
+
+		XPSetWidgetProperty(self.PaxText, xpProperty_TextFieldType, xpTextTranslucent)
+		XPSetWidgetProperty(self.FltNoText, xpProperty_TextFieldType, xpTextTranslucent)
+		XPSetWidgetProperty(self.TypeText, xpProperty_TextFieldType, xpTextTranslucent)
+		XPSetWidgetProperty(self.FLText, xpProperty_TextFieldType, xpTextTranslucent)
+		XPSetWidgetProperty(self.PlanText, xpProperty_TextFieldType, xpTextTranslucent)
+		XPSetWidgetProperty(self.DepText, xpProperty_TextFieldType, xpTextTranslucent)
+		XPSetWidgetProperty(self.ArrText, xpProperty_TextFieldType, xpTextTranslucent)
+		XPSetWidgetProperty(self.AltnText, xpProperty_TextFieldType, xpTextTranslucent)
+		XPSetWidgetProperty(self.CargoText, xpProperty_TextFieldType, xpTextTranslucent)
+		XPSetWidgetProperty(self.RtText, xpProperty_TextFieldType, xpTextTranslucent)
+
+		XPLMRegisterFlightLoopCallback(self, self.MyFlightLoopCB, 1.0, 0)
+	
+	def setTestVars(self):
+		self.OUT_time=1394204887
+		self.IN_time=1394214827
+		self.OFF_time=1394204987
+		self.ON_time=1394214887
+		self.OUT_f=10000.0
+		self.OFF_f=9500.0
+		self.OFF_w=150000.0
+		self.ON_f=2200.0
+		self.ON_w=142700.0
+		self.IN_f=2100.0
+		self.OUT_lat=45.43210 # N/Sxx xx.xxxx N/E > 0, S/W < 0
+		self.OUT_lon=-95.43210 # E/Wxx xx.xxxx
+		self.OUT_alt=135.0
+		self.IN_lat=44.43210
+		self.IN_lon=-90.43210
+		self.IN_alt=583.1
+		self.maxC=4000.0
+		self.maxD=3000.0
+		self.maxI=288.0
+		self.maxG=100.0
+	
+	def sendFlightInfo(self):
+		#http://www.xacars.net/index.php?Client-Server-Protocol
+		#print "Online seconds: " + self.IN_net_s
+		# if (IN_net_s > (IN_time - OUT_time)): # or...?
+		# strcpy(online, "VATSIM")
+		# else :
+		online="OFFLINE"
+
+		print "OXACARS - This is a lot of information..."
+		#DATA2=self.PID+"~"+self.Ppass+"~"+self.fltno+"~"+self.Type+"~"+self.Alt+"~"+self.Plan+"~"+self.Dep+"~"+self.Arr+"~"+self.Altn+"~"+self.DT+"~"+self.blocktime+"~"+self.flighttime+"~"+str(round(self.BF))+"~"+str(round(self.FF))+"~"+self.pax+"~"+self.cargo+"~"+self.online+"~"+str(self.OUT_time)+"~"+str(self.OFF_time)+"~"+str(self.ON_time)+"~"+str(self.IN_time)+"~"+str(round(self.ZFW))+"~"+str(round(self.TOW))+"~"+str(round(self.LW))+"~"+self.OUTlat+"~"+self.OUTlon+"~"+str(round(self.OUTalt))+"~"+self.INlat+"~"+self.INlon"~"+str(round(self.INalt))+"~"+str(round(self.maxC))+"~"+str(round(-self.maxD))+"~"+str(round(self.maxI))+"~"+str(round(self.maxG))
+		DATA2='%s~%s~%s~%s~%s~%s~%s~%s~%s~%s~%s~%s~%.0f~%.0f~%s~%s~%s~%lu~%lu~%lu~%lu~%.0f~%.0f~%.0f~%s~%s~%.0f~%s~%s~%.0f~%.0f~%.0f~%.0f~%.0f' % (self.PID, self.Ppass, self.fltno, self.Type, self.Alt, self.Plan, self.Dep, self.Arr, self.Altn, self.DT, self.blocktime, self.flighttime, self.BF, self.FF, self.pax, self.cargo, self.online, self.OUT_time, self.OFF_time, self.ON_time, self.IN_time, self.ZFW, self.TOW, self.LW, self.OUTlat, self.OUTlon, self.OUTalt, self.INlat, self.INlon, self.INalt, self.maxC, -self.maxD, self.maxI, self.maxG)
+
+		purl="DATA1="+DATA1v1+"&DATA2="+DATA2
+
+		print "OXACARS - Will send url "+purl
+
+		sendInfo=self.XACARSpost(self.pirepurl,purl)	
