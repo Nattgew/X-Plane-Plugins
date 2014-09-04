@@ -106,13 +106,12 @@ class PythonInterface:
 		winPosY=700
 		win_w=270
 		win_h=90
-		win2PosY=600
 		self.num_eng=0
 		self.TO_pwr=0
 		self.acf_descb=[]
 		self.eng_type=[]
-		self.flaps_B738=(0.125,0.375,0.625,0.875,1) #1 5 15 30 40
-		self.flaps_PC12=(0.3,0.7,1) #15 30 40?
+		self.flaps_B738=(0.125,0.375,0.625,0.875,1.0) #1 5 15 30 40
+		self.flaps_PC12=(0.3,0.7,1.0) #15 30 40
 
 		self.gameLoopCB=self.gameLoopCallback
 		self.DrawWindowCB=self.DrawWindowCallback
@@ -160,7 +159,7 @@ class PythonInterface:
 			self.acf_descb=[]
 			XPLMUnregisterFlightLoopCallback(self, self.gameLoopCB, 0)
 			self.started=1
-			
+	
 	def toggleDInfo(self):
 		if self.started==0:
 			self.toggleInfo()
@@ -236,7 +235,7 @@ class PythonInterface:
 			TO_str=""
 		elif acf_desc=="['Pilatus PC-12']":
 			AC="PC12"
-			torque_psi=0.0088168441*TRQ[0]-0.0091189588
+			torque_psi=0.0088168441*TRQ[0]
 			pwr=str(round(torque_psi,1))+" psi"
 			if torque_psi>37:
 				self.TO_pwr-=inElapsedSinceLastCall
@@ -369,9 +368,9 @@ class PythonInterface:
 			Vref=str(int(round(vapp)))+" kias"
 		elif AC=="B738":
 			GW=tuple(range(90,181,10))
-			vrs=((122.0,129.0,135.0,142.0,148.0,154.0,159.0,164.0,169.0,174),		# flaps 15
-				(116.0,123.0,129.0,135.0,141.0,146.0,151.0,156.0,160.0,165),		# flaps 30
-				(109.0,116.0,122,128.0,133.0,139.0,144.0,148.0,153.0,157))		# flaps 40
+			vrs=((122.0,129.0,135.0,142.0,148.0,154.0,159.0,164.0,169.0,174.0),		# flaps 15
+				(116.0,123.0,129.0,135.0,141.0,146.0,151.0,156.0,160.0,165.0),		# flaps 30
+				(109.0,116.0,122.0,128.0,133.0,139.0,144.0,148.0,153.0,157.0))		# flaps 40
 			flap_i=-1
 			for i in range(2,5):
 				if flaps == self.flaps_B738[i]:
@@ -474,7 +473,7 @@ class PythonInterface:
 		else:
 			bestCC="N/A"
 		return bestCC
-		
+	
 	def getOptFL(self, wgt, AC):
 		if AC=="B738":
 			wts=tuple(range(120,181,5))
@@ -536,7 +535,7 @@ class PythonInterface:
 				wt_ih, wt_il = self.get_index(wt_i, len(GW))
 				bc=self.interp2(machs[fl_ih][wt_il], machs[fl_il][wt_il], machs[fl_ih][wt_ih], machs[fl_il][wt_ih], alts[fl_ih], alts[fl_il], GW[wt_ih], GW[wt_il], DA/1000, wgt/1000)
 				bestCruise="M"+str(round(bc,2))
-			
+		
 		elif AC=="PC12": # PIM Section 5
 			GW=(7000,8000,9000,10000,10400)
 			alts=tuple(range(0,30001,2000))
@@ -591,7 +590,7 @@ class PythonInterface:
 			alt_ih, alt_il = self.get_index(alt_i, len(alts))
 			dis_ih, dis_il = self.get_index(dis_i, len(dis))
 			#print "al: "+str(round(alt))+" wt: "+str(round(wgt))+" di: "+str(round(delISA))
-			#print "index: "+str(alt_il)+" "+str(alt_ih)+" "+str(wgt_il)+" "+str(wgt_ih)+" "+str(dis_il)+" "+str(dis_ih)			
+			#print "index: "+str(alt_il)+" "+str(alt_ih)+" "+str(wgt_il)+" "+str(wgt_ih)+" "+str(dis_il)+" "+str(dis_ih)
 			bc_l=self.interp2(ias[dis_ih][wgt_il][alt_il], ias[dis_il][wgt_il][alt_il], ias[dis_ih][wgt_il][alt_ih], ias[dis_il][wgt_il][alt_ih], dis[dis_ih], dis[dis_il], alts[alt_ih], alts[alt_il], delISA, alt)
 			bc_h=self.interp2(ias[dis_ih][wgt_ih][alt_il], ias[dis_il][wgt_ih][alt_il], ias[dis_ih][wgt_ih][alt_ih], ias[dis_il][wgt_ih][alt_ih], dis[dis_ih], dis[dis_il], alts[alt_ih], alts[alt_il], delISA, alt)
 			bc=self.interp(bc_h, bc_l, GW[wgt_ih], GW[wgt_il], wgt)
