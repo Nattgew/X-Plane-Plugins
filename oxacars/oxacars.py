@@ -126,30 +126,25 @@ class PythonInterface:
 		self.gWidget=0
 		self.sWidget=0
 		self.gWidget=0
-		DATA1v1="XACARS|1.1"
-		DATA1v2="XACARS|2.0"
-		# default settings
+		self.DATA1v1="XACARS|1.1"
+		self.DATA1v2="XACARS|2.0"
+
 		self.testvalues=1
 		default=1
 		if default==1:
-			pirepurl_def="http://www.xacars.net/acars/pirep.php"
-			acarsurl_def="http://www.xacars.net/acars/liveacars.php"
-			fdurl_def="http://www.xacars.net/acars/flightdata.php"
-			Ppass_def="xactestingpass"
+			self.pirepurl="http://www.xacars.net/acars/pirep.php"
+			self.acarsurl="http://www.xacars.net/acars/liveacars.php"
+			self.fdurl="http://www.xacars.net/acars/flightdata.php"
+			self.Ppass="xactestingpass"
 			uname="xactesting"
-			PID="XAC1001"
+			self.PID="XAC1001"
 		else:
-			pirepurl_def="http://www.swavirtual.com/wn/xacars/pirep.php"
-			acarsurl_def="http://www.swavirtual.com/wn/xacars/liveacars.php"
-			fdurl_def="http://www.swavirtual.com/wn/xacars/flightdata.php"
-			Ppass_def="pass"
+			self.pirepurl="http://www.swavirtual.com/wn/xacars/pirep.php"
+			self.acarsurl="http://www.swavirtual.com/wn/xacars/liveacars.php"
+			self.fdurl="http://www.swavirtual.com/wn/xacars/flightdata.php"
+			self.Ppass="pass"
 			uname="uname"
-			PID="pid"
-			
-		self.pirepurl=pirepurl_def
-		self.acarsurl=acarsurl_def
-		self.fdurl=fdurl_def
-		self.Ppass=Ppass_def
+			self.PID="pid"
 		
 		self.dist_trav_ref=XPLMFindDataRef("sim/flightmodel/controls/dist")  # float 660+ yes meters Distance Traveled
 		self.eng_run_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_running")  # int[8] boolean
@@ -183,7 +178,6 @@ class PythonInterface:
 		return self.Name, self.Sig, self.Desc
 	
 	def XPluginStop(self):
-		# Unregister the callback
 		XPLMUnregisterFlightLoopCallback(self, self.MyFlightLoopCallback, 0)
 		if self.gWidget==1:
 			XPDestroyWidget(self, self.OXWidget, 1)
@@ -522,7 +516,8 @@ class PythonInterface:
 			n1=[]
 			n2=[]
 			
-			print "States: OUT="+str(self.OUT)+", OFF="+str(self.OFF)+", ON="+str(self.ON)+", IN="+str(IN)
+			#print "States: OUT="+str(self.OUT)+", OFF="+str(self.OFF)+", ON="+str(self.ON)+", IN="+str(self.IN)
+			print 'States: OUT=%d, OFF=%d, ON=%d, IN=%d' % (self.OUT,self.OFF,self.ON,self.IN)
 			# print "Gear: Dep: "+str(gear_state)+" F_norm: "+XPLMGetDataf(f_norm_ref)
 
 			if FOB > self.FOB_prev:
@@ -634,7 +629,7 @@ class PythonInterface:
 			else:
 				messg="/I hate this airline YOLO"
 			#print "OXACARS - Assembling message URL..."
-			murl="DATA1="+DATA1v2+"&DATA2=MESSAGE&DATA3="+str(tstamp)+"&DATA4="+head+messg
+			murl="DATA1="+self.DATA1v2+"&DATA2=MESSAGE&DATA3="+str(tstamp)+"&DATA4="+head+messg
 			print "OXACARS - Will attempt to visit "+murl
 
 			sendMsg=self.XACARSpost(self.acarsurl,murl)
@@ -656,7 +651,7 @@ class PythonInterface:
 		print "OXACARS - Assembling query URL..."
 		#sprintf(durl, "%s?DATA1=%s&DATA2=%s", fdurl, DATA1v1, PID)
 
-		durl="DATA1="+DATA1v2+"&DATA2="+PID+"&DATA3=flightplan&DATA4="+PID+"&DATA5="+Ppass
+		durl="DATA1="+self.DATA1v2+"&DATA2="+self.PID+"&DATA3=flightplan&DATA4="+self.PID+"&DATA5="+self.Ppass
 		print "OXACARS - Will attempt to get "+durl
 		getInfo=self.XACARSpost(self.fdurl,durl)
 
@@ -775,7 +770,7 @@ class PythonInterface:
 		#DATA2=self.PID+"~"+self.Ppass+"~"+self.fltno+"~"+self.Type+"~"+self.Alt+"~"+self.Plan+"~"+self.Dep+"~"+self.Arr+"~"+self.Altn+"~"+self.DT+"~"+self.blocktime+"~"+self.flighttime+"~"+str(round(self.BF))+"~"+str(round(self.FF))+"~"+self.pax+"~"+self.cargo+"~"+self.online+"~"+str(self.OUT_time)+"~"+str(self.OFF_time)+"~"+str(self.ON_time)+"~"+str(self.IN_time)+"~"+str(round(self.ZFW))+"~"+str(round(self.TOW))+"~"+str(round(self.LW))+"~"+self.OUTlat+"~"+self.OUTlon+"~"+str(round(self.OUTalt))+"~"+self.INlat+"~"+self.INlon"~"+str(round(self.INalt))+"~"+str(round(self.maxC))+"~"+str(round(-self.maxD))+"~"+str(round(self.maxI))+"~"+str(round(self.maxG))
 		DATA2='%s~%s~%s~%s~%s~%s~%s~%s~%s~%s~%s~%s~%.0f~%.0f~%s~%s~%s~%lu~%lu~%lu~%lu~%.0f~%.0f~%.0f~%s~%s~%.0f~%s~%s~%.0f~%.0f~%.0f~%.0f~%.0f' % (self.PID, self.Ppass, self.fltno, self.Type, self.Alt, self.Plan, self.Dep, self.Arr, self.Altn, self.DT, self.blocktime, self.flighttime, self.BF, self.FF, self.pax, self.cargo, self.online, self.OUT_time, self.OFF_time, self.ON_time, self.IN_time, self.ZFW, self.TOW, self.LW, self.OUTlat, self.OUTlon, self.OUTalt, self.INlat, self.INlon, self.INalt, self.maxC, -self.maxD, self.maxI, self.maxG)
 
-		purl="DATA1="+DATA1v1+"&DATA2="+DATA2
+		purl="DATA1="+self.DATA1v1+"&DATA2="+DATA2
 
 		print "OXACARS - Will send url "+purl
 
