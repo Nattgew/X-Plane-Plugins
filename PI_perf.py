@@ -49,6 +49,278 @@ class PythonInterface:
 		delISA=T-T_ISA
 		return delISA
 	
+	def XPluginStart(self):
+		self.Name="Performance Calculator"
+		self.Sig= "natt.python.cruise"
+		self.Desc="Calculates the current performance info based on POH"
+		self.VERSION="1.0"
+		
+		self.P_SL=29.92126 # standard sea level atmospheric pressure 1013.25 hPa ISA or 29.92126 inHg US
+		self.T_SL=288.15 # ISA standard sea level air temperature in K
+		self.gamma_l=0.0019812 # lapse rate K/ft
+		self.gamma_u=0.0065 # lapse rate K/m
+		self.R=8.31432 # gas constant J/mol K
+		self.g=9.80665 # gravity m/s^2
+		self.M=0.0289644 # molar mass of dry air kg/mol
+		self.kglb=2.20462262
+		self.mft=3.2808399
+		self.mkt=1.94384
+		#self.d=chr(0x2103)
+		#self.d=u'\xb0'.encode('cp1252')
+		self.d=""
+			
+		self.N1_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_N1_")
+		self.EGT_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_EGT_c")
+		self.ITT_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_ITT_c")
+		self.TRQ_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_TRQ")
+		self.eng_type_ref=XPLMFindDataRef("sim/aircraft/prop/acf_en_type")
+		self.num_eng_ref=XPLMFindDataRef("sim/aircraft/engine/acf_num_engines")
+		self.alt_ref=XPLMFindDataRef("sim/flightmodel/position/elevation")
+		self.ias_ref=XPLMFindDataRef("sim/flightmodel/position/indicated_airspeed")
+		self.baro_ref=XPLMFindDataRef("sim/weather/barometer_current_inhg")
+		self.temp_ref=XPLMFindDataRef("sim/weather/temperature_ambient_c")
+		self.wgt_ref=XPLMFindDataRef("sim/flightmodel/weight/m_total")
+		self.acf_desc_ref=XPLMFindDataRef("sim/aircraft/view/acf_descrip")
+		self.flap_pos_ref=XPLMFindDataRef("sim/flightmodel2/controls/flap_handle_deploy_ratio") # actual position
+		self.flap_h_pos_ref=XPLMFindDataRef("sim/cockpit2/controls/flap_ratio") # handle position
+		self.geardep_ref=XPLMFindDataRef("sim/aircraft/parts/acf_gear_deploy")
+		self.f_norm_ref=XPLMFindDataRef("sim/flightmodel/forces/fnrml_gear")
+		self.gear_h_pos_ref=XPLMFindDataRef("sim/cockpit2/controls/gear_handle_down")
+		#self.gps_dme_ref=XPLMFindDataRef("sim/cockpit2/radios/indicators/gps_dme_distance_nm")
+		self.gps_time_ref=XPLMFindDataRef("sim/cockpit/radios/gps_dme_time_secs")
+		self.gps_dist_ref=XPLMFindDataRef("sim/cockpit/radios/gps_dme_dist_m")
+		self.gps_dest_index_ref=XPLMFindDataRef("sim/cockpit/gps/destination_index")
+		self.mach_ref=XPLMFindDataRef("sim/flightmodel/misc/machno")
+		self.alt_ind_ref=XPLMFindDataRef("sim/flightmodel/misc/h_ind")
+		
+		self.started=0
+		self.Dstarted=0
+		self.msg1="Starting..."
+		self.msg2=""
+		self.msg3=""
+		self.msg4=""
+		self.msg5=""
+		self.dmsg1=""
+		self.dmsg2=""
+		self.dmsg3=""
+		winPosX=20
+		winPosY=700
+		win_w=270
+		win_h=90
+		win2PosY=600
+		self.num_eng=0
+		self.TO_pwr=0
+		self.acf_descb=[]
+		self.eng_type=[]
+		self.flaps_B738=(0.125,0.375,0.625,0.875,1) #1 5 15 30 40
+		self.flaps_PC12=(0.3,0.7,1) #15 30 40?
+
+		self.gameLoopCB=self.gameLoopCallback
+		self.DrawWindowCB=self.DrawWindowCallback
+		self.KeyCB=self.KeyCallback
+		self.MouseClickCB=self.MouseClickCallback
+		self.gWindow=XPLMCreateWindow(self, winPosX, winPosY, winPosX + win_w, winPosY - win_h, 1, self.DrawWindowCB, self.KeyCB, self.MouseClickCB, 0)
+
+		self.CmdSHConn = XPLMCreateCommand("fsei/flight/perfinfo","Shows or hides performance info")
+		self.CmdSHConnCB  = self.CmdSHConnCallback
+		XPLMRegisterCommandHandler(self, self.CmdSHConn,  self.CmdSHConnCB, 0, 0)
+		
+		self.CmdSDConn = XPLMCreateCommand("fsei/flight/descinfo","Shows or hides descent/landing info")
+		self.CmdSDConnCB  = self.CmdSDConnCallback
+		XPLMRegisterCommandHandler(self, self.CmdSDConn,  self.CmdSDConnCB, 0, 0)
+		
+		return self.Name, self.Sig, self.Desc
+
+	def MouseClickCallback(self, inWindowID, x, y, inMouse, inRefcon):
+		return 0
+
+	def KeyCallback(self, inWindowID, inKey, inFlags, inVirtualKey, inRefcon, losingFocus):
+		pass 
+
+	def CmdSHConnCallback(self, cmd, phase, refcon):
+		if(phase==0): #KeyDown event
+			print "XDMG = CMD perf info"
+			self.toggleInfo()
+		return 0
+
+	def CmdSDConnCallback(self, cmd, phase, refcon):
+		if(phase==0): #KeyDown event
+			print "XDMG = CMD desc info"
+			self.toggleDInfo()
+		return 0
+	
+	def toggleInfo(self):
+		if self.started == 0:
+			self.num_eng=XPLMGetDatai(self.num_eng_ref)
+			XPLMGetDatab(self.acf_desc_ref, self.acf_descb, 0, 500)
+			XPLMGetDatavi(self.eng_type_ref, self.eng_type, 0, self.num_eng)
+			#print str(self.acf_descb)
+			XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 1, 0)
+			self.started=1
+		else:
+			self.acf_descb=[]
+			XPLMUnregisterFlightLoopCallback(self, self.gameLoopCB, 0)
+			self.started=1
+			
+	def toggleDInfo(self):
+		if self.started==0:
+			self.toggleInfo()
+		if self.Dstarted==0:
+			self.Dstarted=1
+		else:
+			self.Dstarted=0
+
+	def DrawWindowCallback(self, inWindowID, inRefcon):
+		if self.started==1:
+			lLeft=[];	lTop=[]; lRight=[];	lBottom=[]
+			XPLMGetWindowGeometry(inWindowID, lLeft, lTop, lRight, lBottom)
+			left=int(lLeft[0]); top=int(lTop[0]); right=int(lRight[0]); bottom=int(lBottom[0])
+			XPLMDrawTranslucentDarkBox(left,top,right,bottom)
+			color=1.0, 1.0, 1.0
+			XPLMDrawString(color, left+5, top-20, self.msg1, 0, xplmFont_Basic)
+			XPLMDrawString(color, left+5, top-35, self.msg2, 0, xplmFont_Basic)
+			XPLMDrawString(color, left+5, top-50, self.msg3, 0, xplmFont_Basic)
+			XPLMDrawString(color, left+5, top-65, self.msg4, 0, xplmFont_Basic)
+			XPLMDrawString(color, left+5, top-80, self.msg5, 0, xplmFont_Basic)
+
+	def XPluginStop(self):
+		if self.started==1:
+			self.toggleInfo()
+		if self.Dstarted==1:
+			self.toggleDInfo()
+		XPLMUnregisterCommandHandler(self, self.CmdSHConn, self.CmdSHConnCB, 0)
+		XPLMUnregisterCommandHandler(self, self.CmdSDConn, self.CmdSDConnCB, 0)
+		XPLMDestroyWindow(self, self.gWindow)
+		pass
+
+	def XPluginEnable(self):
+		return 1
+
+	def XPluginDisable(self):
+		pass
+
+	def XPluginReceiveMessage(self, inFromWho, inMessage, inParam):
+		pass
+
+	def gameLoopCallback(self, inElapsedSinceLastCall, elapsedSim, counter, refcon):
+		
+		P=XPLMGetDataf(self.baro_ref) #inHg
+		T=XPLMGetDataf(self.temp_ref) #deg C
+		alt=XPLMGetDataf(self.alt_ref)*self.mft #m -> ft
+		wgt=XPLMGetDataf(self.wgt_ref)*self.kglb #kg -> lb
+		acf_desc=str(self.acf_descb)
+		alt_ind=XPLMGetDataf(self.alt_ind_ref) #ft
+		
+		kias=XPLMGetDataf(self.ias_ref)
+		speed=str(int(round(kias)))+" kias"
+		mach=XPLMGetDataf(self.mach_ref)
+		machstr="  M"+str(round(mach,2))
+		DenAlt=self.getDA(P,T) #ft
+		#DenAltApprox=self.getDA_approx(P,T) #ft
+		delISA=self.getdelISA(alt, T)
+		
+		if self.eng_type[0]==2 or self.eng_type[0]==8: #Turboprop
+			TRQ=[]
+			XPLMGetDatavf(self.TRQ_ref, TRQ, 0, self.num_eng)
+			pwr=str(round(TRQ[0],1))+" Nm"
+		elif self.eng_type[0]==4 or self.eng_type[0]==5: #Jet
+			N1=[]
+			XPLMGetDatavf(self.N1_ref, N1, 0, self.num_eng)
+			pwr=str(round(N1[0],1))+"% N1"
+		else:
+			pwr="N/A"
+		
+		if acf_desc[0:27]=="['Boeing 737-800 xversion 4":
+			AC="B738"
+			TO_str=""
+		elif acf_desc=="['Pilatus PC-12']":
+			AC="PC12"
+			torque_psi=0.0088168441*TRQ[0]-0.0091189588
+			pwr=str(round(torque_psi,1))+" psi"
+			if torque_psi>37:
+				self.TO_pwr-=inElapsedSinceLastCall
+				TPR_m=int(self.TO_pwr/60)
+				TPR_s=int(self.TO_pwr%60)
+				TO_str='  %d:%02d TO pwr remain' % (TPR_m, TPR_s)
+			else:
+				self.TO_pwr=300
+				TO_str=""
+		else:
+			AC=acf_desc
+		
+		gears=[]
+		XPLMGetDatavf(self.geardep_ref, gears, 0, 10)
+		#print "Gear "+str(gears[0])
+		if gears[0]==1:
+			gear_state=1
+		else:
+			gear_state=0
+		Vref="N/A"
+		V1="N/A"
+		if gear_state==1:
+			#print "XDMG = Gear down"
+			flaps=XPLMGetDataf(self.flap_h_pos_ref)
+			if XPLMGetDataf(self.f_norm_ref) != 0:
+				#print "XDMG = On ground"
+				V1=self.getV1(flaps, wgt, DenAlt, T, AC)
+			elif self.Dstarted==1:
+				#print "XDMG = In air"
+				Vref=self.getVref(flaps, wgt, DenAlt, T, AC)
+						
+		dIstr=str(int(round(delISA)))+" "+self.d+"C"
+		if delISA>0:
+			dIstr="+"+dIstr
+
+		self.msg1=AC+"  DA: "+str(int(round(DenAlt)))+" ft  GW: "+str(int(round(wgt)))+" lb"
+		self.msg2="T: "+str(int(round(T)))+" "+self.d+"C  ISA +/-: "+dIstr+TO_str+machstr
+			
+		if self.Dstarted==0:
+			maxPwr=self.getMaxPwr(DenAlt, delISA, AC)
+			cruiseclb=self.getCC(DenAlt, alt, delISA, AC)
+			cruise=self.getCruise(DenAlt, wgt, alt_ind, delISA, AC)
+			maxcruise=self.getMaxCruise(DenAlt, wgt, alt, delISA, AC)
+			optFL=self.getOptFL(wgt, AC)
+			maxFL=self.getMaxFL(wgt, delISA, AC)
+			
+			self.msg3="Pwr: "+maxPwr+"  CC: "+cruiseclb+"  Thr: "+pwr
+			self.msg4="Crs: "+maxcruise+"  LR: "+cruise+"  AS: "+speed
+			self.msg5="FL: "+maxFL+"  FL: "+optFL+"  V1: "+V1#+" Flaps: "+str(flaps)
+		
+		else:
+			#destindex=XPLMGetDatai(self.gps_dest_index_ref)
+			destindex=XPLMGetDisplayedFMSEntry()
+			destid=""
+			dalt=0
+			print "Getting entry info..."
+			# XPLMGetFMSEntryInfo(
+			   # int                  inIndex,    
+			   # XPLMNavType *        outType,    /* Can be NULL */
+			   # char *               outID,    /* Can be NULL */
+			   # XPLMNavRef *         outRef,    /* Can be NULL */
+			   # int *                outAltitude,    /* Can be NULL */
+			   # float *              outLat,    /* Can be NULL */
+			   # float *              outLon);    /* Can be NULL */
+			XPLMGetFMSEntryInfo(destindex, None, destid, None, dalt, None, None)
+			#print type(dalt)
+			#print type(destid)
+			#print str(destindex)
+			#print destid
+			print dalt
+			#time=XPLMGetDataf(self.gps_time_ref)
+			dist=XPLMGetDataf(self.gps_dist_ref)#*self.mft/6076
+			print "Going to index "+str(destindex)+", "+destid+", "+str(dalt)+" MSL, dist "+str(dist)" nm"
+			if dist<9000 and dist>0:
+				ddist=self.getDesc(dist, alt, dalt, DenAlt, delISA, AC)
+			else:
+				ddist="No Dest"
+			dprof=self.getDpro(AC)
+			
+			self.msg3="Descend at: "+ddist
+			self.msg4=dprof
+			self.msg5="Vref: "+Vref
+		
+		return 10
+	
 	def getDpro(self, AC):
 		if AC=="B738":
 			profile="M.78 to FL350, M.75 to 280kt"
@@ -334,275 +606,3 @@ class PythonInterface:
 	def getMaxPwr(self, DA, delISA, AC):
 		maxTRQ="N/A"
 		return maxTRQ
-
-	def XPluginStart(self):
-		self.Name="Performance Calculator"
-		self.Sig= "natt.python.cruise"
-		self.Desc="Calculates the current performance info based on POH"
-		self.VERSION="1.0"
-		
-		self.P_SL=29.92126 # standard sea level atmospheric pressure 1013.25 hPa ISA or 29.92126 inHg US
-		self.T_SL=288.15 # ISA standard sea level air temperature in K
-		self.gamma_l=0.0019812 # lapse rate K/ft
-		self.gamma_u=0.0065 # lapse rate K/m
-		self.R=8.31432 # gas constant J/mol K
-		self.g=9.80665 # gravity m/s^2
-		self.M=0.0289644 # molar mass of dry air kg/mol
-		self.kglb=2.20462262
-		self.mft=3.2808399
-		self.mkt=1.94384
-		#self.d=chr(0x2103)
-		#self.d=u'\xb0'.encode('cp1252')
-		self.d=""
-			
-		self.N1_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_N1_")
-		self.EGT_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_EGT_c")
-		self.ITT_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_ITT_c")
-		self.TRQ_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_TRQ")
-		self.eng_type_ref=XPLMFindDataRef("sim/aircraft/prop/acf_en_type")
-		self.num_eng_ref=XPLMFindDataRef("sim/aircraft/engine/acf_num_engines")
-		self.alt_ref=XPLMFindDataRef("sim/flightmodel/position/elevation")
-		self.ias_ref=XPLMFindDataRef("sim/flightmodel/position/indicated_airspeed")
-		self.baro_ref=XPLMFindDataRef("sim/weather/barometer_current_inhg")
-		self.temp_ref=XPLMFindDataRef("sim/weather/temperature_ambient_c")
-		self.wgt_ref=XPLMFindDataRef("sim/flightmodel/weight/m_total")
-		self.acf_desc_ref=XPLMFindDataRef("sim/aircraft/view/acf_descrip")
-		self.flap_pos_ref=XPLMFindDataRef("sim/flightmodel2/controls/flap_handle_deploy_ratio") # actual position
-		self.flap_h_pos_ref=XPLMFindDataRef("sim/cockpit2/controls/flap_ratio") # handle position
-		self.geardep_ref=XPLMFindDataRef("sim/aircraft/parts/acf_gear_deploy")
-		self.f_norm_ref=XPLMFindDataRef("sim/flightmodel/forces/fnrml_gear")
-		self.gear_h_pos_ref=XPLMFindDataRef("sim/cockpit2/controls/gear_handle_down")
-		#self.gps_dme_ref=XPLMFindDataRef("sim/cockpit2/radios/indicators/gps_dme_distance_nm")
-		self.gps_time_ref=XPLMFindDataRef("sim/cockpit/radios/gps_dme_time_secs")
-		self.gps_dist_ref=XPLMFindDataRef("sim/cockpit/radios/gps_dme_dist_m")
-		self.gps_dest_index_ref=XPLMFindDataRef("sim/cockpit/gps/destination_index")
-		self.mach_ref=XPLMFindDataRef("sim/flightmodel/misc/machno")
-		self.alt_ind_ref=XPLMFindDataRef("sim/flightmodel/misc/h_ind")
-		
-		self.started=0
-		self.Dstarted=0
-		self.msg1="Starting..."
-		self.msg2=""
-		self.msg3=""
-		self.msg4=""
-		self.msg5=""
-		self.dmsg1=""
-		self.dmsg2=""
-		self.dmsg3=""
-		winPosX=20
-		winPosY=700
-		win_w=270
-		win_h=90
-		win2PosY=600
-		self.num_eng=0
-		self.TO_pwr=0
-		self.acf_descb=[]
-		self.eng_type=[]
-		self.flaps_B738=(0.125,0.375,0.625,0.875,1) #1 5 15 30 40
-		self.flaps_PC12=(0.3,0.7,1) #15 30 40?
-
-		self.gameLoopCB=self.gameLoopCallback
-		self.DrawWindowCB=self.DrawWindowCallback
-		self.KeyCB=self.KeyCallback
-		self.MouseClickCB=self.MouseClickCallback
-		self.gWindow=XPLMCreateWindow(self, winPosX, winPosY, winPosX + win_w, winPosY - win_h, 1, self.DrawWindowCB, self.KeyCB, self.MouseClickCB, 0)
-
-		self.CmdSHConn = XPLMCreateCommand("fsei/flight/perfinfo","Shows or hides performance info")
-		self.CmdSHConnCB  = self.CmdSHConnCallback
-		XPLMRegisterCommandHandler(self, self.CmdSHConn,  self.CmdSHConnCB, 0, 0)
-		
-		self.CmdSDConn = XPLMCreateCommand("fsei/flight/descinfo","Shows or hides descent/landing info")
-		self.CmdSDConnCB  = self.CmdSDConnCallback
-		XPLMRegisterCommandHandler(self, self.CmdSDConn,  self.CmdSDConnCB, 0, 0)
-		
-		return self.Name, self.Sig, self.Desc
-
-	def MouseClickCallback(self, inWindowID, x, y, inMouse, inRefcon):
-		return 0
-
-	def KeyCallback(self, inWindowID, inKey, inFlags, inVirtualKey, inRefcon, losingFocus):
-		pass 
-
-	def CmdSHConnCallback(self, cmd, phase, refcon):
-		if(phase==0): #KeyDown event
-			print "XDMG = CMD perf info"
-			self.toggleInfo()
-		return 0
-
-	def CmdSDConnCallback(self, cmd, phase, refcon):
-		if(phase==0): #KeyDown event
-			print "XDMG = CMD desc info"
-			self.toggleDInfo()
-		return 0
-	
-	def toggleInfo(self):
-		if self.started == 0:
-			self.num_eng=XPLMGetDatai(self.num_eng_ref)
-			XPLMGetDatab(self.acf_desc_ref, self.acf_descb, 0, 500)
-			XPLMGetDatavi(self.eng_type_ref, self.eng_type, 0, self.num_eng)
-			#print str(self.acf_descb)
-			XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 1, 0)
-			self.started=1
-		else:
-			self.acf_descb=[]
-			XPLMUnregisterFlightLoopCallback(self, self.gameLoopCB, 0)
-			self.started=1
-			
-	def toggleDInfo(self):
-		if self.started==0:
-			self.toggleInfo()
-		if self.Dstarted==0:
-			self.Dstarted=1
-		else:
-			self.Dstarted=0
-
-	def DrawWindowCallback(self, inWindowID, inRefcon):
-		if self.started==1:
-			lLeft=[];	lTop=[]; lRight=[];	lBottom=[]
-			XPLMGetWindowGeometry(inWindowID, lLeft, lTop, lRight, lBottom)
-			left=int(lLeft[0]); top=int(lTop[0]); right=int(lRight[0]); bottom=int(lBottom[0])
-			XPLMDrawTranslucentDarkBox(left,top,right,bottom)
-			color=1.0, 1.0, 1.0
-			XPLMDrawString(color, left+5, top-20, self.msg1, 0, xplmFont_Basic)
-			XPLMDrawString(color, left+5, top-35, self.msg2, 0, xplmFont_Basic)
-			XPLMDrawString(color, left+5, top-50, self.msg3, 0, xplmFont_Basic)
-			XPLMDrawString(color, left+5, top-65, self.msg4, 0, xplmFont_Basic)
-			XPLMDrawString(color, left+5, top-80, self.msg5, 0, xplmFont_Basic)
-
-	def XPluginStop(self):
-		if self.started==1:
-			self.toggleInfo()
-		if self.Dstarted==1:
-			self.toggleDInfo()
-		XPLMUnregisterCommandHandler(self, self.CmdSHConn, self.CmdSHConnCB, 0)
-		XPLMUnregisterCommandHandler(self, self.CmdSDConn, self.CmdSDConnCB, 0)
-		XPLMDestroyWindow(self, self.gWindow)
-		pass
-
-	def XPluginEnable(self):
-		return 1
-
-	def XPluginDisable(self):
-		pass
-
-	def XPluginReceiveMessage(self, inFromWho, inMessage, inParam):
-		pass
-
-	def gameLoopCallback(self, inElapsedSinceLastCall, elapsedSim, counter, refcon):
-		
-		P=XPLMGetDataf(self.baro_ref) #inHg
-		T=XPLMGetDataf(self.temp_ref) #deg C
-		alt=XPLMGetDataf(self.alt_ref)*self.mft #m -> ft
-		wgt=XPLMGetDataf(self.wgt_ref)*self.kglb #kg -> lb
-		acf_desc=str(self.acf_descb)
-		alt_ind=XPLMGetDataf(self.alt_ind_ref) #ft
-		
-		kias=XPLMGetDataf(self.ias_ref)
-		speed=str(int(round(kias)))+" kias"
-		mach=XPLMGetDataf(self.mach_ref)
-		machstr="  M"+str(round(mach,2))
-		DenAlt=self.getDA(P,T) #ft
-		#DenAltApprox=self.getDA_approx(P,T) #ft
-		delISA=self.getdelISA(alt, T)
-		
-		if self.eng_type[0]==2 or self.eng_type[0]==8: #Turboprop
-			TRQ=[]
-			XPLMGetDatavf(self.TRQ_ref, TRQ, 0, self.num_eng)
-			pwr=str(round(TRQ[0],1))+" Nm"
-		elif self.eng_type[0]==4 or self.eng_type[0]==5: #Jet
-			N1=[]
-			XPLMGetDatavf(self.N1_ref, N1, 0, self.num_eng)
-			pwr=str(round(N1[0],1))+"% N1"
-		else:
-			pwr="N/A"
-		
-		if acf_desc[0:27]=="['Boeing 737-800 xversion 4":
-			AC="B738"
-			TO_str=""
-		elif acf_desc=="['Pilatus PC-12']":
-			AC="PC12"
-			torque_psi=0.0088168441*TRQ[0]-0.0091189588
-			pwr=str(round(torque_psi,1))+" psi"
-			if torque_psi>37:
-				self.TO_pwr-=inElapsedSinceLastCall
-				TPR_m=int(self.TO_pwr/60)
-				TPR_s=int(self.TO_pwr%60)
-				TO_str='  %d:%02d TO pwr remain' % (TPR_m, TPR_s)
-			else:
-				self.TO_pwr=300
-				TO_str=""
-		else:
-			AC=acf_desc
-		
-		gears=[]
-		XPLMGetDatavf(self.geardep_ref, gears, 0, 10)
-		#print "Gear "+str(gears[0])
-		if gears[0]==1:
-			gear_state=1
-		else:
-			gear_state=0
-		Vref="N/A"
-		V1="N/A"
-		if gear_state==1:
-			#print "XDMG = Gear down"
-			flaps=XPLMGetDataf(self.flap_h_pos_ref)
-			if XPLMGetDataf(self.f_norm_ref) != 0:
-				#print "XDMG = On ground"
-				V1=self.getV1(flaps, wgt, DenAlt, T, AC)
-			elif self.Dstarted==1:
-				#print "XDMG = In air"
-				Vref=self.getVref(flaps, wgt, DenAlt, T, AC)
-						
-		dIstr=str(int(round(delISA)))+" "+self.d+"C"
-		if delISA>0:
-			dIstr="+"+dIstr
-
-		self.msg1=AC+"  DA: "+str(int(round(DenAlt)))+" ft  GW: "+str(int(round(wgt)))+" lb"
-		self.msg2="T: "+str(int(round(T)))+" "+self.d+"C  ISA +/-: "+dIstr+TO_str+machstr
-			
-		if self.Dstarted==0:
-			maxPwr=self.getMaxPwr(DenAlt, delISA, AC)
-			cruiseclb=self.getCC(DenAlt, alt, delISA, AC)
-			cruise=self.getCruise(DenAlt, wgt, alt_ind, delISA, AC)
-			maxcruise=self.getMaxCruise(DenAlt, wgt, alt, delISA, AC)
-			optFL=self.getOptFL(wgt, AC)
-			maxFL=self.getMaxFL(wgt, delISA, AC)
-			
-			self.msg3="Pwr: "+maxPwr+"  CC: "+cruiseclb+"  Thr: "+pwr
-			self.msg4="Crs: "+maxcruise+"  LR: "+cruise+"  AS: "+speed
-			self.msg5="FL: "+maxFL+"  FL: "+optFL+"  V1: "+V1#+" Flaps: "+str(flaps)
-		
-		else:
-			#destindex=XPLMGetDatai(self.gps_dest_index_ref)
-			destindex=XPLMGetDisplayedFMSEntry()
-			destid=""
-			dalt=0
-			print "Getting entry info..."
-			# XPLMGetFMSEntryInfo(
-			   # int                  inIndex,    
-			   # XPLMNavType *        outType,    /* Can be NULL */
-			   # char *               outID,    /* Can be NULL */
-			   # XPLMNavRef *         outRef,    /* Can be NULL */
-			   # int *                outAltitude,    /* Can be NULL */
-			   # float *              outLat,    /* Can be NULL */
-			   # float *              outLon);    /* Can be NULL */
-			XPLMGetFMSEntryInfo(destindex, None, destid, None, dalt, None, None)
-			#print type(dalt)
-			#print type(destid)
-			#print str(destindex)
-			#print destid
-			print dalt
-			#time=XPLMGetDataf(self.gps_time_ref)
-			dist=XPLMGetDataf(self.gps_dist_ref)#*self.mft/6076
-			print "Going to index "+str(destindex)+", "+destid+", "+str(dalt)+" MSL, dist "+str(dist)" nm"
-			if dist<9000 and dist>0:
-				ddist=self.getDesc(dist, alt, dalt, DenAlt, delISA, AC)
-			else:
-				ddist="No Dest"
-			dprof=self.getDpro(AC)
-			
-			self.msg3="Descend at: "+ddist
-			self.msg4=dprof
-			self.msg5="Vref: "+Vref
-		
-		return 10
