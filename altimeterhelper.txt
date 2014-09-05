@@ -1,44 +1,29 @@
-Website:
+ITT: PC-12
 
-Altimeter Helper
+The ITT on the PC-12 seems pretty low on its scale. The handbook says it is tuned so that you have to reduce power to stay in the green at altitude. However, I have never seen it outside the green, except maybe the lower end of it. On the ground at idle it's pretty low, and at takeoff it's around 530. As I climb, it slowly increases. However, with torque under 37.0, even if I climb to 30,000 feet with a TAT of -16 C, it gets a little over 730 but still is well within the green.
 
-Currently only available for 64-bit Linux, tested on 64-bit Arch Linux running X-Plane 10.25, no guarantees it will work at all for anyone ever.
-
-This plugin will display a small overlay window (for 2 seconds) every time the altimeter setting is changed. This is helpful for cases where the setting is hard to read, or when outside the cockpit.
-
-The altimeter can also be automatically set with Ctrl+Shift+B, which will use either 29.92 (if above 18,000 feet) or the current local altimeter (if below 18,000 feet).
-
-The plugin will also automatically switch the altimeter when passing through 18,000 feet. I have tried to prevent it from switching back and forth when level at 18,000 feet.
-
-To Do:
-I may attempt to compile for Windows or Mac if there is interest, but would not be able to test it myself. Feel free to make/modify your own from the source.
-Currently the settings (transition altitude 18000 feet, box shows for 2 seconds, key combo, etc.) are hard coded. I may attempt support for a settings file/window in the future.
-
-Notes:
-This plugin will not show up in the menu, because I'm lazy and there would be nothing to see. You should know if it's working just by changing the altimeter setting.
-Setting the altimeter with Ctrl+Shift+B (or descending through 18,000 feet) uses the pressure setting from your current position. Depending on conditions, it may be different further along your course.
-The source code for this plugin is included in the download.
-While I enjoy programming from time to time I am no expert, especially with C. I welcome any suggestions.
-
-About:
-This is my second X-Plane plugin (the first is an XACARS client, much more complex and not ready to publish yet). The "Visual Altimeter" plugin available here supports Windows, Mac, and Linux, but is unfortunately only 32-bit at this time. Since it has not been updated since 2007, I did not have much hope for an update anytime soon, and decided to write my own.
-
-The source code for a landing speed plugin was very helpful, and I used it as a basis for the display functions.
-http://www.babichev.info/en/projects/xgs/
+Are those values accurate to what they should be? Is the scale right? Other turbine aircraft I have can certainly be ITT limited at times; the PC-12 never is. Just wondering why.
 
 
-Readme:
 
-SYSTEM REQUIREMENTS
+09/05/2014 - Updated the code to add some functionality. I did not update the C version, so it is not included. If there are any 64-bit Linux users out there that don't want to use the Python version, let me know and I may try to keep the C version up to date.
 
-This plugin is currently compiled for 64-bit Linux only.
-Tested on 64-bit Arch Linux running X-Plane 10.25
-Source code included in download package.
+The old hard-coded "hot key" of Shift+Ctrl+B has been replaced with a custom command. You can now go to the "Joysticks and Controls" settings to create your own key combination for this feature. You can view the extra commands from the upper right of that window.
 
-INSTALLATION
+The plugin will now alert you if your altimeter setting causes your indicated altitude to be off by more than 250 feet. You can comment that part out of you don't want this.
 
-Place the althelper.xpl file in the Resources/Plugins/ directory of X-Plane.
+The popup now shows the change in altimeter setting versus the previous setting. This is helpful to see how much of a change there was when descending through the transition altitude or using the key combination to set the altimeter.
 
-REMOVAL
+* Removed the "hot key" and replaced with a custom command
+* Moved the popup down slightly to not interfere with the Dial Magnifier plugin (thanks for the tip about that plugin, by the way)
+* In addition to the new altimeter setting, popup also shows the net change in inHg from previous setting
+* Transition altitude is now a variable so it can be easily changed as needed
+* Cleaned out some unneeded things from the code
 
-Remove the althelper.xpl file from the Resources/Plugins/ directory of X-Plane.
+
+
+My last two flight reports using XACARS have been rejected. I asked my crew base manager about it, and he indicated that the departure and arrival airports did not look correct on the report. Evidently the report he sees always says the route was KSLC to KLAS regardless of the actual route reported. However, the reports look right to me compared to reports that I have had approved in the past. He seems to feel that the problem is on my end with the reporting, but I have not done anything differently from before. I made two flights, and my reports looks just like the ones from before, so I don't know how I could resolve the problem.
+The Denver crew base manager is new and I'm not sure he is familiar with the way XACARS reports work. He may reasonably be expecting for all the information shown on the report page to be valid, while I'm not sure that this is the case.
+From my observations, the XACARS reports show the correct departure and arrival airports, as well as the correct aircraft type for the flight. However, all other info on the page shows up the same for every report (as long as XACARS is sending data correctly throughout the flight, otherwise no other info shows up on the page). In the bottom right there are a few checks for parameters of the flight. The departure and arrival airport have numbers next to them. These numbers seem to be always the same for each airport, but the checks always say "NO". All of this is true for both my approved and recently rejected flights.
+I made a post in the XACARS support forum last week that has so far gone unanswered.
+So is the crew base manager correct in is interpretation of the reports? Or is there some problem with the way my reports are being submitted? I'd like to get this resolved so I can continue logging flights.
