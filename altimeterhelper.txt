@@ -19,11 +19,3 @@ The popup now shows the change in altimeter setting versus the previous setting.
 * In addition to the new altimeter setting, popup also shows the net change in inHg from previous setting
 * Transition altitude is now a variable so it can be easily changed as needed
 * Cleaned out some unneeded things from the code
-
-
-
-My last two flight reports using XACARS have been rejected. I asked my crew base manager about it, and he indicated that the departure and arrival airports did not look correct on the report. Evidently the report he sees always says the route was KSLC to KLAS regardless of the actual route reported. However, the reports look right to me compared to reports that I have had approved in the past. He seems to feel that the problem is on my end with the reporting, but I have not done anything differently from before. I made two flights, and my reports looks just like the ones from before, so I don't know how I could resolve the problem.
-The Denver crew base manager is new and I'm not sure he is familiar with the way XACARS reports work. He may reasonably be expecting for all the information shown on the report page to be valid, while I'm not sure that this is the case.
-From my observations, the XACARS reports show the correct departure and arrival airports, as well as the correct aircraft type for the flight. However, all other info on the page shows up the same for every report (as long as XACARS is sending data correctly throughout the flight, otherwise no other info shows up on the page). In the bottom right there are a few checks for parameters of the flight. The departure and arrival airport have numbers next to them. These numbers seem to be always the same for each airport, but the checks always say "NO". All of this is true for both my approved and recently rejected flights.
-I made a post in the XACARS support forum last week that has so far gone unanswered.
-So is the crew base manager correct in is interpretation of the reports? Or is there some problem with the way my reports are being submitted? I'd like to get this resolved so I can continue logging flights.
