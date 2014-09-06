@@ -95,8 +95,9 @@ class PythonInterface:
 		
 		self.started=0
 		self.Dstarted=0
+		self.msg=[]
 		for i in range(0,5):
-			self.msg[i]=""
+			self.msg.append("")
 		self.msg[0]="Starting..."
 		# self.msg[1]=""
 		# self.msg[2]=""
@@ -176,7 +177,7 @@ class PythonInterface:
 			XPLMDrawTranslucentDarkBox(left,top,right,bottom)
 			color=1.0, 1.0, 1.0
 			for i in range(0,5):
-				XPLMDrawString(color, left+5, top-(20-15*i), self.msg[i], 0, xplmFont_Basic)
+				XPLMDrawString(color, left+5, top-(20+15*i), self.msg[i], 0, xplmFont_Basic)
 			# XPLMDrawString(color, left+5, top-20, self.msg1, 0, xplmFont_Basic)
 			# XPLMDrawString(color, left+5, top-35, self.msg2, 0, xplmFont_Basic)
 			# XPLMDrawString(color, left+5, top-50, self.msg3, 0, xplmFont_Basic)
@@ -308,7 +309,7 @@ class PythonInterface:
 			print dalt
 			#time=XPLMGetDataf(self.gps_time_ref)
 			dist=XPLMGetDataf(self.gps_dist_ref)#*self.mft/6076
-			print "Going to index "+str(destindex)+", "+destid+", "+str(dalt)+" MSL, dist "+str(dist)" nm"
+			print "Going to index "+str(destindex)+", "+destid+", "+str(dalt)+" MSL, dist "+str(dist)+" nm"
 			if dist<9000 and dist>0:
 				ddist=self.getDesc(dist, alt, dalt, DenAlt, delISA, AC)
 			else:
