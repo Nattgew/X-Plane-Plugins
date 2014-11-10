@@ -147,7 +147,7 @@ class PythonInterface:
 				alt=self.setBaro(bar)
 		
 		alt_err=self.getAlt(bar-bar_act,0)
-		if abs(alt_err)>250:
+		if abs(alt_err)>250 and alt < self.trans_alt:
 			alt_err_str=self.getSign(alt_err)+str(round(alt_err))
 			self.msg1="Altimeter off by "+alt_err_str+" feet!"
 			self.remainingShowTime=self.showTime
