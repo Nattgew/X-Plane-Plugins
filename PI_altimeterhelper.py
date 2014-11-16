@@ -136,7 +136,7 @@ class PythonInterface:
 		if alt >= self.trans_alt and self.last_alt < self.trans_alt:
 			# Climbing through 18000
 			print "Climbing through transition alt"
-			if vvi >= 500 or (vvi < 500 and alt > self.trans_alt + 250):
+			if (vvi >= 500 or (vvi < 500 and alt > self.trans_alt + 250)) and bar != 29.92:
 				bar=29.92
 				alt=self.setBaro(bar)
 		elif alt < self.trans_alt and self.last_alt >= self.trans_alt:
