@@ -159,7 +159,7 @@ class PythonInterface:
 		else:
 			self.acf_descb=[]
 			XPLMUnregisterFlightLoopCallback(self, self.gameLoopCB, 0)
-			self.started=1
+			self.started=0
 	
 	def toggleDInfo(self):
 		if self.started==0:
