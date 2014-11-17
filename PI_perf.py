@@ -162,9 +162,9 @@ class PythonInterface:
 			self.started=0
 	
 	def toggleDInfo(self):
-		if self.started==0:
-			self.toggleInfo()
 		if self.Dstarted==0:
+			if self.started==0:
+				self.toggleInfo()
 			self.Dstarted=1
 		else:
 			self.Dstarted=0
@@ -185,10 +185,11 @@ class PythonInterface:
 			# XPLMDrawString(color, left+5, top-80, self.msg5, 0, xplmFont_Basic)
 
 	def XPluginStop(self):
-		if self.started==1:
-			self.toggleInfo()
 		if self.Dstarted==1:
 			self.toggleDInfo()
+		if self.started==1:
+			self.toggleInfo()
+		
 		XPLMUnregisterCommandHandler(self, self.CmdSHConn, self.CmdSHConnCB, 0)
 		XPLMUnregisterCommandHandler(self, self.CmdSDConn, self.CmdSDConnCB, 0)
 		XPLMDestroyWindow(self, self.gWindow)
@@ -337,7 +338,7 @@ class PythonInterface:
 			ddist=str(int(round(ddist_nm)))+" nm"
 		elif AC=="PC12":
 			alts=tuple(range(5000,30001,5000))
-			isas=tuple(range(-40,30,10))
+			isas=tuple(range(-40,31,10))
 			dnms=((9.6,20.0,31.0,0,0,0), 			# -40
 				(9.9,20.2,31.8,43.3,0,0),			# -30
 				(10.0,20.7,32.2,44.1,55.8,0),		# -20
@@ -359,7 +360,7 @@ class PythonInterface:
 	
 	def getVref(self, flaps, wgt, DA, T, AC):
 		if AC=="PC12": # Flaps 40
-			self.vr=1
+			#self.vr=1
 			GW=tuple(range(6400,10001,900))
 			vapps=(67.0,72.0,76.0,80.0,84.0)
 			wgt_i=wgt/900-64/9
