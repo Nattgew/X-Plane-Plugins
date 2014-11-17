@@ -19,11 +19,11 @@ class PythonInterface:
 	
 	def setBaro(self, bar_new):
 		bar_old=XPLMGetDataf(self.baro_set_ref)
-		bar_am=XPLMGetDataf(self.baro_am_ref)
+		#bar_am=XPLMGetDataf(self.baro_am_ref)
 		XPLMSetDataf(self.baro_set_ref, bar_new)
 		del_baro_set=bar_new-bar_old
-		alt_new=self.getAlt(bar_new,bar_am)
-				
+		#alt_new=self.getAlt(bar_new,bar_am)
+		
 		del_baro_str=self.getSign(del_baro_set)+str(round(del_baro_set,2))
 		
 		print "Altimeter changed to: " + str(round(bar_new,2))
@@ -31,7 +31,7 @@ class PythonInterface:
 		self.msg1="Altimeter  " + str(round(bar_new,2))+"  "+del_baro_str+" inHg"
 		self.remainingShowTime=self.showTime
 		
-		return alt_new
+		pass
 	
 	def showBaro(self, bar_new):
 		self.msg1="Altimeter  " + str(round(bar_new,2))
@@ -59,8 +59,9 @@ class PythonInterface:
 		winPosY=500
 		win_w=200
 		win_h=35
-		self.last_alt=XPLMGetDataf(self.alt_ind_ref)
+		self.stdpress=0
 		self.trans_alt=18000
+		self.tol=[17.009, 0.0058579, -0.000000012525]
 		self.last_bar=XPLMGetDataf(self.baro_set_ref)
 
 		self.DrawWindowCB=self.DrawWindowCallback
@@ -92,7 +93,7 @@ class PythonInterface:
 				newbaro=XPLMGetDataf(self.baro_act_ref)
 			if round(newbaro,2)!=round(XPLMGetDataf(self.baro_set_ref),2):
 				self.last_bar=newbaro
-				alt=self.setBaro(newbaro)
+				self.setBaro(newbaro)
 			else:
 				self.showBaro(newbaro)
 		return 0
@@ -122,10 +123,10 @@ class PythonInterface:
 		pass
 
 	def gameLoopCallback(self, inElapsedSinceLastCall, elapsedSim, counter, refcon):
-	
+		
 		if 0.0 < self.remainingShowTime:
 			self.remainingShowTime -= inElapsedSinceLastCall
-	
+		
 		alt=XPLMGetDataf(self.alt_ind_ref)
 		vvi=XPLMGetDataf(self.vvi_ref)
 		alt_act=XPLMGetDataf(self.alt_act_ref)*self.mft
@@ -133,30 +134,30 @@ class PythonInterface:
 		bar_am=XPLMGetDataf(self.baro_am_ref)
 		bar_act=XPLMGetDataf(self.baro_act_ref)
 		
-		if alt >= self.trans_alt and self.last_alt < self.trans_alt:
+		if alt >= (self.trans_alt-25) and self.stdpress==0:
 			# Climbing through 18000
 			print "Climbing through transition alt"
-			if (vvi >= 500 or (vvi < 500 and alt > self.trans_alt + 250)) and bar != 29.92:
-				bar=29.92
-				alt=self.setBaro(bar)
-		elif alt < self.trans_alt and self.last_alt >= self.trans_alt:
+			bar=29.92
+			self.stdpress=1
+			self.setBaro(bar)
+		elif (vvi <= -500 and alt < self.trans_alt or vvi > -500 and alt < self.trans_alt - 250) and self.stdpress==1:
 			# Descending through 18000
 			print "Descending through transition alt"
-			if vvi <= -500 or (vvi > -500 and alt < self.trans_alt - 250):
-				bar=XPLMGetDataf(self.baro_act_ref)
-				alt=self.setBaro(bar)
+			bar=XPLMGetDataf(self.baro_act_ref)
+			self.stdpress=0
+			self.setBaro(bar)
 		
 		alt_err=self.getAlt(bar-bar_act,0)
-		if abs(alt_err)>250 and alt < self.trans_alt:
+		tolerance=self.tol[2]*alt**2+self.tol[1]*alt+self.tol[0]
+		if abs(alt_err)>tolerance and self.stdpress==0:
 			alt_err_str=self.getSign(alt_err)+str(round(alt_err))
 			self.msg1="Altimeter off by "+alt_err_str+" feet!"
 			self.remainingShowTime=self.showTime
-			
+		
 		if round(self.last_bar,2)!=round(bar,2):
 			#print "Setting changed from "+str(round(self.last_bar,2))+" to "+str(round(bar,2))
-			alt=self.showBaro(bar)
+			self.showBaro(bar)
 
-		self.last_alt=alt
 		self.last_bar=bar
 		
 		#ind=self.getAlt(bar,bar_am)
