@@ -190,8 +190,8 @@ class PythonInterface:
 		if self.started==1:
 			self.toggleInfo()
 		
-		XPLMUnregisterCommandHandler(self, self.CmdSHConn, self.CmdSHConnCB, 0)
-		XPLMUnregisterCommandHandler(self, self.CmdSDConn, self.CmdSDConnCB, 0)
+		XPLMUnregisterCommandHandler(self, self.CmdSHConn, self.CmdSHConnCB, 0, 0)
+		XPLMUnregisterCommandHandler(self, self.CmdSDConn, self.CmdSDConnCB, 0, 0)
 		XPLMDestroyWindow(self, self.gWindow)
 		pass
 
