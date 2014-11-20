@@ -134,13 +134,13 @@ class PythonInterface:
 		bar_am=XPLMGetDataf(self.baro_am_ref)
 		bar_act=XPLMGetDataf(self.baro_act_ref)
 		
-		if (vvi >= 500 and alt >= (self.trans_alt-25) or vvi < 500 and and vvi > 0 and alt > self.trans_alt + 250) and self.stdpress==0:
+		if (vvi >= 500 and alt >= (self.trans_alt-25) or vvi < 500 and vvi > 0 and alt > self.trans_alt + 250) and self.stdpress==0:
 			# Climbing through 18000
 			print "Climbing through transition alt"
 			bar=29.92
 			self.stdpress=1
 			self.setBaro(bar)
-		elif (vvi <= -500 and alt < (self.trans_alt-25) or vvi > -500 and and vvi < 0 and alt < self.trans_alt - 250) and self.stdpress==1:
+		elif (vvi <= -500 and alt < (self.trans_alt-25) or vvi > -500 and vvi < 0 and alt < self.trans_alt - 250) and self.stdpress==1:
 			# Descending through 18000
 			print "Descending through transition alt"
 			bar=XPLMGetDataf(self.baro_act_ref)
