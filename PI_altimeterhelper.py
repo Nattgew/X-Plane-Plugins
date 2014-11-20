@@ -108,7 +108,7 @@ class PythonInterface:
 			gResult=XPLMDrawString(color, left+5, top-20, self.msg1, 0, xplmFont_Basic)
 
 	def XPluginStop(self):
-		XPLMUnregisterCommandHandler(self, self.CmdSHConn, self.CmdSHConnCB, 0)
+		XPLMUnregisterCommandHandler(self, self.CmdSHConn, self.CmdSHConnCB, 0, 0)
 		XPLMUnregisterFlightLoopCallback(self, self.gameLoopCB, 0);
 		XPLMDestroyWindow(self, self.gWindow)
 		pass
