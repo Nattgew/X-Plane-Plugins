@@ -121,7 +121,7 @@ class PythonInterface:
 	def XPluginStop(self):
 		if self.started==1:
 			self.showhide()
-		XPLMUnregisterCommandHandler(self, self.CmdSHConn, self.CmdSHConnCB, 0)
+		XPLMUnregisterCommandHandler(self, self.CmdSHConn, self.CmdSHConnCB, 0, 0)
 		XPLMDestroyWindow(self, self.gWindow)
 		pass
 
