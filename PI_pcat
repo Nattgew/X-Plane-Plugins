@@ -1,0 +1,182 @@
+from XPLMProcessing import *
+from XPLMDataAccess import *
+from XPLMDisplay import *
+from XPLMGraphics import *
+from XPLMDefs import *
+from XPLMUtilities import *
+
+class PythonInterface:
+
+	def XPluginStart(self):
+		self.Name="PCAT"
+		self.Sig= "natt.python.pcat"
+		self.Desc="Auto-throttle for PC-12"
+		self.VERSION="0.1"
+		
+		self.TO_ref=XPLMFindDataRef("sim/operation/override/override_throttles") #	int	710+	yes	boolean	Override the throttles (use ENGN_thro_use to control them)
+		self.thrott_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_thro") #	float[8]	660+	yes	ratio	Throttle (per engine) as set by user, 0 = idle, 1 = max
+		self.throtto_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_thro_use") #	float[8]	710+	yes	ratio 	Throttle (per engine) when overridden by you, plus with thrust vectors - use override_throttles to change.
+		self.TRQ_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_TRQ") #	float[8]	660+	yes	NewtonMeters	Torque (per engine)
+		self.num_eng_ref=XPLMFindDataRef("sim/aircraft/engine/acf_num_engines")
+		self.ias_ref=XPLMFindDataRef("sim/flightmodel/position/indicated_airspeed")
+		self.alpha_ref=XPLMFindDataRef("sim/flightmodel/position/alpha")
+		self.alphawarn_ref=XPLMFindDataRef("sim/aircraft/overflow/acf_stall_warn_alpha")
+		self.stallwarn_ref=XPLMFindDataRef("sim/cockpit2/annunciators/stall_warning")
+
+		self.Kp=1.25
+		self.Ki=0.1
+		self.Kd=0.5
+		self.Integrator_max=10
+		self.Integrator_min=-10
+		self.Integrator=0
+		self.Derivator=0
+		self.IAS=160
+		self.started=0
+		winPosX=20
+		winPosY=300
+		win_w=230
+		win_h=80
+		self.msg1=""
+		self.msg2=""
+		
+		self.gameLoopCB=self.gameLoopCallback
+		self.DrawWindowCB=self.DrawWindowCallback
+		self.KeyCB=self.KeyCallback
+		self.MouseClickCB=self.MouseClickCallback
+		self.gWindow=XPLMCreateWindow(self, winPosX, winPosY, winPosX + win_w, winPosY - win_h, 1, self.DrawWindowCB, self.KeyCB, self.MouseClickCB, 0)
+		self.CmdATConn = XPLMCreateCommand("pcat/toggle","Starts or stops auto throttle")
+		self.CmdATConnCB = self.CmdATConnCallback
+		XPLMRegisterCommandHandler(self, self.CmdATConn, self.CmdATConnCB, 0, 0)
+		self.CmdUpConn = XPLMCreateCommand("pcat/ias_up","Set IAS +1kt")
+		self.CmdUpConnCB = self.CmdUpConnCallback
+		XPLMRegisterCommandHandler(self, self.CmdUpConn, self.CmdUpConnCB, 0, 0)
+		self.CmdDnConn = XPLMCreateCommand("pcat/ias_down","Set IAS -1kt")
+		self.CmdDnConnCB = self.CmdDnConnCallback
+		XPLMRegisterCommandHandler(self, self.CmdDnConn, self.CmdDnConnCB, 0, 0)
+
+		return self.Name, self.Sig, self.Desc
+		
+		
+	def MouseClickCallback(self, inWindowID, x, y, inMouse, inRefcon):
+		return 0
+
+	def KeyCallback(self, inWindowID, inKey, inFlags, inVirtualKey, inRefcon, losingFocus):
+		pass 
+
+	def CmdATConnCallback(self, cmd, phase, refcon):
+		if(phase==0): #KeyDown event
+			print "PCAT = Toggle AT"
+			self.toggleInfo()
+		return 0
+	
+	def CmdUpConnCallback(self, cmd, phase, refcon):
+		if(phase==0): #KeyDown event
+			print "PCAT = IAS +"
+			self.IAS+=1
+		return 0
+	
+	def CmdDnConnCallback(self, cmd, phase, refcon):
+		if(phase==0): #KeyDown event
+			print "PCAT = IAS -"
+			self.IAS-=1
+		return 0
+		
+	def toggleInfo(self):
+		if self.started==0:
+			self.num_eng=XPLMGetDatai(self.num_eng_ref)
+			T=[]
+			XPLMGetDatavf(self.thrott_ref, T, 0, self.num_eng)
+			XPLMSetDatavf(self.throtto_ref, T)
+			XPLMSetDatai(self.TO_ref,1)
+			XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 0.5, 0)
+			self.started=1
+		else:
+			XPLMUnregisterFlightLoopCallback(self, self.gameLoopCB, 0)
+			T=[]
+			XPLMGetDatavf(self.throtto_ref, T, 0, self.num_eng)
+			XPLMSetDatavf(self.thrott_ref, T)
+			XPLMSetDatai(self.TO_ref,0)
+			self.started=0
+		pass
+		
+	def XPluginStop(self):
+		XPLMUnregisterCommandHandler(self, self.CmdATConn, self.CmdATConnCB, 0, 0)
+		XPLMUnregisterCommandHandler(self, self.CmdUpConn, self.CmdUpConnCB, 0, 0)
+		XPLMUnregisterCommandHandler(self, self.CmdDnConn, self.CmdDnConnCB, 0, 0)
+		if self.started==1:
+			self.toggleInfo()
+		XPLMDestroyWindow(self, self.gWindow)
+		pass
+
+	def XPluginEnable(self):
+		return 1
+
+	def XPluginDisable(self):
+		pass
+
+	def XPluginReceiveMessage(self, inFromWho, inMessage, inParam):
+		pass
+		
+	def DrawWindowCallback(self, inWindowID, inRefcon):
+		if self.started==1:
+			lLeft=[];	lTop=[]; lRight=[];	lBottom=[]
+			XPLMGetWindowGeometry(inWindowID, lLeft, lTop, lRight, lBottom)
+			left=int(lLeft[0]); top=int(lTop[0]); right=int(lRight[0]); bottom=int(lBottom[0])
+			XPLMDrawTranslucentDarkBox(left,top,right,bottom)
+			color=1.0, 1.0, 1.0
+			XPLMDrawString(color, left+5, top-20, self.msg1, 0, xplmFont_Basic)
+			XPLMDrawString(color, left+5, top-35, self.msg2, 0, xplmFont_Basic)
+			# XPLMDrawString(color, left+5, top-50, self.msg3, 0, xplmFont_Basic)
+			# XPLMDrawString(color, left+5, top-65, self.msg4, 0, xplmFont_Basic)
+			# XPLMDrawString(color, left+5, top-80, self.msg5, 0, xplmFont_Basic)
+
+	def gameLoopCallback(self, inElapsedSinceLastCall, elapsedSim, counter, refcon):
+		
+		kias=XPLMGetDataf(self.ias_ref)
+		TO=[]
+		XPLMGetDatavf(self.throtto_ref, TO, 0, self.num_eng)
+		TRQ=[]
+		XPLMGetDatavf(self.TRQ_ref, TRQ, 0, self.num_eng)
+		
+		alpha=XPLMGetDataf(self.alpha_ref)
+		awarn=XPLMGetDataf(self.alphawarn_ref)
+		swarn=XPLMGetDatai(self.stallwarn_ref)
+		
+		err=self.IAS-kias
+		PID=update(err)
+		
+		#for i in range(0,self.num_eng):
+		torque_psi=0.0088168441*TRQ[0]
+		if alpha>awarn+0.25 and swarn==0:
+			if torque_psi > 36.95:
+				TO[0]=TO[0]-0.02
+			else:
+				TO[0]=TO[0]+PID/100
+		else:
+			TO[0]=1
+		
+		XPLMSetDatavf(self.throtto_ref, TO)
+		
+		self.msg1="err: "+str(round(err))+" a: "+str(round(alpha,1))+"/"+str(round(awarn,1))
+		self.msg2="TO: "+str(round(TO[0],3))+" PID: "+str(round(PID,4))
+		
+		return 0.5
+
+	def update(self,error):
+
+		P_value = self.Kp * error
+		D_value = self.Kd * ( error - self.Derivator)
+		self.Derivator = error
+
+		self.Integrator = self.Integrator + error
+
+		if self.Integrator > self.Integrator_max:
+			self.Integrator = self.Integrator_max
+		elif self.Integrator < self.Integrator_min:
+			self.Integrator = self.Integrator_min
+
+		I_value = self.Integrator * self.Ki
+
+		PID = P_value + I_value + D_value
+
+		return PID
