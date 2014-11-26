@@ -22,6 +22,7 @@ class PythonInterface:
 		self.alpha_ref=XPLMFindDataRef("sim/flightmodel/position/alpha")
 		self.alphawarn_ref=XPLMFindDataRef("sim/aircraft/overflow/acf_stall_warn_alpha")
 		self.stallwarn_ref=XPLMFindDataRef("sim/cockpit2/annunciators/stall_warning")
+		self.acf_desc_ref=XPLMFindDataRef("sim/aircraft/view/acf_descrip")
 
 		self.Kp=1.25
 		self.Ki=0.1
@@ -38,6 +39,7 @@ class PythonInterface:
 		win_h=80
 		self.msg1=""
 		self.msg2=""
+		self.ac=""
 		
 		self.gameLoopCB=self.gameLoopCallback
 		self.DrawWindowCB=self.DrawWindowCallback
@@ -55,7 +57,6 @@ class PythonInterface:
 		XPLMRegisterCommandHandler(self, self.CmdDnConn, self.CmdDnConnCB, 0, 0)
 
 		return self.Name, self.Sig, self.Desc
-		
 		
 	def MouseClickCallback(self, inWindowID, x, y, inMouse, inRefcon):
 		return 0
@@ -83,6 +84,9 @@ class PythonInterface:
 		
 	def toggleInfo(self):
 		if self.started==0:
+			acf_descb=[]
+			XPLMGetDatab(self.acf_desc_ref, acf_descb, 0, 500)
+			self.ac=self.getshortac(str(acf_descb))
 			self.num_eng=XPLMGetDatai(self.num_eng_ref)
 			T=[]
 			XPLMGetDatavf(self.thrott_ref, T, 0, self.num_eng)
@@ -92,6 +96,7 @@ class PythonInterface:
 			self.started=1
 		else:
 			XPLMUnregisterFlightLoopCallback(self, self.gameLoopCB, 0)
+			self.ac=""
 			T=[]
 			XPLMGetDatavf(self.throtto_ref, T, 0, self.num_eng)
 			XPLMSetDatavf(self.thrott_ref, T)
@@ -143,24 +148,28 @@ class PythonInterface:
 		swarn=XPLMGetDatai(self.stallwarn_ref)
 		
 		err=self.IAS-kias
-		PID=update(err)
+		PID=self.update(err)
 		
-		#for i in range(0,self.num_eng):
-		torque_psi=0.0088168441*TRQ[0]
 		if alpha>awarn+0.25 and swarn==0:
-			if torque_psi > 36.95:
-				TO[0]=TO[0]-0.02
+			if self.ac == "PC12":
+				torque_psi=0.0088168441*TRQ[0]
+				if torque_psi > 36.95:
+					TO[0]-=0.02
+				else:
+					TO[0]+=PID/100
 			else:
-				TO[0]=TO[0]+PID/100
+				for i in range(0,self.num_eng):
+					TO[i]+=PID/100
 		else:
-			TO[0]=1
+			for i in range(0,self.num_eng):
+				TO[i]=1
 		
 		XPLMSetDatavf(self.throtto_ref, TO)
 		
 		self.msg1="err: "+str(round(err))+" a: "+str(round(alpha,1))+"/"+str(round(awarn,1))
 		self.msg2="TO: "+str(round(TO[0],3))+" PID: "+str(round(PID,4))
 		
-		return 0.5
+		return 1
 
 	def update(self,error):
 
@@ -168,7 +177,7 @@ class PythonInterface:
 		D_value = self.Kd * ( error - self.Derivator)
 		self.Derivator = error
 
-		self.Integrator = self.Integrator + error
+		self.Integrator += error
 
 		if self.Integrator > self.Integrator_max:
 			self.Integrator = self.Integrator_max
@@ -180,3 +189,14 @@ class PythonInterface:
 		PID = P_value + I_value + D_value
 
 		return PID
+		
+	def getshortac(self,acf_desc):
+	
+		if acf_desc[0:27]=="['Boeing 737-800 xversion 4":
+			ac_short="B738"
+		elif acf_desc=="['Pilatus PC-12']":
+			ac_short="PC12"
+		else:
+			ac_short=acf_desc
+		
+		return ac_short
