@@ -23,15 +23,17 @@ class PythonInterface:
 		self.alphawarn_ref=XPLMFindDataRef("sim/aircraft/overflow/acf_stall_warn_alpha")
 		self.stallwarn_ref=XPLMFindDataRef("sim/cockpit2/annunciators/stall_warning")
 		self.acf_desc_ref=XPLMFindDataRef("sim/aircraft/view/acf_descrip")
+		self.ap_as_ref=XPLMFindDataRef("sim/cockpit/autopilot/airspeed")
+		self.ap_asmach_ref=XPLMFindDataRef("sim/cockpit/autopilot/airspeed_is_mach")
 
-		self.Kp=1.25
-		self.Ki=0.1
-		self.Kd=0.5
+		self.Kp=0.75
+		self.Ki=0.005
+		self.Kd=10.0
 		self.Integrator_max=10
 		self.Integrator_min=-10
 		self.Integrator=0
 		self.Derivator=0
-		self.IAS=160
+		self.IAS=160.0
 		self.started=0
 		winPosX=20
 		winPosY=300
@@ -39,6 +41,8 @@ class PythonInterface:
 		win_h=80
 		self.msg1=""
 		self.msg2=""
+		self.msg3=""
+		self.msg4=""
 		self.ac=""
 		
 		self.gameLoopCB=self.gameLoopCallback
@@ -73,25 +77,29 @@ class PythonInterface:
 	def CmdUpConnCallback(self, cmd, phase, refcon):
 		if(phase==0): #KeyDown event
 			print "PCAT = IAS +"
-			self.IAS+=1
+			self.IAS+=1.0
+			XPLMSetDataf(self.ap_as_ref, self.IAS)
 		return 0
 	
 	def CmdDnConnCallback(self, cmd, phase, refcon):
 		if(phase==0): #KeyDown event
 			print "PCAT = IAS -"
-			self.IAS-=1
+			self.IAS-=1.0
+			XPLMSetDataf(self.ap_as_ref, self.IAS)
 		return 0
 		
 	def toggleInfo(self):
 		if self.started==0:
+			XPLMSetDatai(self.ap_asmach_ref, 0)
 			acf_descb=[]
 			XPLMGetDatab(self.acf_desc_ref, acf_descb, 0, 500)
 			self.ac=self.getshortac(str(acf_descb))
 			self.num_eng=XPLMGetDatai(self.num_eng_ref)
 			T=[]
 			XPLMGetDatavf(self.thrott_ref, T, 0, self.num_eng)
-			XPLMSetDatavf(self.throtto_ref, T)
-			XPLMSetDatai(self.TO_ref,1)
+			XPLMSetDatavf(self.throtto_ref, T, 0, self.num_eng)
+			XPLMSetDatai(self.TO_ref, 1)
+			override=XPLMGetDatai(self.TO_ref)
 			XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 0.5, 0)
 			self.started=1
 		else:
@@ -99,8 +107,8 @@ class PythonInterface:
 			self.ac=""
 			T=[]
 			XPLMGetDatavf(self.throtto_ref, T, 0, self.num_eng)
-			XPLMSetDatavf(self.thrott_ref, T)
-			XPLMSetDatai(self.TO_ref,0)
+			XPLMSetDatavf(self.thrott_ref, T, 0, self.num_eng)
+			XPLMSetDatai(self.TO_ref, 0)
 			self.started=0
 		pass
 		
@@ -131,15 +139,15 @@ class PythonInterface:
 			color=1.0, 1.0, 1.0
 			XPLMDrawString(color, left+5, top-20, self.msg1, 0, xplmFont_Basic)
 			XPLMDrawString(color, left+5, top-35, self.msg2, 0, xplmFont_Basic)
-			# XPLMDrawString(color, left+5, top-50, self.msg3, 0, xplmFont_Basic)
-			# XPLMDrawString(color, left+5, top-65, self.msg4, 0, xplmFont_Basic)
+			XPLMDrawString(color, left+5, top-50, self.msg3, 0, xplmFont_Basic)
+			XPLMDrawString(color, left+5, top-65, self.msg4, 0, xplmFont_Basic)
 			# XPLMDrawString(color, left+5, top-80, self.msg5, 0, xplmFont_Basic)
 
 	def gameLoopCallback(self, inElapsedSinceLastCall, elapsedSim, counter, refcon):
 		
 		kias=XPLMGetDataf(self.ias_ref)
 		TO=[]
-		XPLMGetDatavf(self.throtto_ref, TO, 0, self.num_eng)
+		XPLMGetDatavf(self.thrott_ref, TO, 0, self.num_eng)
 		TRQ=[]
 		XPLMGetDatavf(self.TRQ_ref, TRQ, 0, self.num_eng)
 		
@@ -149,25 +157,35 @@ class PythonInterface:
 		
 		err=self.IAS-kias
 		PID=self.update(err)
+		torque_psi=0.0
 		
-		if alpha>awarn+0.25 and swarn==0:
+		if alpha<awarn-0.25 and swarn==0:
 			if self.ac == "PC12":
+				#print "PCAT - setting PC12 throttle"
 				torque_psi=0.0088168441*TRQ[0]
 				if torque_psi > 36.95:
 					TO[0]-=0.02
 				else:
-					TO[0]+=PID/100
+					TO[0]+=PID/400.0
 			else:
 				for i in range(0,self.num_eng):
-					TO[i]+=PID/100
+					TO[i]+=PID/400.0
 		else:
+			#print "PCAT - STALL!"
 			for i in range(0,self.num_eng):
-				TO[i]=1
+				TO[i]=1.0
+		if TO[0]>1:
+			TO[0]=1.0
+		elif TO[0]<0:
+			TO[0]=0.0
 		
-		XPLMSetDatavf(self.throtto_ref, TO)
+		override=XPLMGetDatai(self.TO_ref)
+		#print "PCAT - override "+str(override)
+		XPLMSetDatavf(self.thrott_ref, TO, 0, self.num_eng)
 		
-		self.msg1="err: "+str(round(err))+" a: "+str(round(alpha,1))+"/"+str(round(awarn,1))
+		self.msg1="err: "+str(round(err,2))+" a: "+str(round(alpha,1))+"/"+str(round(awarn,1))+" warn: "+str(swarn)
 		self.msg2="TO: "+str(round(TO[0],3))+" PID: "+str(round(PID,4))
+		self.msg3="ac: "+self.ac+" trq: "+str(round(torque_psi,2))+" psi "+str(round(TRQ[0],2))
 		
 		return 1
 
@@ -186,6 +204,7 @@ class PythonInterface:
 
 		I_value = self.Integrator * self.Ki
 
+		self.msg4=str(round(P_value,4))+" "+str(round(I_value,4))+" "+str(round(D_value,4))
 		PID = P_value + I_value + D_value
 
 		return PID
