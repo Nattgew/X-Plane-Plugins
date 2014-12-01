@@ -158,6 +158,7 @@ class PythonInterface:
 			self.started=1
 		else:
 			self.acf_descb=[]
+			self.eng_type=[]
 			XPLMUnregisterFlightLoopCallback(self, self.gameLoopCB, 0)
 			self.started=0
 	
@@ -178,11 +179,6 @@ class PythonInterface:
 			color=1.0, 1.0, 1.0
 			for i in range(0,5):
 				XPLMDrawString(color, left+5, top-(20+15*i), self.msg[i], 0, xplmFont_Basic)
-			# XPLMDrawString(color, left+5, top-20, self.msg1, 0, xplmFont_Basic)
-			# XPLMDrawString(color, left+5, top-35, self.msg2, 0, xplmFont_Basic)
-			# XPLMDrawString(color, left+5, top-50, self.msg3, 0, xplmFont_Basic)
-			# XPLMDrawString(color, left+5, top-65, self.msg4, 0, xplmFont_Basic)
-			# XPLMDrawString(color, left+5, top-80, self.msg5, 0, xplmFont_Basic)
 
 	def XPluginStop(self):
 		if self.Dstarted==1:
@@ -225,31 +221,34 @@ class PythonInterface:
 			TRQ=[]
 			XPLMGetDatavf(self.TRQ_ref, TRQ, 0, self.num_eng)
 			pwr=str(round(TRQ[0],1))+" Nm"
+			if acf_desc=="['Pilatus PC-12']":
+				AC="PC12"
+				torque_psi=0.0088168441*TRQ[0]
+				pwr=str(round(torque_psi,1))+" psi"
+				if torque_psi>37:
+					self.TO_pwr-=inElapsedSinceLastCall
+					TPR_m=int(self.TO_pwr/60)
+					TPR_s=int(self.TO_pwr%60)
+					TO_str='  %d:%02d TO pwr remain' % (TPR_m, TPR_s)
+				else:
+					self.TO_pwr=300
+					TO_str=""
+			else:
+				AC=acf_desc
+				pwr="N/A"
+				TO_str=""
 		elif self.eng_type[0]==4 or self.eng_type[0]==5: #Jet
 			N1=[]
 			XPLMGetDatavf(self.N1_ref, N1, 0, self.num_eng)
 			pwr=str(round(N1[0],1))+"% N1"
-		else:
-			pwr="N/A"
-		
-		if acf_desc[0:27]=="['Boeing 737-800 xversion 4":
-			AC="B738"
-			TO_str=""
-		elif acf_desc=="['Pilatus PC-12']":
-			AC="PC12"
-			torque_psi=0.0088168441*TRQ[0]
-			pwr=str(round(torque_psi,1))+" psi"
-			if torque_psi>37:
-				self.TO_pwr-=inElapsedSinceLastCall
-				TPR_m=int(self.TO_pwr/60)
-				TPR_s=int(self.TO_pwr%60)
-				TO_str='  %d:%02d TO pwr remain' % (TPR_m, TPR_s)
-			else:
-				self.TO_pwr=300
+			if acf_desc[0:27]=="['Boeing 737-800 xversion 4":
+				AC="B738"
 				TO_str=""
-		else:
-			AC=acf_desc
-		
+			else:
+				AC=acf_desc
+				pwr="N/A"
+				TO_str=""
+
 		gears=[]
 		XPLMGetDatavf(self.geardep_ref, gears, 0, 10)
 		#print "Gear "+str(gears[0])
@@ -257,17 +256,16 @@ class PythonInterface:
 			gear_state=1
 		else:
 			gear_state=0
-		Vref="N/A"
-		V1="N/A"
+		Vspeed="N/A"
 		if gear_state==1:
 			#print "XDMG = Gear down"
 			flaps=XPLMGetDataf(self.flap_h_pos_ref)
 			if XPLMGetDataf(self.f_norm_ref) != 0:
 				#print "XDMG = On ground"
-				V1=self.getV1(flaps, wgt, DenAlt, T, AC)
+				Vspeed=self.getV1(flaps, wgt, DenAlt, T, AC)
 			elif self.Dstarted==1:
 				#print "XDMG = In air"
-				Vref=self.getVref(flaps, wgt, DenAlt, T, AC)
+				Vspeed=self.getVref(flaps, wgt, DenAlt, T, AC)
 						
 		dIstr=str(int(round(delISA)))+" "+self.d+"C"
 		if delISA>0:
@@ -286,14 +284,14 @@ class PythonInterface:
 			
 			self.msg[2]="Pwr: "+maxPwr+"  CC: "+cruiseclb+"  Thr: "+pwr
 			self.msg[3]="Crs: "+maxcruise+"  LR: "+cruise+"  AS: "+speed
-			self.msg[4]="FL: "+maxFL+"  FL: "+optFL+"  V1: "+V1#+" Flaps: "+str(flaps)
+			self.msg[4]="FL: "+maxFL+"  FL: "+optFL+"  V: "+Vspeed#+" Flaps: "+str(flaps)
 		
 		else:
 			#destindex=XPLMGetDatai(self.gps_dest_index_ref)
 			destindex=XPLMGetDisplayedFMSEntry()
 			destid=""
 			dalt=0
-			print "Getting entry info..."
+			print "Getting info for entry "+str(destindex)+"..."
 			# XPLMGetFMSEntryInfo(
 			   # int                  inIndex,    
 			   # XPLMNavType *        outType,    /* Can be NULL */
@@ -307,10 +305,14 @@ class PythonInterface:
 			#print type(destid)
 			#print str(destindex)
 			#print destid
-			print dalt
+			#print "Going to index "+str(destindex)
+			#print "destid "+destid
+			#print "alt "+str(dalt)+" MSL"
 			#time=XPLMGetDataf(self.gps_time_ref)
-			dist=XPLMGetDataf(self.gps_dist_ref)#*self.mft/6076
-			print "Going to index "+str(destindex)+", "+destid+", "+str(dalt)+" MSL, dist "+str(dist)+" nm"
+			#print "Looking up distance..."
+			#dist=XPLMGetDataf(self.gps_dist_ref)#*self.mft/6076
+			#print "Found dist "+str(dist)+" nm"
+			print "Finding descent info"
 			if dist<9000 and dist>0:
 				ddist=self.getDesc(dist, alt, dalt, DenAlt, delISA, AC)
 			else:
@@ -319,7 +321,7 @@ class PythonInterface:
 			
 			self.msg[2]="Descend at: "+ddist
 			self.msg[3]=dprof
-			self.msg[4]="Vref: "+Vref
+			self.msg[4]="Vref: "+Vspeed
 		
 		return 10
 	
@@ -327,6 +329,7 @@ class PythonInterface:
 		if AC=="B738":
 			profile="M.78 to FL350, M.75 to 280kt"
 		elif AC=="PC12":
+			print "getting PC12 profile"
 			profile="2000 fpm at lower of M.48/236 kias"
 		else:
 			profile="Have fun"
@@ -337,6 +340,7 @@ class PythonInterface:
 			ddist_nm=(alt-dalt)*1000/3
 			ddist=str(int(round(ddist_nm)))+" nm"
 		elif AC=="PC12":
+			print "getting PC12 descent"
 			alts=tuple(range(5000,30001,5000))
 			isas=tuple(range(-40,31,10))
 			dnms=((9.6,20.0,31.0,0,0,0), 			# -40
