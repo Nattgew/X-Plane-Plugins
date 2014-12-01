@@ -26,7 +26,7 @@ class PythonInterface:
 		self.ap_as_ref=XPLMFindDataRef("sim/cockpit/autopilot/airspeed")
 		self.ap_asmach_ref=XPLMFindDataRef("sim/cockpit/autopilot/airspeed_is_mach")
 
-		self.Kp=0.75
+		self.Kp=1.0
 		self.Ki=0.005
 		self.Kd=10.0
 		self.Integrator_max=10
@@ -36,7 +36,7 @@ class PythonInterface:
 		self.IAS=160.0
 		self.started=0
 		winPosX=20
-		winPosY=300
+		winPosY=400
 		win_w=230
 		win_h=80
 		self.msg1=""
@@ -95,20 +95,21 @@ class PythonInterface:
 			XPLMGetDatab(self.acf_desc_ref, acf_descb, 0, 500)
 			self.ac=self.getshortac(str(acf_descb))
 			self.num_eng=XPLMGetDatai(self.num_eng_ref)
-			T=[]
-			XPLMGetDatavf(self.thrott_ref, T, 0, self.num_eng)
-			XPLMSetDatavf(self.throtto_ref, T, 0, self.num_eng)
-			XPLMSetDatai(self.TO_ref, 1)
-			override=XPLMGetDatai(self.TO_ref)
+			XPLMSetDataf(self.ap_as_ref, self.IAS)
+			#T=[]
+			#XPLMGetDatavf(self.thrott_ref, T, 0, self.num_eng)
+			#XPLMSetDatavf(self.throtto_ref, T, 0, self.num_eng)
+			#XPLMSetDatai(self.TO_ref, 1)
+			#override=XPLMGetDatai(self.TO_ref)
 			XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 0.5, 0)
 			self.started=1
 		else:
 			XPLMUnregisterFlightLoopCallback(self, self.gameLoopCB, 0)
 			self.ac=""
-			T=[]
-			XPLMGetDatavf(self.throtto_ref, T, 0, self.num_eng)
-			XPLMSetDatavf(self.thrott_ref, T, 0, self.num_eng)
-			XPLMSetDatai(self.TO_ref, 0)
+			#T=[]
+			#XPLMGetDatavf(self.throtto_ref, T, 0, self.num_eng)
+			#XPLMSetDatavf(self.thrott_ref, T, 0, self.num_eng)
+			#XPLMSetDatai(self.TO_ref, 0)
 			self.started=0
 		pass
 		
@@ -179,7 +180,7 @@ class PythonInterface:
 		elif TO[0]<0:
 			TO[0]=0.0
 		
-		override=XPLMGetDatai(self.TO_ref)
+		#override=XPLMGetDatai(self.TO_ref)
 		#print "PCAT - override "+str(override)
 		XPLMSetDatavf(self.thrott_ref, TO, 0, self.num_eng)
 		
