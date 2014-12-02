@@ -31,8 +31,10 @@ class PythonInterface:
 			print "Interpolating the same point?"
 			result=y1
 		elif y2==0:
+			print "Interpolating with 0 y2"
 			result=y1
 		elif y1==0:
+			print "Interpolating with 0 y1"
 			result=y2
 		else:
 			result=(y2-y1)/(x2-x1)*(xi-x1)+y1
@@ -62,7 +64,7 @@ class PythonInterface:
 		self.Desc="Calculates the current performance info based on POH"
 		self.VERSION="1.0"
 		
-		self.P_SL=29.92126 # standard sea level atmospheric pressure 1013.25 hPa ISA or 29.92126 inHg US
+		self.P_SL=29.92126 # std SL press 1013.25 hPa ISA or 29.92126 inHg US
 		self.T_SL=288.15 # ISA standard sea level air temperature in K
 		self.gamma_l=0.0019812 # lapse rate K/ft
 		self.gamma_u=0.0065 # lapse rate K/m
@@ -72,6 +74,7 @@ class PythonInterface:
 		self.kglb=2.20462262 # kg to lb
 		self.mft=3.2808399 # m to ft
 		self.mkt=1.94384 # m/s to kt
+		self.Nlb=0.22481 # N to lbf
 		#self.d=chr(0x2103)
 		#self.d=u'\xb0'.encode('cp1252')
 		self.d=""
@@ -79,7 +82,7 @@ class PythonInterface:
 		self.N1_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_N1_")
 		self.EGT_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_EGT_c")
 		self.ITT_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_ITT_c")
-		self.TRQ_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_TRQ")
+		self.TRQ_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_TRQ") #NewtonMeters
 		self.alt_ref=XPLMFindDataRef("sim/flightmodel/position/elevation")
 		self.ias_ref=XPLMFindDataRef("sim/flightmodel/position/indicated_airspeed")
 		self.gs_ref=XPLMFindDataRef("sim/flightmodel/position/groundspeed")
@@ -110,10 +113,6 @@ class PythonInterface:
 		for i in range(0,5):
 			self.msg.append("")
 		self.msg[0]="Starting..."
-		# self.msg[1]=""
-		# self.msg[2]=""
-		# self.msg[3]=""
-		# self.msg[4]=""
 		winPosX=20
 		winPosY=700
 		win_w=270
@@ -235,7 +234,19 @@ class PythonInterface:
 			TRQ=[]
 			XPLMGetDatavf(self.TRQ_ref, TRQ, 0, self.num_eng)
 			pwr=str(round(TRQ[0],1))+" Nm"
-			if self.acf_short=="PC12":
+			if self.acf_short=="B190":
+				torque_ftlb1=self.Nlb*self.mft*TRQ[0]
+				torque_ftlb2=self.Nlb*self.mft*TRQ[1]
+				pwr=str(round(torque_ftlb1,1))+"|"+str(round(torque_ftlb2,1))+" ftlb"
+				if torque_ftlb1>3750.0 or torque_ftlb2>3750.0:
+					self.TO_pwr-=inElapsedSinceLastCall
+					TPR_m=int(self.TO_pwr/60)
+					TPR_s=int(self.TO_pwr%60)
+					TOP_str='  %d:%02d TO pwr remain' % (TPR_m, TPR_s)
+				else:
+					self.TO_pwr=300
+					TOP_str=""
+			elif self.acf_short=="PC12":
 				torque_psi=0.0088168441*TRQ[0]
 				pwr=str(round(torque_psi,1))+" psi"
 				if torque_psi>37:
@@ -390,6 +401,10 @@ class PythonInterface:
 			isa_i=delISA/10+4
 			alt_ih, alt_il = self.get_index(alt_i, len(alts))
 			isa_ih, isa_il = self.get_index(isa_i, len(isas))
+			
+			while dnms[isa_ih][alt_il]==0 or dnms[isa_il][alt_il]==0 or dnms[isa_ih][alt_ih]==0 or dnms[isa_il][alt_ih]==0:
+				alt_il-=1
+				alt_ih-=1
 
 			ddist_nm=self.interp2(dnms[isa_ih][alt_il], dnms[isa_il][alt_il], dnms[isa_ih][alt_ih], dnms[isa_il][alt_ih], isas[isa_ih], isas[isa_il], alts[alt_ih], alts[alt_il], delISA, DA)
 			ddist=str(int(round(ddist_nm)))+" nm"
@@ -438,7 +453,12 @@ class PythonInterface:
 			wind_ih, wind_il = self.get_index(wind_i, 2)
 			
 			while tod1[alt_ih][oat_il]==0 or tod1[alt_il][oat_il]==0 or tod1[alt_ih][oat_ih]==0 or tod1[alt_il][oat_ih]==0:
-			
+				if oat_il<=length(tod1[0])/2:
+					oat_il+=1
+					oat_ih+=1
+				else:
+					oat_il-=1
+					oat_ih-=1
 			
 			basic_dist=self.interp2(tod1[alt_ih][oat_il], tod1[alt_il][oat_il], tod1[alt_ih][oat_ih], tod1[alt_il][oat_ih], alts[alt_ih], alts[alt_il], oats[oat_ih], oats[oat_il], DA, T)
 			
@@ -526,6 +546,9 @@ class PythonInterface:
 					else:
 						V1="> V1max"
 				else:
+					while v1s[flap_i][wgt_ih]==0 or v1s[flap_i][wgt_il]==0:
+						wgt_il-=1
+						wgt_ih-=1
 					v1f=self.interp(v1s[flap_i][wgt_ih], v1s[flap_i][wgt_il], GW[wgt_ih], GW[wgt_il], wgt/1000)
 					V1=str(int(round(v1f)))+" kias"
 		elif AC=="PC12":
@@ -644,6 +667,11 @@ class PythonInterface:
 					fl_i=alt/2000-14.5
 				fl_ih, fl_il = self.get_index(fl_i, len(alts))
 				wt_ih, wt_il = self.get_index(wt_i, len(GW))
+				
+				while machs[fl_ih][wt_il]==0 or machs[fl_il][wt_il]==0 or machs[fl_ih][wt_ih]==0 or machs[fl_il][wt_ih]==0:
+					wt_il-=1
+					wt_ih-=1
+				
 				bc=self.interp2(machs[fl_ih][wt_il], machs[fl_il][wt_il], machs[fl_ih][wt_ih], machs[fl_il][wt_ih], alts[fl_ih], alts[fl_il], GW[wt_ih], GW[wt_il], DA/1000, wgt/1000)
 				bestCruise="M"+str(round(bc,2))
 		
