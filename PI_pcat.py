@@ -17,6 +17,7 @@ class PythonInterface:
 		self.thrott_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_thro") #	float[8]	660+	yes	ratio	Throttle (per engine) as set by user, 0 = idle, 1 = max
 		self.throtto_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_thro_use") #	float[8]	710+	yes	ratio 	Throttle (per engine) when overridden by you, plus with thrust vectors - use override_throttles to change.
 		self.TRQ_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_TRQ") #	float[8]	660+	yes	NewtonMeters	Torque (per engine)
+		self.N1_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_N1_")
 		self.num_eng_ref=XPLMFindDataRef("sim/aircraft/engine/acf_num_engines")
 		self.ias_ref=XPLMFindDataRef("sim/flightmodel/position/indicated_airspeed")
 		self.alpha_ref=XPLMFindDataRef("sim/flightmodel/position/alpha")
@@ -25,7 +26,10 @@ class PythonInterface:
 		self.acf_desc_ref=XPLMFindDataRef("sim/aircraft/view/acf_descrip")
 		self.ap_as_ref=XPLMFindDataRef("sim/cockpit/autopilot/airspeed")
 		self.ap_asmach_ref=XPLMFindDataRef("sim/cockpit/autopilot/airspeed_is_mach")
+		self.eng_type_ref=XPLMFindDataRef("sim/aircraft/prop/acf_en_type")
 
+		self.Nlb=0.22481 # N to lbf
+		self.mft=3.2808399 # m to ft
 		self.Kp=1.0
 		self.Ki=0.005
 		self.Kd=10.0
@@ -44,6 +48,7 @@ class PythonInterface:
 		self.msg3=""
 		self.msg4=""
 		self.ac=""
+		self.eng_type=[]
 		
 		self.gameLoopCB=self.gameLoopCallback
 		self.DrawWindowCB=self.DrawWindowCallback
@@ -96,6 +101,7 @@ class PythonInterface:
 			self.ac=self.getshortac(str(acf_descb))
 			self.num_eng=XPLMGetDatai(self.num_eng_ref)
 			XPLMSetDataf(self.ap_as_ref, self.IAS)
+			XPLMGetDatavi(self.eng_type_ref, self.eng_type, 0, self.num_eng)
 			#T=[]
 			#XPLMGetDatavf(self.thrott_ref, T, 0, self.num_eng)
 			#XPLMSetDatavf(self.throtto_ref, T, 0, self.num_eng)
@@ -106,6 +112,7 @@ class PythonInterface:
 		else:
 			XPLMUnregisterFlightLoopCallback(self, self.gameLoopCB, 0)
 			self.ac=""
+			self.eng_type=[]
 			#T=[]
 			#XPLMGetDatavf(self.throtto_ref, T, 0, self.num_eng)
 			#XPLMSetDatavf(self.thrott_ref, T, 0, self.num_eng)
@@ -149,8 +156,6 @@ class PythonInterface:
 		kias=XPLMGetDataf(self.ias_ref)
 		TO=[]
 		XPLMGetDatavf(self.thrott_ref, TO, 0, self.num_eng)
-		TRQ=[]
-		XPLMGetDatavf(self.TRQ_ref, TRQ, 0, self.num_eng)
 		
 		alpha=XPLMGetDataf(self.alpha_ref)
 		awarn=XPLMGetDataf(self.alphawarn_ref)
@@ -161,16 +166,42 @@ class PythonInterface:
 		torque_psi=0.0
 		
 		if alpha<awarn-0.25 and swarn==0:
-			if self.ac == "PC12":
-				#print "PCAT - setting PC12 throttle"
-				torque_psi=0.0088168441*TRQ[0]
-				if torque_psi > 36.95:
-					TO[0]-=0.02
+			if self.eng_type[0]==2 or self.eng_type[0]==8: #Turboprop
+				TRQ=[]
+				XPLMGetDatavf(self.TRQ_ref, TRQ, 0, self.num_eng)
+				if self.ac == "PC12":
+					#print "PCAT - setting PC12 throttle"
+					torque_psi=0.0088168441*TRQ[0]
+					if torque_psi > 36.95:
+						TO[0]-=0.02
+					else:
+						TO[0]+=PID/400.0
+				elif self.ac == "B190":
+					torque_ftlb1=self.Nlb*self.mft*TRQ[0]
+					torque_ftlb2=self.Nlb*self.mft*TRQ[1]
+					if torque_ftlb1>3750.0 or torque_ftlb2>3750.0:
+						TO[0]-=0.02
+						TO[1]-=0.02
+					else:
+						TO[0]+=PID/400.0
+						TO[1]+=PID/400.0
 				else:
-					TO[0]+=PID/400.0
-			else:
-				for i in range(0,self.num_eng):
-					TO[i]+=PID/400.0
+					for i in range(0,self.num_eng):
+						TO[i]+=PID/400.0
+						
+			elif self.eng_type[0]==4 or self.eng_type[0]==5: #Jet
+				N1=[]
+				XPLMGetDatavf(self.N1_ref, N1, 0, self.num_eng)
+				if self.ac == "CL30":
+					if N1[0]>95.0 or N1[1]>95.0:
+						TO[0]-=0.02
+						TO[1]-=0.02
+					else:
+						TO[0]+=PID/400.0
+						TO[1]+=PID/400.0
+				else:
+					for i in range(0,self.num_eng):
+						TO[i]+=PID/400.0
 		else:
 			#print "PCAT - STALL!"
 			for i in range(0,self.num_eng):
@@ -216,6 +247,10 @@ class PythonInterface:
 			ac_short="B738"
 		elif acf_desc=="['Pilatus PC-12']":
 			ac_short="PC12"
+		elif acf_desc=="['wouldn't you like to be a pepper too']"
+			ac_short="B190"
+		elif acf_desc=="['ok']"
+			ac_short="CL30"
 		else:
 			ac_short=acf_desc
 		
