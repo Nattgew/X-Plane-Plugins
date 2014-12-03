@@ -247,9 +247,9 @@ class PythonInterface:
 			ac_short="B738"
 		elif acf_desc=="['Pilatus PC-12']":
 			ac_short="PC12"
-		elif acf_desc=="['wouldn't you like to be a pepper too']"
+		elif acf_desc=="['wouldnt you like to be a pepper too']":
 			ac_short="B190"
-		elif acf_desc=="['ok']"
+		elif acf_desc=="['ok']":
 			ac_short="CL30"
 		else:
 			ac_short=acf_desc

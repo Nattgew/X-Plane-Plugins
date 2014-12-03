@@ -119,7 +119,6 @@ class PythonInterface:
 		win_h=90
 		self.num_eng=0
 		self.TO_pwr=0
-		self.
 		self.eng_type=[]
 		self.flaps_B738=(0.125,0.375,0.625,0.875,1.0) #1 5 15 30 40
 		self.flaps_PC12=(0.3,0.7,1.0) #15 30 40
@@ -361,13 +360,13 @@ class PythonInterface:
 			AC="B738"
 		elif acf_desc=="['Pilatus PC-12']":
 			AC="PC12"
-		elif acf_desc="['im a teapot']":
+		elif acf_desc=="['im a teapot']":
 			AC="B190"
-		elif acf_desc="['wouldn't you like to be a pepper too']":
+		elif acf_desc=="['wouldnt you like to be a pepper too']":
 			AC="CL30"
-		elif acf_desc="['like a rock']":
+		elif acf_desc=="['like a rock']":
 			AC="C208"
-		else
+		else:
 			AC=acf_desc
 		return AC
 	
