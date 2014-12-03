@@ -1,28 +1,46 @@
 X-Plane Plugins
 ======
 
-Performance Info
+Performance Info (PI_perf.py)
 ======
-Calculates performance info based on the POH for certain planes. Currently available:
+Calculates performance info based on the POH for certain planes. Data shown:
+
+<ul><li>Descent profile</li>
+<li>Top of descent distance from destination (working on this)</li>
+<li>Takeoff distance</li>
+<li>Landing reference speed</li>
+<li>Takeoff rotation speed</li>
+<li>Cruise climb speed</li>
+<li>Max/Optimum flight level (B738)</li>
+<li>Best cruise speed</li></ul>
+
+Possible future info:
+
+<ul><li>Max cruise speed</li>
+<li>Max cruise power</li></ul>
+
+Aircraft currently available:
 
 <ul><li>PC-12</li>
 <li>B737-800</li></ul>
 
-XFSE Damage
+In work:
+
+<ul><li>B1900D</li>
+<li>CL300</li></ul>
+
+XFSE Damage (PI_xdmg.py)
 ======
 Shows the damage that the FSE plugin would calculate. Automatically reduces mixture above 1000 feet to prevent damage, and warns if taking off without a flight started.
 
-Engine Info
+Engine Info (PI_enginfo.py)
 ======
 Shows some info about engine 1 on the aircraft. Helpful for getting info for coding plugins.
 
-Altimeter Helper
+Altimeter Helper (PI_altimeterhelper.py)
 ======
-Simple plugin for X-Plane that shows the altimeter setting each time it is changed, and has a command to set the altimeter automatically.
+Simple plugin for X-Plane that shows the altimeter setting each time it is changed, automatically switches between local and standard pressure at transition altitude, and has a command to set the correct altimeter.
 
-<b>Key features:</b><br/>
-<ul><li>Support for 64-bit X-Plane</li>
-<li>Changes altimeter when passing through transition altitude</li></ul>
-
-<b>TO DO:</b>
-<ul><li>Testing transition altitude changes</li></ul>
+Auto Throttle (PI_pcat.py)
+======
+Simple throttle controller that uses a PID feedback loop to keep the specified airspeed. Currently working on tuning gains for the PC-12, other aircraft will be tuned in later.
