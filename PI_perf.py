@@ -10,7 +10,7 @@ from XPLMNavigation import *
 class PythonInterface:
 
 	def CtoF(self, C):
-		F=C*1.8+32
+		F=C*1.8+32.0
 		return F
 
 	def get_index(self, i, length):
@@ -23,6 +23,13 @@ class PythonInterface:
 			flo=0
 			fhi=1
 		return (fhi, flo)
+		
+	def get_topwr(self, counter, elapsed):
+		counter-=elapsed
+		counter_m=int(self.TO_pwr/60)
+		counter_s=int(self.TO_pwr%60)
+		counter_str='  %d:%02d TO pwr remain' % (counter_m, counter_s)
+		return counter_str
 	
 	def interp(self, y2, y1, x2, x1, xi):
 		if y2==y1:
@@ -54,13 +61,13 @@ class PythonInterface:
 		return density_alt
 	
 	def getdelISA(self, alt, T):
-		T_ISA=15-self.gamma_l*alt
+		T_ISA=15.0-self.gamma_l*alt
 		delISA=T-T_ISA
 		return delISA
 	
 	def XPluginStart(self):
 		self.Name="Performance Calculator"
-		self.Sig= "natt.python.cruise"
+		self.Sig= "natt.python.perf"
 		self.Desc="Calculates the current performance info based on POH"
 		self.VERSION="1.0"
 		
@@ -87,6 +94,7 @@ class PythonInterface:
 		self.ias_ref=XPLMFindDataRef("sim/flightmodel/position/indicated_airspeed")
 		self.gs_ref=XPLMFindDataRef("sim/flightmodel/position/groundspeed")
 		self.tpsi_ref=XPLMFindDataRef("sim/flightmodel/position/true_psi")
+		self.vvi_ref=XPLMFindDataRef("sim/flightmodel/position/vh_ind_fpm")
 		self.f_norm_ref=XPLMFindDataRef("sim/flightmodel/forces/fnrml_gear")
 		self.mach_ref=XPLMFindDataRef("sim/flightmodel/misc/machno")
 		self.alt_ind_ref=XPLMFindDataRef("sim/flightmodel/misc/h_ind")
@@ -106,6 +114,7 @@ class PythonInterface:
 		self.gps_dest_index_ref=XPLMFindDataRef("sim/cockpit/gps/destination_index")
 		self.wind_dir_ref=XPLMFindDataRef("sim/weather/wind_direction_degt") #	float	660+	no	[0-359)	The effective direction of the wind at the plane's location.
 		self.wind_spd_ref=XPLMFindDataRef("sim/weather/wind_speed_kt") #	float	660+	no	kts >= 0	The effective speed of the wind at the plane's location.
+		self.sim_spd_ref=XPLMFindDataRef("sim/sim_speed_actual")
 	
 		self.started=0
 		self.Dstarted=0
@@ -238,35 +247,30 @@ class PythonInterface:
 				torque_ftlb2=self.Nlb*self.mft*TRQ[1]
 				pwr=str(round(torque_ftlb1,1))+"|"+str(round(torque_ftlb2,1))+" ftlb"
 				if torque_ftlb1>3750.0 or torque_ftlb2>3750.0:
-					self.TO_pwr-=inElapsedSinceLastCall
-					TPR_m=int(self.TO_pwr/60)
-					TPR_s=int(self.TO_pwr%60)
-					TOP_str='  %d:%02d TO pwr remain' % (TPR_m, TPR_s)
+					TOP_str=self.get_topwr(self.TO_pwr, inElapsedSinceLastCall)
 				else:
 					self.TO_pwr=300
 					TOP_str=""
 			elif self.acf_short=="PC12":
 				torque_psi=0.0088168441*TRQ[0]
 				pwr=str(round(torque_psi,1))+" psi"
-				if torque_psi>37:
-					self.TO_pwr-=inElapsedSinceLastCall
-					TPR_m=int(self.TO_pwr/60)
-					TPR_s=int(self.TO_pwr%60)
-					TOP_str='  %d:%02d TO pwr remain' % (TPR_m, TPR_s)
+				if torque_psi>37.0:
+					TOP_str=self.get_topwr(self.TO_pwr, inElapsedSinceLastCall)
 				else:
 					self.TO_pwr=300
 					TOP_str=""
 			else:
-				pwr="N/A"
+				torque_ftlb=self.Nlb*self.mft*TRQ[0]
+				pwr=str(round(torque_ftlb,1))+" ftlb"
 				TOP_str=""
 		elif self.eng_type[0]==4 or self.eng_type[0]==5: #Jet
 			N1=[]
 			XPLMGetDatavf(self.N1_ref, N1, 0, self.num_eng)
-			pwr=str(round(N1[0],1))+"% N1"
-			if self.acf_short=="B738":
+			if self.acf_short=="B738" or self.acf_short=="CL30":
+				pwr=str(round(N1[0],1))+"|"+str(round(N1[1],1))+" %N1"
 				TOP_str=""
 			else:
-				pwr="N/A"
+				pwr=str(round(N1[0],1))+" %N1"
 				TOP_str=""
 
 		gears=[]
@@ -277,7 +281,6 @@ class PythonInterface:
 		else:
 			gear_state=0
 		Vspeed=""
-		Vw=""
 		tod=""
 		if gear_state==1:
 			#print "XDMG = Gear down"
@@ -285,17 +288,15 @@ class PythonInterface:
 			if XPLMGetDataf(self.f_norm_ref) != 0:
 				#print "XDMG = On ground"
 				Vspeed=self.getV1(flaps, wgt, DenAlt, T, self.acf_short)
-				Vw="  V1: "
 				wdir=XPLMGetDataf(self.wind_dir_ref)
 				wspd=XPLMGetDataf(self.wind_spd_ref)
 				tpsi=XPLMGetDataf(self.tpsi_ref)
 				theta=radians(wdir-tpsi)
 				hwind=wspd*cos(theta)
-				tod=self.getTOD(flaps, wgt, DenAlt, T, hwind, self.acf_short)
+				tod=self.getTOD(flaps, wgt, DenAlt, T, delISA, hwind, self.acf_short)
 			else:
 				#print "XDMG = In air"
 				Vspeed=self.getVref(flaps, wgt, DenAlt, T, self.acf_short)
-				Vw="  Vref: "
 				
 		dIstr=str(int(round(delISA)))+" "+self.d+"C"
 		if delISA>0:
@@ -314,13 +315,14 @@ class PythonInterface:
 			
 			self.msg[2]="Pwr: "+maxPwr+"  CC: "+cruiseclb+"  Thr: "+pwr
 			self.msg[3]="Crs: "+maxcruise+"  LR: "+cruise+"  AS: "+speed
-			self.msg[4]="FL: "+maxFL+"  FL: "+optFL+Vw+Vspeed+"  TOD: "+tod#+" Flaps: "+str(flaps)
+			self.msg[4]="FL: "+maxFL+"  FL: "+optFL+Vspeed+tod#+" Flaps: "+str(flaps)
 		
 		else:
 			#destindex=XPLMGetDatai(self.gps_dest_index_ref)
 			destindex=XPLMGetDisplayedFMSEntry()
-			destid=""
-			dalt=0
+			destid=[]
+			dist=-1.0
+			dalt=[]
 			print "Getting info for entry "+str(destindex)+"..."
 			# XPLMGetFMSEntryInfo(
 			   # int                  inIndex,    
@@ -335,13 +337,13 @@ class PythonInterface:
 			#print type(destid)
 			#print str(destindex)
 			#print destid
-			#print "Going to index "+str(destindex)
-			#print "destid "+destid
-			#print "alt "+str(dalt)+" MSL"
+			print "Going to index "+str(destindex)
+			print "destid "+str(destid)
+			print "alt "+str(dalt)+" MSL"
 			#time=XPLMGetDataf(self.gps_time_ref)
 			#print "Looking up distance..."
-			#dist=XPLMGetDataf(self.gps_dist_ref)#*self.mft/6076
-			#print "Found dist "+str(dist)+" nm"
+			dist=XPLMGetDataf(self.gps_dist_ref)#*self.mft/6076
+			print "Found dist "+str(dist)+" nm"
 			print "Finding descent info"
 			if dist<9000 and dist>0:
 				ddist=self.getDesc(dist, alt, dalt, DenAlt, delISA, self.acf_short)
@@ -353,7 +355,7 @@ class PythonInterface:
 			self.msg[3]=dprof
 			self.msg[4]="Vref: "+Vspeed
 		
-		return 10
+		return 10/XPLMGetDataf(self.sim_spd_ref)
 		
 	def getacfshort(self, acf_desc):
 		if acf_desc[0:27]=="['Boeing 737-800 xversion 4":
@@ -381,7 +383,7 @@ class PythonInterface:
 		return profile
 	
 	def getDesc(self, dist, alt, dalt, DA, delISA, AC):
-		if AC=="B738":
+		if AC=="B738" or AC=="CL30":
 			ddist_nm=(alt-dalt)*1000/3
 			ddist=str(int(round(ddist_nm)))+" nm"
 		elif AC=="PC12":
@@ -411,7 +413,7 @@ class PythonInterface:
 			ddist="N/A"
 		return ddist
 	
-	def getTOD(self, flaps, wgt, DA, T, hwind, AC):
+	def getTOD(self, flaps, wgt, DA, T, delISA, hwind, AC):
 		if AC=="B190":
 			alts=tuple(range(0,10001,2000))
 			oats=tuple(range(-34,53,2))
@@ -469,10 +471,62 @@ class PythonInterface:
 			dist2_ih, dist2_il = self.get_index(dist2_i, len(dist2))
 			wnd_dist=self.interp2(dist2[dist2_ih], dist2[dist2_il], tod3[dist2_ih], tod3[dist2_il], dist2[dist2_ih], dist2[dist2_il], 30, 0, wgt_dist, hwind)
 			
-			TOD=str(int(round(wnd_dist)))+" ft"
-			#TOD="N/A"
+			TOD="  TOD: "+str(int(round(wnd_dist)))+" ft"
+			#TOD=""
+		elif AC=="PC12":
+			dis=tuple(range(-40,31,10))
+			alts=tuple(range(0,10001,2000))
+			GW=(6400,7000,8000,9000,10000,10450)
+			tod1=((2000,2150,2300,2500,2700,2800,3000,3300),	# SL
+				(2250,2400,2650,2800,3000,3200,3400,3800),		# 2k
+				(2500,2750,2900,3150,3350,3700,3900,4350),		# 4k
+				(2800,3050,3300,3600,3850,1200,4500,5000),		# 6k
+				(3250,3500,3800,4150,4500,4800,5300,6000),		# 8k
+				(3800,4150,4500,4900,5400,5800,6600,7600))		# 10k
+			dist1=tuple(range(2000,9001,1000))
+			tod2=((800,1000,1300,1600,2000,2200),
+				(1200,1400,1800,2400,3000,3400),
+				(1500,1800,2300,3100,4000,4600),
+				(1800,2100,2900,3900,5000,5700),
+				(2000,2500,3400,4700,6000,6900),
+				(2300,2900,4000,5300,7000,8000),
+				(2600,3300,4500,6100,8000,9100),
+				(2900,3700,5000,7800,9000,9300))
+			dist2=dist1
+			if hwind>=0:
+				tod3=(1550,2400,3200,4000,4800,5600,6400,7200)
+				wind_i=hwind/30
+			else:
+				tod3=(2600,3800,5000,6200,7400,8700,9900,11100)
+				wind_i=abs(hwind/10)
+				
+			di_i=(delISA+40)/10
+			alt_i=DA/2000
+			if wgt<7000:
+				GW_i=(wgt-6400)/600
+			elif wgt<10000:
+				GW_i=(wgt-6000)/1000
+			else:
+				GW_i=(wgt-8200)/450
+			
+			di_ih, di_il = self.get_index(di_i, len(dis))
+			alt_ih, alt_il = self.get_index(alt_i, len(alts))
+			GW_ih, GW_il = self.get_index(GW_i, len(GW))
+			
+			basic_dist=self.interp2(tod1[alt_ih][di_il], tod1[alt_il][di_il], tod1[alt_ih][di_ih], tod1[alt_il][di_ih], alts[alt_ih], alts[alt_il], dis[di_ih], dis[di_il], DA, delISA)
+						
+			dist1_i=(basic_dist-2000)/1000
+			dist1_ih, dist1_il = self.get_index(dist1_i, len(dist1))
+			wgt_dist=self.interp2(tod2[dist1_ih][GW_il], tod2[dist1_il][GW_il], tod2[dist1_ih][GW_ih], tod2[dist1_il][GW_ih], dist1[dist1_ih], dist1[dist1_il], GW[GW_ih], GW[GW_il], basic_dist, wgt)
+			
+			dist2_i=(wgt_dist-1200)/1000
+			dist2_ih, dist2_il = self.get_index(dist2_i, len(dist2))
+			wnd_dist=self.interp2(dist2[dist2_ih], dist2[dist2_il], tod3[dist2_ih], tod3[dist2_il], dist2[dist2_ih], dist2[dist2_il], 30, 0, wgt_dist, hwind)
+			
+			TOD="  TOD: "+str(int(round(wnd_dist)))+" ft"
+			#TOD=""
 		else:
-			TOD="N/A"
+			TOD=""
 		
 		return TOD
 	
@@ -492,7 +546,7 @@ class PythonInterface:
 				wgt_i=wgt/10000-9
 				wgt_ih, wgt_il = self.get_index(wgt_i, len(GW))
 				vri=self.interp(vrs[flap_i][wgt_ih], vrs[flap_i][wgt_il], GW[wgt_ih], GW[wgt_il], wgt/1000)
-				Vref=str(int(round(vri)))+" kias"
+				Vref="  Vref: "+str(int(round(vri)))+" kias"
 		elif AC=="PC12": # Flaps 40
 			#self.vr=1
 			GW=tuple(range(6400,10001,900))
@@ -501,7 +555,7 @@ class PythonInterface:
 			wgt_ih, wgt_il = self.get_index(wgt_i, len(GW))
 			vapp=self.interp(vapps[wgt_ih], vapps[wgt_il], GW[wgt_ih], GW[wgt_il], wgt)
 			#print 'Vref %.0f %.0f %.0f %.0f %.0f = %.0f' % (vapps[wgt_ih], vapps[wgt_il], GW[wgt_ih], GW[wgt_il], wgt, vapp)
-			Vref=str(int(round(vapp)))+" kias"
+			Vref="  Vref: "+str(int(round(vapp)))+" kias"
 		else:
 			ddist="N/A"
 		return Vref
@@ -535,7 +589,7 @@ class PythonInterface:
 				if flaps == self.flaps_B738[i]:
 					flap_i=i
 			if flap_i==-1:
-				V1="T/O CONFIG"
+				V1=""
 			else:
 				wgt_i=wgt/10000-9
 				wgt_ih, wgt_il = self.get_index(wgt_i, len(GW))
@@ -549,7 +603,7 @@ class PythonInterface:
 						wgt_il-=1
 						wgt_ih-=1
 					v1f=self.interp(v1s[flap_i][wgt_ih], v1s[flap_i][wgt_il], GW[wgt_ih], GW[wgt_il], wgt/1000)
-					V1=str(int(round(v1f)))+" kias"
+					V1="  V1: "+str(int(round(v1f)))+" kias"
 		elif AC=="PC12":
 			GW=(6400,7300,8200,9100,10000,10450)
 			vrs=((63,67,71,75,79,81),	# flaps 15
@@ -570,9 +624,9 @@ class PythonInterface:
 				wgt_ih, wgt_il = self.get_index(wgt_i, len(GW))
 				#print 'Interp: %.0f %.0f %.0f %.0f %.0f' % (vrs[flap_i][wgt_ih], vrs[flap_i][wgt_il], GW[wgt_ih], GW[wgt_il], wgt)
 				vr=self.interp(vrs[flap_i][wgt_ih], vrs[flap_i][wgt_il], GW[wgt_ih], GW[wgt_il], wgt)
-				V1=str(int(round(vr)))+" kias"
+				V1="  V1: "+str(int(round(vr)))+" kias"
 		else:
-			V1="N/A"
+			V1=""
 		return V1
 	
 	def getCC(self, DA, alt, delISA, wgt, AC):
@@ -596,7 +650,7 @@ class PythonInterface:
 				(160.0,160.0,155.0,140.0,130.0,120.0,110.0),	# +10
 				(160.0,155.0,140.0,130.0,120.0,110.0,110.0),	# +20
 				(150.0,140.0,130.0,120.0,110.0,110.0,110.0))	# +30
-			dis=(-40.0,-30.0,-20.0,-10.0,0.0,10.0,20.0,30.0)
+			dis=tuple(range(-40,31,10))
 			alt_i=alt/5000
 			dis_i=delISA/10+4
 			alt_ih, alt_il = self.get_index(alt_i, len(alts))
@@ -646,6 +700,8 @@ class PythonInterface:
 		if AC=="B738":
 			if DA>42000:
 				bestCruise="Descend"
+			elif alt<10000:
+				bestCruise="250 kts"
 			elif DA<24000:
 				bestCruise="280 kts"
 			else: # Use LR cruise table from manual
@@ -742,5 +798,29 @@ class PythonInterface:
 		return maxCruise
 	
 	def getMaxPwr(self, DA, delISA, AC):
-		maxTRQ="N/A"
-		return maxTRQ
+		if AC=="PC12":
+			dis=tuple(range(-40,31,10))
+			alts=tuple(range(0,30001,5000))
+			trqs=((37.0,37.0,37.0,37.0,37.0,37.0,36.75,32.5),	# SL
+				(37.0,37.0,37.0,37.0,37.0,37.0,34.5,30.8),	# 5k
+				(37.0,37.0,37.0,37.0,37.0,34.5,31.3,28.2),	# 10k
+				(37.0,37.0,37.0,35.75,33.25,30.7,27.7,24.7),	# 15k
+				(37.0,35.7,33.8,31.75,29.3,26.75,24.0,21.0),	# 20k
+				(0,0,28.6,27.2,25.25,23.2,21.0,18.7),	# 25k
+				(0,0,0,22.5,21.4,19.8,18.8,16.5))	# 30k
+			dis_i=(delISA+40)/40
+			alt_i=(DA/5000)
+			alt_ih, alt_il = self.get_index(alt_i, len(alts))
+			dis_ih, dis_il = self.get_index(dis_i, len(dis))
+			while trqs[alt_ih][dis_il]==0 or trqs[alt_il][dis_il]==0 or trqs[alt_ih][dis_ih]==0 or trqs[alt_il][dis_ih]==0:
+				dis_il+=1
+				dis_ih+=1
+			
+			maxtrq=self.table2(trqs, alts, dis, alt_ih, alt_il, dis_ih, dis_il, DA, delISA)
+			
+			maxtrq=self.interp2(trqs[alt_ih][dis_il], trqs[alt_il][dis_il], trqs[alt_ih][dis_ih], trqs[alt_il][dis_ih], alts[alt_ih], alts[alt_il], dis[dis_ih], dis[dis_il], DA, delISA)
+			
+			maxpwr=str(round(maxtrq,1))+" psi"
+		else:
+			maxpwr="N/A"
+		return maxpwr
