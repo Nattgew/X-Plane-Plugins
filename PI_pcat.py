@@ -10,7 +10,7 @@ class PythonInterface:
 	def XPluginStart(self):
 		self.Name="PCAT"
 		self.Sig= "natt.python.pcat"
-		self.Desc="Auto-throttle for PC-12"
+		self.Desc="Basic auto-throttle"
 		self.VERSION="0.1"
 		
 		self.TO_ref=XPLMFindDataRef("sim/operation/override/override_throttles") #	int	710+	yes	boolean	Override the throttles (use ENGN_thro_use to control them)
@@ -30,7 +30,7 @@ class PythonInterface:
 
 		self.Nlb=0.22481 # N to lbf
 		self.mft=3.2808399 # m to ft
-		self.Kp=1.0
+		self.Kp=1.0 # PID controller gains
 		self.Ki=0.005
 		self.Kd=10.0
 		self.Integrator_max=10
@@ -43,10 +43,8 @@ class PythonInterface:
 		winPosY=400
 		win_w=230
 		win_h=80
-		self.msg1=""
-		self.msg2=""
-		self.msg3=""
-		self.msg4=""
+		for i in range(0,5):
+			self.msg.append("")
 		self.ac=""
 		self.eng_type=[]
 		
@@ -145,26 +143,19 @@ class PythonInterface:
 			left=int(lLeft[0]); top=int(lTop[0]); right=int(lRight[0]); bottom=int(lBottom[0])
 			XPLMDrawTranslucentDarkBox(left,top,right,bottom)
 			color=1.0, 1.0, 1.0
-			XPLMDrawString(color, left+5, top-20, self.msg1, 0, xplmFont_Basic)
-			XPLMDrawString(color, left+5, top-35, self.msg2, 0, xplmFont_Basic)
-			XPLMDrawString(color, left+5, top-50, self.msg3, 0, xplmFont_Basic)
-			XPLMDrawString(color, left+5, top-65, self.msg4, 0, xplmFont_Basic)
-			# XPLMDrawString(color, left+5, top-80, self.msg5, 0, xplmFont_Basic)
+			for i in range(0,5):
+				XPLMDrawString(color, left+5, top-(20+15*i), self.msg[i], 0, xplmFont_Basic)
 
 	def gameLoopCallback(self, inElapsedSinceLastCall, elapsedSim, counter, refcon):
-		
 		kias=XPLMGetDataf(self.ias_ref)
 		TO=[]
 		XPLMGetDatavf(self.thrott_ref, TO, 0, self.num_eng)
-		
 		alpha=XPLMGetDataf(self.alpha_ref)
 		awarn=XPLMGetDataf(self.alphawarn_ref)
 		swarn=XPLMGetDatai(self.stallwarn_ref)
-		
 		err=self.IAS-kias
 		PID=self.update(err)
 		torque_psi=0.0
-		
 		if alpha<awarn-0.25 and swarn==0:
 			if self.eng_type[0]==2 or self.eng_type[0]==8: #Turboprop
 				TRQ=[]
@@ -187,8 +178,7 @@ class PythonInterface:
 						TO[1]+=PID/400.0
 				else:
 					for i in range(0,self.num_eng):
-						TO[i]+=PID/400.0
-						
+						TO[i]+=PID/400.0	
 			elif self.eng_type[0]==4 or self.eng_type[0]==5: #Jet
 				N1=[]
 				XPLMGetDatavf(self.N1_ref, N1, 0, self.num_eng)
@@ -215,34 +205,29 @@ class PythonInterface:
 		#print "PCAT - override "+str(override)
 		XPLMSetDatavf(self.thrott_ref, TO, 0, self.num_eng)
 		
-		self.msg1="err: "+str(round(err,2))+" a: "+str(round(alpha,1))+"/"+str(round(awarn,1))+" warn: "+str(swarn)
-		self.msg2="TO: "+str(round(TO[0],3))+" PID: "+str(round(PID,4))
-		self.msg3="ac: "+self.ac+" trq: "+str(round(torque_psi,2))+" psi "+str(round(TRQ[0],2))
+		self.msg[0]="err: "+str(round(err,2))+" a: "+str(round(alpha,1))+"/"+str(round(awarn,1))+" warn: "+str(swarn)
+		self.msg[1]="TO: "+str(round(TO[0],3))+" PID: "+str(round(PID,4))
+		self.msg[2]="ac: "+self.ac+" trq: "+str(round(torque_psi,2))+" psi "+str(round(TRQ[0],2))
 		
 		return 1
 
 	def update(self,error):
-
 		P_value = self.Kp * error
 		D_value = self.Kd * ( error - self.Derivator)
 		self.Derivator = error
-
 		self.Integrator += error
-
 		if self.Integrator > self.Integrator_max:
 			self.Integrator = self.Integrator_max
 		elif self.Integrator < self.Integrator_min:
 			self.Integrator = self.Integrator_min
-
 		I_value = self.Integrator * self.Ki
 
-		self.msg4=str(round(P_value,4))+" "+str(round(I_value,4))+" "+str(round(D_value,4))
+		self.msg[3]=str(round(P_value,4))+" "+str(round(I_value,4))+" "+str(round(D_value,4))
 		PID = P_value + I_value + D_value
 
 		return PID
 		
 	def getshortac(self,acf_desc):
-	
 		if acf_desc[0:27]=="['Boeing 737-800 xversion 4":
 			ac_short="B738"
 		elif acf_desc=="['Pilatus PC-12']":
@@ -253,5 +238,4 @@ class PythonInterface:
 			ac_short="CL30"
 		else:
 			ac_short=acf_desc
-		
 		return ac_short
