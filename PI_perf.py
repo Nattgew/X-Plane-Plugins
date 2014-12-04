@@ -114,7 +114,7 @@ class PythonInterface:
 		self.gps_dest_index_ref=XPLMFindDataRef("sim/cockpit/gps/destination_index")
 		self.wind_dir_ref=XPLMFindDataRef("sim/weather/wind_direction_degt") #	float	660+	no	[0-359)	The effective direction of the wind at the plane's location.
 		self.wind_spd_ref=XPLMFindDataRef("sim/weather/wind_speed_kt") #	float	660+	no	kts >= 0	The effective speed of the wind at the plane's location.
-		self.sim_spd_ref=XPLMFindDataRef("sim/sim_speed_actual")
+		self.sim_spd_ref=XPLMFindDataRef("sim/time/sim_speed_actual")
 	
 		self.started=0
 		self.Dstarted=0
@@ -615,7 +615,7 @@ class PythonInterface:
 				if round(flaps,1) == self.flaps_PC12[i]:
 					flap_i=i
 			if flap_i==-1:
-				V1="T/O CONFIG"
+				V1=""
 			else:
 				if wgt<10000:
 					wgt_i=wgt/900-64/9
@@ -815,8 +815,6 @@ class PythonInterface:
 			while trqs[alt_ih][dis_il]==0 or trqs[alt_il][dis_il]==0 or trqs[alt_ih][dis_ih]==0 or trqs[alt_il][dis_ih]==0:
 				dis_il+=1
 				dis_ih+=1
-			
-			maxtrq=self.table2(trqs, alts, dis, alt_ih, alt_il, dis_ih, dis_il, DA, delISA)
 			
 			maxtrq=self.interp2(trqs[alt_ih][dis_il], trqs[alt_il][dis_il], trqs[alt_ih][dis_ih], trqs[alt_il][dis_ih], alts[alt_ih], alts[alt_il], dis[dis_ih], dis[dis_il], DA, delISA)
 			
