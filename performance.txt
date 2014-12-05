@@ -1,0 +1,40 @@
+This is a Python plugin that uses Sandy Barbour's Python Interface.
+ 
+Tested on X-Plane 10.31.
+ 
+This plugin calculates performance information and displays it during the flight. Current values calculated when available:
+
+    Descent profile
+    Top of descent distance from destination (working on this)
+    Takeoff distance
+    Landing reference speed
+    Takeoff rotation speed
+    Cruise climb speed
+    Max/Optimum flight level (B738)
+    Best cruise speed
+	Max cruise power
+
+Possible future info:
+    
+	Max cruise speed
+
+Aircraft currently available:
+
+    PC-12 (STMA)
+    B737-800 (x737)
+
+In work:
+
+    B1900D (Carenado)
+    CL30 (DDenn)
+	C208 (Carenado)
+
+The aircraft type is detected based on the description, so the specific description needs to be coded into the plugin. If the aircraft type is not recognized, it will show the description, and values like temperature, density altitude, and weight.
+
+The values are calculated using the performance data from the POH for each plane.
+
+To Do:
+For more planes or more info to be added, the information has to be available for that plane, and it has to be coded into the plugin.
+ 
+Notes:
+Feel free to modify the code if you wish. If you want to share ideas, modifications, or settings for specific aircraft, they might be added to the plugin.
