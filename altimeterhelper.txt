@@ -1,11 +1,3 @@
-ITT: PC-12
-
-The ITT on the PC-12 seems pretty low on its scale. The handbook says it is tuned so that you have to reduce power to stay in the green at altitude. However, I have never seen it outside the green, except maybe the lower end of it. On the ground at idle it's pretty low, and at takeoff it's around 530. As I climb, it slowly increases. However, with torque under 37.0, even if I climb to 30,000 feet with a TAT of -16 C, it gets a little over 730 but still is well within the green.
-
-Are those values accurate to what they should be? Is the scale right? Other turbine aircraft I have can certainly be ITT limited at times; the PC-12 never is. Just wondering why.
-
-
-
 09/05/2014 - Updated the code to add some functionality. I did not update the C version, so it is not included. If there are any 64-bit Linux users out there that don't want to use the Python version, let me know and I may try to keep the C version up to date.
 
 The old hard-coded "hot key" of Shift+Ctrl+B has been replaced with a custom command. You can now go to the "Joysticks and Controls" settings to create your own key combination for this feature. You can view the extra commands from the upper right of that window.
