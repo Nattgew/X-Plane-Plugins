@@ -52,12 +52,9 @@ class PythonInterface:
 
 		self.started=0
 		self.gWindow=0
-		self.msg1=""
-		self.msg2=""
-		self.msg3=""
-		self.msg4=""
-		self.msg5=""
-		self.msg6=""
+		self.msg=[]
+		for i in range(0,6):
+			self.msg.append("")
 		winPosX=20
 		winPosY=400
 		win_w=230
@@ -111,12 +108,8 @@ class PythonInterface:
 			left=int(lLeft[0]); top=int(lTop[0]); right=int(lRight[0]); bottom=int(lBottom[0])
 			XPLMDrawTranslucentDarkBox(left,top,right,bottom)
 			color=1.0, 1.0, 1.0
-			XPLMDrawString(color, left+5, top-20, self.msg1, 0, xplmFont_Basic)
-			XPLMDrawString(color, left+5, top-35, self.msg2, 0, xplmFont_Basic)
-			XPLMDrawString(color, left+5, top-50, self.msg3, 0, xplmFont_Basic)
-			XPLMDrawString(color, left+5, top-65, self.msg4, 0, xplmFont_Basic)
-			XPLMDrawString(color, left+5, top-80, self.msg5, 0, xplmFont_Basic)
-			XPLMDrawString(color, left+5, top-95, self.msg6, 0, xplmFont_Basic)
+			for i in range(0,6):
+				XPLMDrawString(color, left+5, top-(20+15*i), self.msg[i], 0, xplmFont_Basic)
 
 	def XPluginStop(self):
 		if self.started==1:
@@ -135,7 +128,21 @@ class PythonInterface:
 		pass
 
 	def getInfo(self):
-
+		# Prop Types:
+		# 0 = Fixed Pitch
+		# 1 = Variable Pitch
+		# 3 = Helicopter Rotor
+		# 8 = Turbine/Other/None?
+		# Engine Types:
+		# 0 Reciprocating Carburetor
+		# 1 Reciprocating Injection
+		# 2 Turbo Prop Free
+		# 3 Electric
+		# 4 Lo Bypass Jet
+		# 5 Hi Bypass Jet
+		# 6 Rocket
+		# 7 Tip Rocket
+		# 8 Turbo Prop Fixed
 		prop_type=[]
 		eng_type=[]
 		rpms=[]
@@ -161,9 +168,9 @@ class PythonInterface:
 			yh_ITT=XPLMGetDataf(self.yh_ITT_ref)
 			g_ITT=XPLMGetDataf(self.g_ITT_ref)
 			gh_ITT=XPLMGetDataf(self.gh_ITT_ref)
-			self.msg1="ITT: "+str(round(itts[0]))+"/"+str(round(m_ITT))+" r: "+str(round(ittrs[0]))+"  RPM: "+str(round(rpms[0]))
-			self.msg2="R HI: "+str(round(rh_ITT))+"  Y HI: "+str(round(yh_ITT))+"  G HI: "+str(round(gh_ITT))
-			self.msg3="R LO: "+str(round(r_ITT))+"  Y LO: "+str(round(y_ITT))+"  G LO: "+str(round(g_ITT))
+			self.msg[0]="ITT: "+str(round(itts[0]))+"/"+str(round(m_ITT))+" r: "+str(round(ittrs[0]))+"  RPM: "+str(round(rpms[0]))
+			self.msg[1]="R HI: "+str(round(rh_ITT))+"  Y HI: "+str(round(yh_ITT))+"  G HI: "+str(round(gh_ITT))
+			self.msg[2]="R LO: "+str(round(r_ITT))+"  Y LO: "+str(round(y_ITT))+"  G LO: "+str(round(g_ITT))
 		elif eng_type[0]==4 or eng_type[0]==5: #Jet
 			egts=[]
 			XPLMGetDatavf(self.EGT_ref, egts, 0, self.num_eng)
@@ -176,15 +183,15 @@ class PythonInterface:
 			yh_EGT=XPLMGetDataf(self.yh_EGT_ref)
 			g_EGT=XPLMGetDataf(self.g_EGT_ref)
 			gh_EGT=XPLMGetDataf(self.gh_EGT_ref)
-			self.msg1="EGT: "+str(round(egts[0]))+"/"+str(round(m_EGT))+" r: "+str(round(egtrs[0]))+"  RPM: "+str(round(rpms[0]))
-			self.msg2="R HI: "+str(round(rh_EGT))+"  Y HI: "+str(round(yh_EGT))+"  G HI: "+str(round(gh_EGT))
-			self.msg3="R LO: "+str(round(r_EGT))+"  Y LO: "+str(round(y_EGT))+"  G LO: "+str(round(g_EGT))
+			self.msg[0]="EGT: "+str(round(egts[0]))+"/"+str(round(m_EGT))+" r: "+str(round(egtrs[0]))+"  RPM: "+str(round(rpms[0]))
+			self.msg[1]="R HI: "+str(round(rh_EGT))+"  Y HI: "+str(round(yh_EGT))+"  G HI: "+str(round(gh_EGT))
+			self.msg[2]="R LO: "+str(round(r_EGT))+"  Y LO: "+str(round(y_EGT))+"  G LO: "+str(round(g_EGT))
 		else: #Reciprocating or other gets default
 			chts=[]
 			XPLMGetDatavf(self.CHT_ref, chts, 0, self.num_eng)
 			chtrs=[]
 			XPLMGetDatavf(self.CHTr_ref, chtrs, 0, self.num_eng)
-			self.msg1="CHT: "+str(round(chts[0]))+"  RPM: "+str(round(rpms[0]))
+			self.msg[0]="CHT: "+str(round(chts[0]))+"  RPM: "+str(round(rpms[0]))
 			m_CHT=XPLMGetDataf(self.m_CHT_ref)
 			r_CHT=XPLMGetDataf(self.r_CHT_ref)
 			rh_CHT=XPLMGetDataf(self.rh_CHT_ref)
@@ -192,12 +199,12 @@ class PythonInterface:
 			yh_CHT=XPLMGetDataf(self.yh_CHT_ref)
 			g_CHT=XPLMGetDataf(self.g_CHT_ref)
 			gh_CHT=XPLMGetDataf(self.gh_CHT_ref)
-			self.msg1="CHT: "+str(round(chts[0]))+"/"+str(round(m_CHT))+" r: "+str(round(chtrs[0]))+"  RPM: "+str(round(rpms[0]))
-			self.msg2="R HI: "+str(round(rh_CHT))+"  Y HI: "+str(round(yh_CHT))+"  G HI: "+str(round(gh_CHT))
-			self.msg3="R LO: "+str(round(r_CHT))+"  Y LO: "+str(round(y_CHT))+"  G LO: "+str(round(g_CHT))
+			self.msg[0]="CHT: "+str(round(chts[0]))+"/"+str(round(m_CHT))+" r: "+str(round(chtrs[0]))+"  RPM: "+str(round(rpms[0]))
+			self.msg[1]="R HI: "+str(round(rh_CHT))+"  Y HI: "+str(round(yh_CHT))+"  G HI: "+str(round(gh_CHT))
+			self.msg[2]="R LO: "+str(round(r_CHT))+"  Y LO: "+str(round(y_CHT))+"  G LO: "+str(round(g_CHT))
 
-		self.msg4="En: "+str(eng_type[0])+" Prop: "+str(prop_type[0])
-		self.msg5="IND: ITT: "+str(round(iITT[0]))+"  EGT: "+str(round(iEGT[0]))+"  CHT: "+str(round(iCHT[0]))
-		self.msg6=str(self.acf_desc)
+		self.msg[3]="En: "+str(eng_type[0])+" Prop: "+str(prop_type[0])
+		self.msg[4]="IND: ITT: "+str(round(iITT[0]))+"  EGT: "+str(round(iEGT[0]))+"  CHT: "+str(round(iCHT[0]))
+		self.msg[5]=str(self.acf_desc)
 		print "XDMG = Got engine info..."
 
