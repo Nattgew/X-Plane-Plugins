@@ -64,6 +64,14 @@ class PythonInterface:
 		T_ISA=15.0-self.gamma_l*alt
 		delISA=T-T_ISA
 		return delISA
+		
+	def getHwind(self):
+		wdir=XPLMGetDataf(self.wind_dir_ref)
+		wspd=XPLMGetDataf(self.wind_spd_ref)
+		tpsi=XPLMGetDataf(self.tpsi_ref)
+		theta=radians(wdir-tpsi)
+		hwind=wspd*cos(theta)
+		return hwind
 	
 	def XPluginStart(self):
 		self.Name="Performance Calculator"
@@ -91,6 +99,7 @@ class PythonInterface:
 		self.EGT_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_EGT_c")
 		self.ITT_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_ITT_c")
 		self.TRQ_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_TRQ") #NewtonMeters
+		self.RPM_ref=XPLMFindDataRef("sim/flightmodel/engine/POINT_tacrad") #prop speed, rad/sec?
 		self.alt_ref=XPLMFindDataRef("sim/flightmodel/position/elevation")
 		self.agl_ref=XPLMFindDataRef("sim/flightmodel/position/y_agl")
 		self.ias_ref=XPLMFindDataRef("sim/flightmodel/position/indicated_airspeed")
@@ -103,10 +112,9 @@ class PythonInterface:
 		self.alt_ind_ref=XPLMFindDataRef("sim/flightmodel/misc/h_ind")
 		self.acf_desc_ref=XPLMFindDataRef("sim/aircraft/view/acf_descrip")
 		self.eng_type_ref=XPLMFindDataRef("sim/aircraft/prop/acf_en_type")
+		self.prop_type_ref=XPLMFindDataRef("sim/aircraft/prop/acf_prop_type")
 		self.num_eng_ref=XPLMFindDataRef("sim/aircraft/engine/acf_num_engines")
 		self.geardep_ref=XPLMFindDataRef("sim/aircraft/parts/acf_gear_deploy")
-		self.baro_ref=XPLMFindDataRef("sim/weather/barometer_current_inhg")
-		self.temp_ref=XPLMFindDataRef("sim/weather/temperature_ambient_c")
 		self.wgt_ref=XPLMFindDataRef("sim/flightmodel/weight/m_total")
 		self.flap_pos_ref=XPLMFindDataRef("sim/flightmodel2/controls/flap_handle_deploy_ratio") # actual position
 		self.flap_h_pos_ref=XPLMFindDataRef("sim/cockpit2/controls/flap_ratio") # handle position
@@ -117,8 +125,11 @@ class PythonInterface:
 		self.gps_dist_ref=XPLMFindDataRef("sim/cockpit/radios/gps_dme_dist_m")
 		self.gps_degt_ref=XPLMFindDataRef("sim/cockpit/radios/gps_dir_degt")
 		self.gps_dest_index_ref=XPLMFindDataRef("sim/cockpit/gps/destination_index")
+		self.baro_ref=XPLMFindDataRef("sim/weather/barometer_current_inhg")
+		self.temp_ref=XPLMFindDataRef("sim/weather/temperature_ambient_c")
 		self.wind_dir_ref=XPLMFindDataRef("sim/weather/wind_direction_degt")
 		self.wind_spd_ref=XPLMFindDataRef("sim/weather/wind_speed_kt")
+		self.baro_act_ref=XPLMFindDataRef("sim/weather/barometer_sealevel_inhg")
 		self.sim_spd_ref=XPLMFindDataRef("sim/time/sim_speed_actual")
 		self.ap_alt_ref=XPLMFindDataRef("sim/cockpit/autopilot/altitude")
 		self.ap_hdg_ref=XPLMFindDataRef("sim/cockpit/autopilot/heading_mag")
@@ -137,6 +148,7 @@ class PythonInterface:
 		self.num_eng=0
 		self.TO_pwr=0
 		self.eng_type=[]
+		self.prop_type=[]
 		self.flaps=(0,1)
 		
 		self.gameLoopCB=self.gameLoopCallback
@@ -184,11 +196,11 @@ class PythonInterface:
 		return 0
 	
 	def APset(self): #Sets cruise altitude and heading based on destination, sets VS to 1000 fpm
-		dist=XPLMGetDataf(self.gps_dist_ref)#*self.mft/6076 #Distance to destination
+		dist=XPLMGetDataf(self.gps_dist_ref) #Distance to destination
 		print "Found dist "+str(round(dist))+" nm"
 		general_fl=int((dist/10+2)) #General rule for PC-12 cruise altitude
-		#dalt=self.get_dest_info()
-		dalt=0.0
+		dalt=self.get_dest_info()
+		dalt=0
 		alt_ind=XPLMGetDataf(self.alt_ind_ref)
 		general_fl+=int(dalt/1000+alt_ind/1000)/2 #Account for departure/arrival altitudes
 		aphdg=XPLMGetDataf(self.gps_degm_ref) #Heading to destination
@@ -200,17 +212,17 @@ class PythonInterface:
 				general_fl-=1
 		alt=general_fl*1000
 		hdg=XPLMGetDataf(self.mpsi_ref) #Get current heading, attempt to adjust towards GPS course
-		bighdg=hdg+180
-		if bighdg>360:
-			bighdg-=360
-		if bighdg>aphdg: # right turn
+		turn=hdg-aphdg
+		if turn<0:
+			turn+=360
+		if turn>180: # right turn
 			if aphdg>hdg:
 				offset=(aphdg-hdg)/5
 			else:
 				offset=(360-hdg+aphdg)/5
 		else: # left turn
 			if aphdg<hdg:
-				offset=-(aphdg-hdg)/5
+				offset=(aphdg-hdg)/5
 			else:
 				offset=-(360-aphdg+hdg)/5
 		hdginit=aphdg+offset
@@ -230,8 +242,9 @@ class PythonInterface:
 			XPLMGetDatab(self.acf_desc_ref, acf_descb, 0, 500)
 			self.acf_short=self.getacfshort(str(acf_descb)) #Find name of aircraft
 			XPLMGetDatavi(self.eng_type_ref, self.eng_type, 0, self.num_eng) #Find type of engines
+			XPLMGetDatavi(self.prop_type_ref, self.prop_type, 0, self.num_eng)
 			#print str(self.acf_descb)
-			XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 5, 0)
+			XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 0.25, 0)
 			self.started=1
 		else:
 			self.acf_descb=[]
@@ -296,7 +309,7 @@ class PythonInterface:
 			if self.acf_short=="B190":
 				torque_ftlb1=self.Nlb*self.mft*TRQ[0]
 				torque_ftlb2=self.Nlb*self.mft*TRQ[1]
-				pwr=str(round(torque_ftlb1,1))+"|"+str(round(torque_ftlb2,1))+" ftlb"
+				pwr=str(int(round(torque_ftlb1)))+"|"+str(int(round(torque_ftlb2)))+" ftlb"
 				if torque_ftlb1>3750.0 or torque_ftlb2>3750.0: #Takeoff power
 					TOP_str=self.get_topwr(self.TO_pwr, inElapsedSinceLastCall)
 				else:
@@ -323,26 +336,34 @@ class PythonInterface:
 			else:
 				pwr=str(round(N1[0],1))+" %N1"
 				TOP_str=""
+		else: #Piston
+			if self.prop_type[0]==0: #Fixed pitch
+				RPM=[]
+				XPLMGetDatavf(self.RPM_ref, RPM, 0, self.num_eng)
+				pwr=str(int(round(RPM[0]*60/pi)))+" rpm"
+				TOP_str=""
+			else: #Variable pitch?
+				EGT=[]
+				XPLMGetDatavf(self.EGT_ref, EGT, 0, self.num_eng)
+				pwr=str(int(round(EGT[0]*60/pi)))+"C EGT"
+				TOP_str=""
 		gears=[]
 		XPLMGetDatavf(self.geardep_ref, gears, 0, 10)
 		#print "Gear "+str(gears[0])
-		Vspeed=""
-		tod=""
 		if gears[0]==1: #Landing or taking off
 			#print "XDMG = Gear down"
 			flaps=XPLMGetDataf(self.flap_h_pos_ref)
 			if XPLMGetDataf(self.f_norm_ref) != 0: #Weight on wheels
 				#print "XDMG = On ground"
 				Vspeed=self.getV1(flaps, wgt, DenAlt, T, self.acf_short)
-				wdir=XPLMGetDataf(self.wind_dir_ref)
-				wspd=XPLMGetDataf(self.wind_spd_ref)
-				tpsi=XPLMGetDataf(self.tpsi_ref)
-				theta=radians(wdir-tpsi)
-				hwind=wspd*cos(theta)
+				hwind=self.getHwind()
 				tod=self.getTOD(flaps, wgt, DenAlt, T, delISA, hwind, self.acf_short)
 			else:
 				#print "XDMG = In air"
 				Vspeed=self.getVref(flaps, wgt, DenAlt, T, self.acf_short)
+		else:
+			Vspeed=""
+			tod=""
 		dIstr=str(int(round(delISA)))+" "+self.d+"C"
 		if delISA>0:
 			dIstr="+"+dIstr
@@ -350,7 +371,7 @@ class PythonInterface:
 		#speed=str(int(round(kias)))+" kias"
 		dist=XPLMGetDataf(self.gps_dist_ref)
 		machstr="  M"+str(round(mach,2))
-		self.msg[0]=self.acf_short+"  DA: "+str(int(round(DenAlt)))+" ft  GW: "+str(int(round(wgt)))+" lb  "+str(round(dist))+"nm"
+		self.msg[0]=self.acf_short+"  DA: "+str(int(round(DenAlt)))+" ft  GW: "+str(int(round(wgt)))+" lb  "+str(int(round(dist)))+"nm"
 		self.msg[1]="T: "+str(int(round(T)))+" "+self.d+"C  ISA +/-: "+dIstr+TOP_str+machstr
 		if self.Dstarted==0:
 			maxPwr=self.getMaxPwr(DenAlt, delISA, self.acf_short)
@@ -363,32 +384,32 @@ class PythonInterface:
 			#Assemble the messengers
 			self.msg[2]="Pwr: "+maxPwr+"  CC: "+cruiseclb+"  Thr: "+pwr
 			self.msg[3]="Crs: "+maxcruise+"  LR: "+cruise+"  AS: "+twospeed
-			self.msg[4]="FL: "+maxFL+"  FL: "+optFL+Vspeed+tod#+" Flaps: "+str(flaps)
+			self.msg[4]="FL: "+maxFL+"  FL: "+optFL+tod+Vspeed#+" Flaps: "+str(flaps)
 		else:
+			print "Doing descent stuff..."
 			dalt=self.get_dest_info()
+			hwind=self.getHwind()
+			ldr=self.getLandingDist(wgt, dalt, alt, delISA, hwind, self.acf_short)
 			#time=XPLMGetDataf(self.gps_time_ref)
-			print "Looking up distance..."
-			dist=XPLMGetDataf(self.gps_dist_ref)#*self.mft/6076
-			print "Found dist "+str(round(dist))+" nm"
+			#dist=XPLMGetDataf(self.gps_dist_ref)
 			print "Finding descent info"
-			if dist<9000 and dist>0:
-				ddist=self.getDesc(dist, alt, dalt, DenAlt, delISA, self.acf_short)
-			else:
-				ddist="No Dest"
+			ddist=self.getDesc(dist, alt, dalt, DenAlt, delISA, self.acf_short)
 			dprof=self.getDpro(self.acf_short)
 			#Assemble the message
 			self.msg[2]="Descend at: "+ddist
 			self.msg[3]=dprof
-			self.msg[4]=Vspeed
+			self.msg[4]=Vspeed+ldr
 		#Compute good delay before running again, based on climb rate and time accel
-		vvi=XPLMGetDataf(self.vvi_ref)
-		if abs(vvi)<1:
-			vvi=1.0
-		delay=60.0/abs(vvi/500.0*XPLMGetDataf(self.sim_spd_ref))
-		if delay>60:
-			delay=60
-		if XPLMGetDataf(self.agl_ref)<1000:
-			delay=10
+		if XPLMGetDataf(self.agl_ref)<304.8: #If under 1000 feet, update more frequently
+			delay=3
+		else:
+			vvi=XPLMGetDataf(self.vvi_ref)
+			if abs(vvi)<1:
+				vvi=1.0
+			delay=60.0/abs(vvi/500.0*XPLMGetDataf(self.sim_spd_ref))
+			if delay>60:
+				delay=60
+		print "Perf: Delay = "+str(delay)
 		
 		return delay
 		
@@ -410,10 +431,8 @@ class PythonInterface:
 		return AC
 		
 	def get_dest_info(self): #Get info from FMS system about destination (aka "crash x-plane")
-		#destindex=XPLMGetDatai(self.gps_dest_index_ref)
 		destindex=XPLMGetDisplayedFMSEntry()
 		destid=[]
-		dist=-1.0
 		dalt=[]
 		print "Getting info for entry "+str(destindex)+"..."
 		# XPLMGetFMSEntryInfo(
@@ -427,11 +446,10 @@ class PythonInterface:
 		XPLMGetFMSEntryInfo(destindex, None, destid, None, dalt, None, None)
 		#print type(dalt)
 		#print type(destid)
-		print "Going to index "+str(destindex)
-		print "destid "+str(destid)
-		print "alt "+str(dalt)+" MSL"
+		print "Going to "+str(destid[0])
+		print "Alt "+str(dalt[0])+" MSL"
 		
-		return float(str(dalt))
+		return dalt[0]
 	
 	def getDpro(self, AC): #Show applicable descent profile
 		if AC=="B738":
@@ -471,6 +489,57 @@ class PythonInterface:
 		else:
 			ddist="N/A"
 		return ddist
+	
+	def getLandingDist(self, wgt, elev, alt, delISA, hwind, AC): #Get landing distance
+		if AC=="PC12":
+			groundISA=-self.getdelISA(elev, 0)
+			Tgd=groundISA+delISA
+			PSL=XPLMGetDataf(self.baro_act_ref)
+			DenAlt=self.getDA(P,Tgd)
+			dis=tuple(range(-40,31,10))
+			alts=tuple(range(0,10001,2000))
+			GW=(6400,7000,8000,9000,9900)
+			tod1=((1940,2000,2050,2110,2160,2220,2280,2340),	# SL
+				(2020,2080,2140,2200,2260,2330,2390,2450),	# 2k
+				(2110,2170,2240,2310,2370,2440,2510,2570),	# 4k
+				(2200,2270,2350,2420,2490,2560,2630,2700),	# 6k
+				(2330,2400,2480,2580,2640,2710,2790,2870),	# 8k
+				(2540,2620,2700,2790,2880,2970,3050,3150))	# 10k
+			dist1=tuple(range(1800,3401,200))
+			tod2=(1180,1420,1660,1800,1940,2080,2200,2340,2480)
+			dist2=dist1
+			if hwind>=0: #Use headwind trend
+				tod3=(1250,1430,1610,1790,1960,2140,2320,2490,2660)
+				wind_i=hwind/30
+			else:
+				tod3=(2460,2680,2900,3140,3360,3580,3800,4020,4240)
+				wind_i=abs(hwind/10)
+			alt_i=DA/2000
+			di_i=(delISA+40)/10
+			if wgt<=7000:
+				GW_i=(wgt-6400)/600
+			elif wgt>=9000:
+				GW_i=(wgt-6300)/900
+			else:
+				GW_i=(wgt-6000)/1000
+			alt_ih, alt_il = self.get_index(alt_i, len(alts))
+			di_ih, di_il = self.get_index(di_i, len(dis))
+			GW_ih, GW_il = self.get_index(GW_i, len(GW))
+			wind_ih, wind_il = self.get_index(wind_i, 2)
+			#Basic altitude/temperature distance
+			basic_dist=self.interp2(tod1[alt_ih][di_il], tod1[alt_il][di_il], tod1[alt_ih][di_ih], tod1[alt_il][di_ih], alts[alt_ih], alts[alt_il], dis[di_ih], dis[di_il], DA, delISA)
+			#Weight factor
+			dist1_i=(basic_dist-2000)/1000
+			dist1_ih, dist1_il = self.get_index(dist1_i, len(dist1))
+			wgt_dist=self.interp2(tod2[dist1_ih][GW_il], tod2[dist1_il][GW_il], tod2[dist1_ih][GW_ih], tod2[dist1_il][GW_ih], dist1[dist1_ih], dist1[dist1_il], GW[GW_ih], GW[GW_il], basic_dist, wgt)
+			#Wind factor
+			dist2_i=(wgt_dist-1200)/1000
+			dist2_ih, dist2_il = self.get_index(dist2_i, len(dist2))
+			wnd_dist=self.interp2(dist2[dist2_ih], dist2[dist2_il], tod3[dist2_ih], tod3[dist2_il], dist2[dist2_ih], dist2[dist2_il], 30, 0, wgt_dist, hwind)
+			ldr=""
+		else:
+			ldr=""
+		return ldr
 	
 	def getTOD(self, flaps, wgt, DA, T, delISA, hwind, AC): #Get takeoff distance
 		if AC=="B190":
@@ -795,13 +864,13 @@ class PythonInterface:
 				(212,207,202,197,193,188,182,177,172,166,160,155,148,142,135,128),		# 9000lb
 				(211,206,201,197,192,187,182,177,172,167,161,156,150,144,138,131),		# 10000lb
 				(210,206,201,197,192,187,182,177,172,167,161,156,151,145,139,132)),		# 10400lb
-				((212,207,202,197,191,158,179,174,168,162,155,148,141,134,126,117),		# 7000lb	-10C
+				((212,207,202,197,191,185,179,174,168,162,155,148,141,134,126,117),		# 7000lb	-10C
 				(212,206,201,196,191,185,180,175,169,163,157,150,144,137,130,122),		# 8000lb
 				(210,205,201,196,191,186,181,175,170,164,158,152,146,140,133,126),		# 9000lb
 				(209,204,200,195,190,185,180,175,170,164,159,154,148,142,136,129),		# 10000lb
 				(208,204,199,195,190,185,180,175,170,165,159,154,148,142,136,130)),		# 10400lb
 				((211,206,200,195,189,184,178,172,166,160,153,146,139,132,124,116),		# 7000lb	+0C
-				(210,205,200,194,189,184,178,173,167,131,155,149,142,135,128,120),		# 8000lb
+				(210,205,200,194,189,184,178,173,167,161,155,149,142,135,128,120),		# 8000lb
 				(209,204,199,194,189,184,179,173,168,162,156,150,144,138,131,124),		# 9000lb
 				(207,203,198,193,188,183,178,173,168,162,157,151,146,139,133,126),		# 10000lb
 				(207,202,198,193,188,183,178,173,168,163,157,152,147,140,134,127)),		# 10400lb
@@ -819,7 +888,7 @@ class PythonInterface:
 				(205,200,195,190,184,179,174,168,162,156,150,143,137,130,122,114),		# 8000lb
 				(204,199,194,189,184,179,173,168,162,157,151,145,139,132,125,116),		# 9000lb
 				(202,198,193,188,183,178,173,168,162,157,151,146,140,133,126,117),		# 10000lb
-				(202,197,193,188,183,178,173,168,162,157,152,149,140,134,127,118)))		# 10400lb
+				(202,197,193,188,183,178,173,168,162,157,152,146,140,134,127,118)))		# 10400lb
 			dis=tuple(range(-40,31,10))
 			if wgt>10000:
 				wgt_i=wgt/400-22
