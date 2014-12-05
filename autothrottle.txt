@@ -1,0 +1,16 @@
+
+This is a Python plugin that uses Sandy Barbour's Python Interface.
+ 
+Tested on X-Plane 10.31.
+ 
+This is a simple auto throttle plugin, for airplanes that don't have one. It uses a simple PID feedback controller to adjust throttle to maintain a set speed. It uses X-Plane's built-in autopilot speed setting. Since planes without auto throttle don't generally show the autopilot speed setting, you can use a plugin like the "Dial Magnifier", which will display the setting each time it changes.
+
+The plugin will add three custom commands. One will toggle whether this plugin actively controls throttle. The other two will add or subtract one knot from the speed setting.
+
+The plugin is currently tuned and coded for the PC-12. It also has settings for the B1900D and Challenger 300. These are mainly to respect an upper limit on throttle, but could also be independently tuned as well.
+ 
+To Do:
+More tuning and per-airplane code. Any airplane should work, but would need to have code added for upper throttle limit, and possibly gain tuning.
+ 
+Notes:
+Feel free to modify the code if you wish. If you want to share ideas, modifications, or settings for specific aircraft, they might be added to the plugin.
