@@ -37,7 +37,7 @@ class PythonInterface:
 		self.Integrator_min=-10
 		self.Integrator=0
 		self.Derivator=0
-		self.IAS=160.0
+		self.IAS=140.0
 		self.started=0
 		winPosX=20
 		winPosY=400
@@ -229,14 +229,13 @@ class PythonInterface:
 		return PID
 		
 	def getshortac(self,acf_desc):
-		if acf_desc[0:27]=="['Boeing 737-800 xversion 4":
-			ac_short="B738"
-		elif acf_desc=="['Pilatus PC-12']":
+		if acf_desc=="['Pilatus PC-12']":
 			ac_short="PC12"
 		elif acf_desc=="['wouldnt you like to be a pepper too']":
 			ac_short="B190"
 		elif acf_desc=="['ok']":
 			ac_short="CL30"
+			self.IAS=250.0
 		else:
 			ac_short=acf_desc
 		return ac_short
