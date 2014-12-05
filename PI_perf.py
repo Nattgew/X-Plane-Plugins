@@ -285,7 +285,7 @@ class PythonInterface:
 		wgt=XPLMGetDataf(self.wgt_ref)*self.kglb
 		alt_ind=XPLMGetDataf(self.alt_ind_ref)
 		kias=XPLMGetDataf(self.ias_ref)
-		gs=XPLMGetDataf(self.ias_ref)*self.mkt
+		gs=XPLMGetDataf(self.gs_ref)*self.mkt
 		mach=XPLMGetDataf(self.mach_ref)
 		DenAlt=self.getDA(P,T) #ft
 		delISA=self.getdelISA(alt, T)
