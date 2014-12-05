@@ -119,9 +119,13 @@ class PythonInterface:
 			#XPLMGetDatab(self.acf_desc_ref, acf_descb, 0, 500)
 			#if str(acf_descb)=="['Pilatus PC-12']":
 			if self.eng_type[0]==2 or self.eng_type[0]==8: #Turboprop
+				print "XDMG = Using turboprop process..."
 				self.CPtoggle() #Toggle the cutoff protection on PC-12
+				print "XDMG = Mixture cutoff"
 				self.MixTape(0.0)
+				print "XDMG = Waiting 2..."
 				sleep(2.0)
+				print "XDMG = Mixture idle"
 				self.MixTape(0.45) #Set to ground idle
 				self.CPtoggle()
 			else: #Jets and regular props probably want full mix on ground
@@ -140,7 +144,7 @@ class PythonInterface:
 			self.m_ITT=XPLMGetDataf(self.m_ITT_ref)
 			self.m_CHT=XPLMGetDataf(self.m_CHT_ref)
 			self.defaultcht=XPLMGetDataf(self.OAT_ref)
-			XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 1, 0)
+			XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 0.25, 0)
 			self.started=1
 		else:
 			self.started=0
@@ -190,11 +194,14 @@ class PythonInterface:
 		pass
 
 	def MixTape(self, m):
+		print "XDMG = Setting mixture "+str(round(m,2))
 		XPLMSetDatavf(self.mix_ref, [m, m, m, m, m, m, m, m], 0, self.num_eng)
 	
 	def CPtoggle(self):
+		print "XDMG = Running cutoff toggle function..."
 		cutoff_toggle_cmd=XPLMFindCommand("/pc12/engine/cutoff_protection_toggle")
 		if cutoff_toggle_cmd is not None:
+			print "XDMG = Found command, toggling switch"
 			XPLMCommandOnce(cutoff_toggle_cmd)
 
 	def gameLoopCallback(self, inElapsedSinceLastCall, elapsedSim, counter, refcon):
