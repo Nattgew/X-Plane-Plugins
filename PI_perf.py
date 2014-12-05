@@ -348,8 +348,9 @@ class PythonInterface:
 			dIstr="+"+dIstr
 		#gspeed=str(int(round(gs)))+" kts"
 		#speed=str(int(round(kias)))+" kias"
+		dist=XPLMGetDataf(self.gps_dist_ref)
 		machstr="  M"+str(round(mach,2))
-		self.msg[0]=self.acf_short+"  DA: "+str(int(round(DenAlt)))+" ft  GW: "+str(int(round(wgt)))+" lb"
+		self.msg[0]=self.acf_short+"  DA: "+str(int(round(DenAlt)))+" ft  GW: "+str(int(round(wgt)))+" lb  "+str(round(dist))+"nm"
 		self.msg[1]="T: "+str(int(round(T)))+" "+self.d+"C  ISA +/-: "+dIstr+TOP_str+machstr
 		if self.Dstarted==0:
 			maxPwr=self.getMaxPwr(DenAlt, delISA, self.acf_short)
