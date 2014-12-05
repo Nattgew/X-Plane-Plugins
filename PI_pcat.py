@@ -43,6 +43,7 @@ class PythonInterface:
 		winPosY=400
 		win_w=230
 		win_h=80
+		self.msg=[]
 		for i in range(0,5):
 			self.msg.append("")
 		self.ac=""

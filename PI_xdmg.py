@@ -49,6 +49,7 @@ class PythonInterface:
 
 		self.started=0
 		self.err=0
+		self.msg=[]
 		for i in range(0,5):
 			self.msg.append("")
 		self.e1=""

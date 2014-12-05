@@ -57,7 +57,7 @@ class PythonInterface:
 
 	def getDA(self, P, T):
 		T+=273.15
-		density_alt=self.DA_pre*(1-((P/self.P_SL)/(T/self.T_SL))**self.DA_exp
+		density_alt=self.DA_pre*(1-((P/self.P_SL)/(T/self.T_SL))**self.DA_exp)
 		return density_alt
 	
 	def getdelISA(self, alt, T):
@@ -79,7 +79,7 @@ class PythonInterface:
 		g=9.80665 # gravity m/s^2
 		M=0.0289644 # molar mass of dry air kg/mol
 		self.DA_pre=self.T_SL/self.gamma_l
-		self.DA_exp=gamma_u*R/(g*M-gamma_u*R))
+		self.DA_exp=gamma_u*R/(g*M-gamma_u*R)
 		self.kglb=2.20462262 # kg to lb
 		self.mft=3.2808399 # m to ft
 		self.mkt=1.94384 # m/s to kt
@@ -92,6 +92,7 @@ class PythonInterface:
 		self.ITT_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_ITT_c")
 		self.TRQ_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_TRQ") #NewtonMeters
 		self.alt_ref=XPLMFindDataRef("sim/flightmodel/position/elevation")
+		self.agl_ref=XPLMFindDataRef("sim/flightmodel/position/y_agl")
 		self.ias_ref=XPLMFindDataRef("sim/flightmodel/position/indicated_airspeed")
 		self.gs_ref=XPLMFindDataRef("sim/flightmodel/position/groundspeed")
 		self.tpsi_ref=XPLMFindDataRef("sim/flightmodel/position/true_psi")
@@ -186,7 +187,8 @@ class PythonInterface:
 		dist=XPLMGetDataf(self.gps_dist_ref)#*self.mft/6076 #Distance to destination
 		print "Found dist "+str(round(dist))+" nm"
 		general_fl=int((dist/10+2)) #General rule for PC-12 cruise altitude
-		dalt=self.get_dest_info()
+		#dalt=self.get_dest_info()
+		dalt=0.0
 		alt_ind=XPLMGetDataf(self.alt_ind_ref)
 		general_fl+=int(dalt/1000+alt_ind/1000)/2 #Account for departure/arrival altitudes
 		aphdg=XPLMGetDataf(self.gps_degm_ref) #Heading to destination
@@ -380,10 +382,12 @@ class PythonInterface:
 		#Compute good delay before running again, based on climb rate and time accel
 		vvi=XPLMGetDataf(self.vvi_ref)
 		if abs(vvi)<1:
-			vvi=1
-		delay=60/abs(vvi/500*XPLMGetDataf(self.sim_spd_ref))
+			vvi=1.0
+		delay=60.0/abs(vvi/500.0*XPLMGetDataf(self.sim_spd_ref))
 		if delay>60:
 			delay=60
+		if XPLMGetDataf(self.agl_ref)<1000:
+			delay=10
 		
 		return delay
 		
@@ -426,7 +430,7 @@ class PythonInterface:
 		print "destid "+str(destid)
 		print "alt "+str(dalt)+" MSL"
 		
-		return float(dalt)
+		return float(str(dalt))
 	
 	def getDpro(self, AC): #Show applicable descent profile
 		if AC=="B738":
