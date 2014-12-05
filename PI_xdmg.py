@@ -193,7 +193,7 @@ class PythonInterface:
 		XPLMSetDatavf(self.mix_ref, [m, m, m, m, m, m, m, m], 0, self.num_eng)
 	
 	def CPtoggle(self):
-		cutoff_toggle_cmd=XPLMFindCommand("WHERETHERIVERFLOWS")
+		cutoff_toggle_cmd=XPLMFindCommand("/pc12/engine/cutoff_protection_toggle")
 		if cutoff_toggle_cmd is not None:
 			XPLMCommandOnce(cutoff_toggle_cmd)
 
