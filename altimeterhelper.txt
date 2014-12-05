@@ -11,3 +11,9 @@ The popup now shows the change in altimeter setting versus the previous setting.
 * In addition to the new altimeter setting, popup also shows the net change in inHg from previous setting
 * Transition altitude is now a variable so it can be easily changed as needed
 * Cleaned out some unneeded things from the code
+
+12/12/2014 - Some small changes to make it more reliable.
+
+* Changed transition altitude behavior to be more reliable and stable
+* Changed altitude error calculation to scale with altitude (Based on the US altimeter accuracy regulation)
+* Altitude error should not be shown when above transition level
