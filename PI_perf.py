@@ -424,11 +424,11 @@ class PythonInterface:
 		elif acf_desc=="['Pilatus PC-12']":
 			AC="PC12"
 			self.flaps=(0.3,0.7,1.0) #15 30 40
-		elif acf_desc=="['im a teapot']":
+		elif acf_desc[0:8]=="['BE1900D":
 			AC="B190"
-		elif acf_desc=="['wouldnt you like to be a pepper too']":
+		elif acf_desc=="['Bombardier Challenger 300']":
 			AC="CL30"
-		elif acf_desc=="['like a rock']":
+		elif acf_desc[0:20]=="['C208B Grand Caravan":
 			AC="C208"
 		else:
 			AC=acf_desc
