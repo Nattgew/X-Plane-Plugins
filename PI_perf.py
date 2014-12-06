@@ -207,9 +207,13 @@ class PythonInterface:
 		if aphdg<180: #NEodd
 			if general_fl%2==0:
 				general_fl-=1
+			if general_fl>30:
+				general_fl=29
 		else: #SWeven
 			if general_fl%2==1:
 				general_fl-=1
+			if general_fl>30:
+				general_fl=30
 		alt=general_fl*1000
 		hdg=XPLMGetDataf(self.mpsi_ref) #Get current heading, attempt to adjust towards GPS course
 		turn=hdg-aphdg
@@ -361,6 +365,7 @@ class PythonInterface:
 			else:
 				#print "XDMG = In air"
 				Vspeed=self.getVref(flaps, wgt, DenAlt, T, self.acf_short)
+				tod=""#self.getLandingDistance()
 		else:
 			Vspeed=""
 			tod=""
@@ -400,7 +405,7 @@ class PythonInterface:
 			self.msg[3]=dprof
 			self.msg[4]=Vspeed+ldr
 		#Compute good delay before running again, based on climb rate and time accel
-		if XPLMGetDataf(self.agl_ref)<304.8: #If under 1000 feet, update more frequently
+		if XPLMGetDataf(self.agl_ref)<762: #If under 2500 feet, update more frequently
 			delay=3
 		else:
 			vvi=XPLMGetDataf(self.vvi_ref)
@@ -409,7 +414,6 @@ class PythonInterface:
 			delay=60.0/abs(vvi/500.0*XPLMGetDataf(self.sim_spd_ref))
 			if delay>60:
 				delay=60
-		print "Perf: Delay = "+str(delay)
 		
 		return delay
 		
