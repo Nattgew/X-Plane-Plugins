@@ -118,21 +118,28 @@ class PythonInterface:
 			#acf_descb=[]
 			#XPLMGetDatab(self.acf_desc_ref, acf_descb, 0, 500)
 			#if str(acf_descb)=="['Pilatus PC-12']":
+			mixes=[]
+			XPLMGetDatavf(self.mix_ref, mixes, 0, self.num_eng)
 			if self.eng_type[0]==2 or self.eng_type[0]==8: #Turboprop
 				print "XDMG = Using turboprop process..."
-				self.CPtoggle() #Toggle the cutoff protection on PC-12
-				print "XDMG = Mixture cutoff"
-				self.MixTape(0.0)
-				print "XDMG = Waiting 2..."
-				sleep(2.0)
-				print "XDMG = Mixture idle"
-				self.MixTape(0.45) #Set to ground idle
-				self.CPtoggle()
+				if mixes[0]>0:
+					self.CPtoggle() #Toggle the cutoff protection on PC-12
+					print "XDMG = Mixture cutoff"
+					self.MixTape(0.0)
+				#print "XDMG = Waiting 2..."
+				#sleep(2.0)
+				else:
+					print "XDMG = Mixture idle"
+					self.MixTape(0.45) #Set to ground idle
+					self.CPtoggle()
 			else: #Jets and regular props probably want full mix on ground
-				self.MixTape(0.0)
-				sleep(2.0)
-				self.MixTape(1.0)
-			print "XDMG = FSE flight ended"
+				print "XDMG = Using jet process..."
+				if mixes[0]>0:
+					print "XDMG = Mixture cutoff"
+					self.MixTape(0.0)
+				else:
+					self.MixTape(1.0) #Set to ground idle
+			print "XDMG = FSE flight end finished"
 		return 0
 		
 	def showhide(self):
