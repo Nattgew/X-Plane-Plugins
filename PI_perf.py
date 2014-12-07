@@ -24,8 +24,8 @@ class PythonInterface:
 			fhi=1
 		return (fhi, flo)
 		
-	def get_topwr(self, counter, elapsed): #Iterate countdown timer for takeoff power
-		counter-=elapsed
+	def get_topwr(self, elapsed): #Iterate countdown timer for takeoff power
+		self.TO_pwr-=elapsed
 		counter_m=int(self.TO_pwr/60)
 		counter_s=int(self.TO_pwr%60)
 		counter_str='  %d:%02d TO pwr remain' % (counter_m, counter_s)
@@ -134,6 +134,7 @@ class PythonInterface:
 		self.ap_alt_ref=XPLMFindDataRef("sim/cockpit/autopilot/altitude")
 		self.ap_hdg_ref=XPLMFindDataRef("sim/cockpit/autopilot/heading_mag")
 		self.ap_vvi_ref=XPLMFindDataRef("sim/cockpit/autopilot/vertical_velocity")
+		self.cab_alt_ref=XPLMFindDataRef("sim/cockpit/pressure/cabin_altitude_set_m_msl")
 		
 		self.started=0
 		self.Dstarted=0
@@ -238,6 +239,10 @@ class PythonInterface:
 		XPLMSetDataf(self.ap_hdg_ref, hdginit)
 		XPLMSetDataf(self.ap_alt_ref, alt)
 		XPLMSetDataf(self.ap_vvi_ref, 1000)
+		if alt>10000:
+			cabalt=alt/30000*3048
+			print "Setting cabin altitude to "+str(int(round(cabalt)))+"m"
+			XPLMSetDataf(self.cab_alt_ref, cabalt)
 	
 	def toggleInfo(self): #Toggle whether any info is computed/shown
 		if self.started==0:
@@ -315,7 +320,7 @@ class PythonInterface:
 				torque_ftlb2=self.Nlb*self.mft*TRQ[1]
 				pwr=str(int(round(torque_ftlb1)))+"|"+str(int(round(torque_ftlb2)))+" ftlb"
 				if torque_ftlb1>3750.0 or torque_ftlb2>3750.0: #Takeoff power
-					TOP_str=self.get_topwr(self.TO_pwr, inElapsedSinceLastCall)
+					TOP_str=self.get_topwr(inElapsedSinceLastCall)
 				else:
 					self.TO_pwr=300
 					TOP_str=""
@@ -323,7 +328,7 @@ class PythonInterface:
 				torque_psi=0.0088168441*TRQ[0]
 				pwr=str(round(torque_psi,1))+" psi"
 				if torque_psi>37.0: #Takeoff power
-					TOP_str=self.get_topwr(self.TO_pwr, inElapsedSinceLastCall)
+					TOP_str=self.get_topwr(inElapsedSinceLastCall)
 				else:
 					self.TO_pwr=300
 					TOP_str=""
@@ -424,14 +429,15 @@ class PythonInterface:
 		elif acf_desc=="['Pilatus PC-12']":
 			AC="PC12"
 			self.flaps=(0.3,0.7,1.0) #15 30 40
-		elif acf_desc[0:8]=="['BE1900D":
+		elif acf_desc[0:9]=="['BE1900D":
 			AC="B190"
 		elif acf_desc=="['Bombardier Challenger 300']":
 			AC="CL30"
-		elif acf_desc[0:20]=="['C208B Grand Caravan":
+		elif acf_desc[0:21]=="['C208B Grand Caravan":
 			AC="C208"
 		else:
 			AC=acf_desc
+			print str(acf_desc[0:8])
 		return AC
 		
 	def get_dest_info(self): #Get info from FMS system about destination (aka "crash x-plane")
@@ -574,6 +580,7 @@ class PythonInterface:
 				tod3=(1900,2500,3000,3700,4200,4800,5300,5900,6500,7100)
 				wind_i=abs(hwind/10)
 			alt_i=DA/2000
+			oat_i=(T+34)/2
 			if wgt<=14200:
 				GW_i=(wgt-10000)/4200
 			else:
@@ -583,7 +590,7 @@ class PythonInterface:
 			GW_ih, GW_il = self.get_index(GW_i, len(GW))
 			wind_ih, wind_il = self.get_index(wind_i, 2)
 			while tod1[alt_ih][oat_il]==0 or tod1[alt_il][oat_il]==0 or tod1[alt_ih][oat_ih]==0 or tod1[alt_il][oat_ih]==0: #Don't use a zero value from table
-				if oat_il<=length(tod1[0])/2:
+				if oat_il<=len(tod1[0])/2:
 					oat_il+=1
 					oat_ih+=1
 				else:
@@ -761,7 +768,7 @@ class PythonInterface:
 			else:
 				wgt_i=(wgt-10000)/2000
 			wgt_ih, wgt_il = self.get_index(wgt_i, len(wgts))
-			cc=self.interp(spds[wgt_ih], spds[wgt_il], wgts[wgt_ih], wgts[wgt_il], wgt)
+			cc=self.interp(spds[wgt_ih], spds[wgt_il], wgts[wgt_ih], wgts[wgt_il], wgt/1000)
 			bestCC=str(int(round(cc)))+" kias"
 		elif AC=="PC12":
 			alts=tuple(range(0,30001,5000))
