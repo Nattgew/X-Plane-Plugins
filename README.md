@@ -29,9 +29,11 @@ In work:
 <ul><li>B1900D</li>
 <li>CL300</li></ul>
 
+There is also an autopilot setting function. If a destination is set in the FMS, this function will set cruise altitude and initial heading based on the distance and direction of the destination.
+
 XFSE Damage (PI_xdmg.py)
 ======
-Shows the damage that the FSE plugin would calculate. Automatically reduces mixture above 1000 feet to prevent damage, and warns if taking off without a flight started.
+Shows the damage that the FSE plugin would calculate. Automatically reduces mixture above 1000 feet to prevent damage, and warns if taking off without a flight started. A function is also in work to automatically run the steps for finishing the flight.
 
 Engine Info (PI_enginfo.py)
 ======
