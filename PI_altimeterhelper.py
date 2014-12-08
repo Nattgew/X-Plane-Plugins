@@ -22,7 +22,7 @@ class PythonInterface:
 		XPLMSetDataf(self.baro_set_ref, bar_new)
 		del_baro_set=bar_new-bar_old
 		del_baro_str=self.getSign(del_baro_set)+str(round(del_baro_set,2))
-		print "Altimeter changed to: " + str(round(bar_new,2))
+		#print "Altimeter changed to: " + str(round(bar_new,2))
 		self.msg1="Altimeter  " + str(round(bar_new,2))+"  "+del_baro_str+" inHg"
 		self.remainingShowTime=self.showTime
 		
