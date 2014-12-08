@@ -80,14 +80,14 @@ class PythonInterface:
 	
 	def CmdUpConnCallback(self, cmd, phase, refcon):
 		if(phase==0): #KeyDown event
-			print "PCAT = IAS +"
+			#print "PCAT = IAS +"
 			self.IAS+=1.0
 			XPLMSetDataf(self.ap_as_ref, self.IAS)
 		return 0
 	
 	def CmdDnConnCallback(self, cmd, phase, refcon):
 		if(phase==0): #KeyDown event
-			print "PCAT = IAS -"
+			#print "PCAT = IAS -"
 			self.IAS-=1.0
 			XPLMSetDataf(self.ap_as_ref, self.IAS)
 		return 0
@@ -177,6 +177,12 @@ class PythonInterface:
 					else:
 						TO[0]+=PID/400.0
 						TO[1]+=PID/400.0
+				elif self.ac == "C208":
+					torque_ftlb=self.Nlb*self.mft*TRQ[0]
+					if torque_ftlb1>1970.0:
+						TO[0]-=0.02
+					else:
+						TO[0]+=PID/400.0
 				else:
 					for i in range(0,self.num_eng):
 						TO[i]+=PID/400.0	
@@ -231,11 +237,14 @@ class PythonInterface:
 	def getshortac(self,acf_desc):
 		if acf_desc=="['Pilatus PC-12']":
 			ac_short="PC12"
-		elif acf_desc=="['wouldnt you like to be a pepper too']":
+		elif acf_desc[0:9]=="['BE1900D":
 			ac_short="B190"
-		elif acf_desc=="['ok']":
+		elif acf_desc=="['Bombardier Challenger 300']":
 			ac_short="CL30"
 			self.IAS=250.0
+		elif acf_desc[0:21]=="['C208B Grand Caravan":
+			ac_short="C208"
+			self.IAS=150.0
 		else:
 			ac_short=acf_desc
 		return ac_short
