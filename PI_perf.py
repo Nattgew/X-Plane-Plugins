@@ -64,6 +64,10 @@ class PythonInterface:
 		T_ISA=15.0-self.gamma_l*alt
 		delISA=T-T_ISA
 		return delISA
+	
+	def getPress(self, alt, SL):
+		P=-0.000000000000071173*alt**3+0.000000014417*alt**2*-0.0010722*x+SL
+		return P
 		
 	def getHwind(self):
 		wdir=XPLMGetDataf(self.wind_dir_ref)
@@ -135,6 +139,7 @@ class PythonInterface:
 		self.ap_hdg_ref=XPLMFindDataRef("sim/cockpit/autopilot/heading_mag")
 		self.ap_vvi_ref=XPLMFindDataRef("sim/cockpit/autopilot/vertical_velocity")
 		self.cab_alt_ref=XPLMFindDataRef("sim/cockpit/pressure/cabin_altitude_set_m_msl")
+		self.cab_max_ref=XPLMFindDataRef("sim/cockpit/pressure/max_allowable_altitude")
 		
 		self.started=0
 		self.Dstarted=0
@@ -151,6 +156,7 @@ class PythonInterface:
 		self.eng_type=[]
 		self.prop_type=[]
 		self.flaps=(0,1)
+		self.acf_short=""
 		
 		self.gameLoopCB=self.gameLoopCallback
 		self.DrawWindowCB=self.DrawWindowCallback
@@ -197,24 +203,43 @@ class PythonInterface:
 		return 0
 	
 	def APset(self): #Sets cruise altitude and heading based on destination, sets VS to 1000 fpm
+		if self.acf_short=="PC12":
+			ceiling=30
+			maxcabin=10000
+		elif self.acf_short=="B190":
+			ceiling=25
+			maxcabin=10000
+		elif self.acf_short=="CL30":
+			ceiling=45
+			maxcabin=0 #Automatic
+		else:
+			ceiling=30
+			maxcabin=0
+		print "Read cabin max alt "+str(int(round(XPLMGetDataf(self.cab_max_ref))))+"m?"
 		dist=XPLMGetDataf(self.gps_dist_ref) #Distance to destination
-		print "Found dist "+str(round(dist))+" nm"
+		#print "Found dist "+str(round(dist))+"nm"
 		general_fl=int((dist/10+2)) #General rule for PC-12 cruise altitude
 		dalt=self.get_dest_info()
-		dalt=0
+		#dalt=0
 		alt_ind=XPLMGetDataf(self.alt_ind_ref)
 		general_fl+=int(dalt/1000+alt_ind/1000)/2 #Account for departure/arrival altitudes
 		aphdg=XPLMGetDataf(self.gps_degm_ref) #Heading to destination
 		if aphdg<180: #NEodd
 			if general_fl%2==0:
 				general_fl-=1
-			if general_fl>30:
-				general_fl=29
+			if general_fl>ceiling:
+				if ceiling%2==0:
+					general_fl=ceiling-1
+				else:
+					general_fl=ceiling
 		else: #SWeven
 			if general_fl%2==1:
 				general_fl-=1
-			if general_fl>30:
-				general_fl=30
+			if general_fl>ceiling:
+				if ceiling%2==1:
+					general_fl=ceiling-1
+				else:
+					general_fl=ceiling
 		alt=general_fl*1000
 		hdg=XPLMGetDataf(self.mpsi_ref) #Get current heading, attempt to adjust towards GPS course
 		turn=hdg-aphdg
@@ -239,10 +264,16 @@ class PythonInterface:
 		XPLMSetDataf(self.ap_hdg_ref, hdginit)
 		XPLMSetDataf(self.ap_alt_ref, alt)
 		XPLMSetDataf(self.ap_vvi_ref, 1000)
-		if alt>10000:
-			cabalt=alt/30000*3048
-			print "Setting cabin altitude to "+str(int(round(cabalt)))+"m"
+		if maxcabin>0: #Attempt to set cabin altitude
+			if alt>10000:
+				cabalt=alt/ceil*3048 #Approximate rule for PC-12 cabin altitude
+			if cabalt<dalt: #Pressurize to destination altitude
+				cabalt=dalt
+			if cabalt>maxcabin: #Max cabin altitude
+				cabalt=maxcabin
+			print "Changing cabin altitude from "+str(int(round(XPLMGetDataf(self.cab_alt_ref))))+" to "+str(int(round(cabalt)))+"m"
 			XPLMSetDataf(self.cab_alt_ref, cabalt)
+			print "Cabin altitude now set to "+str(int(round(XPLMGetDataf(self.cab_alt_ref))))+"m"
 	
 	def toggleInfo(self): #Toggle whether any info is computed/shown
 		if self.started==0:
@@ -370,7 +401,10 @@ class PythonInterface:
 			else:
 				#print "XDMG = In air"
 				Vspeed=self.getVref(flaps, wgt, DenAlt, T, self.acf_short)
-				tod=""#self.getLandingDistance()
+				dalt=self.get_dest_info()
+				hwind=self.getHwind()
+				SL==XPLMGetDataf(self.baro_act_ref)
+				tod=self.getLandingDist(wgt, dalt, delISA, SL, hwind, self.acf_short)
 		else:
 			Vspeed=""
 			tod=""
@@ -399,7 +433,8 @@ class PythonInterface:
 			print "Doing descent stuff..."
 			dalt=self.get_dest_info()
 			hwind=self.getHwind()
-			ldr=self.getLandingDist(wgt, dalt, alt, delISA, hwind, self.acf_short)
+			SL==XPLMGetDataf(self.baro_act_ref)
+			ldr=self.getLandingDist(wgt, dalt, delISA, SL, hwind, self.acf_short)
 			#time=XPLMGetDataf(self.gps_time_ref)
 			#dist=XPLMGetDataf(self.gps_dist_ref)
 			print "Finding descent info"
@@ -465,7 +500,7 @@ class PythonInterface:
 		if AC=="B738":
 			profile="M.78 to FL350, M.75 to 280kt"
 		elif AC=="PC12":
-			print "getting PC12 profile"
+			print "Getting PC12 profile"
 			profile="2000 fpm at lower of M.48/236 kias"
 		else:
 			profile="Have fun"
@@ -474,9 +509,9 @@ class PythonInterface:
 	def getDesc(self, dist, alt, dalt, DA, delISA, AC): #Get distance from destination of top of descent
 		if AC=="B738" or AC=="CL30":
 			ddist_nm=(alt-dalt)/3000 #General rule for jet descents
-			ddist=str(int(round(ddist_nm)))+" nm"
+			ddist=str(int(round(ddist_nm)))+"nm"
 		elif AC=="PC12":
-			print "getting PC12 descent"
+			print "Getting PC12 descent"
 			alts=tuple(range(5000,30001,5000))
 			isas=tuple(range(-40,31,10))
 			dnms=((9.6,20.0,31.0,0,0,0), 			# -40
@@ -495,17 +530,16 @@ class PythonInterface:
 				alt_il-=1
 				alt_ih-=1
 			ddist_nm=self.interp2(dnms[isa_ih][alt_il], dnms[isa_il][alt_il], dnms[isa_ih][alt_ih], dnms[isa_il][alt_ih], isas[isa_ih], isas[isa_il], alts[alt_ih], alts[alt_il], delISA, DA) #Interpolate table to find value\
-			ddist=str(int(round(ddist_nm)))+" nm"
+			ddist=str(int(round(ddist_nm)))+"nm"
 		else:
 			ddist="N/A"
 		return ddist
 	
-	def getLandingDist(self, wgt, elev, alt, delISA, hwind, AC): #Get landing distance
+	def getLandingDist(self, wgt, elev, delISA, SL, hwind, AC): #Get landing distance
 		if AC=="PC12":
-			groundISA=-self.getdelISA(elev, 0)
-			Tgd=groundISA+delISA
-			PSL=XPLMGetDataf(self.baro_act_ref)
-			DenAlt=self.getDA(P,Tgd)
+			Tgd=-self.getdelISA(elev, -delISA) #Assume ISA difference is same at ground, find T
+			P=self.getPress(elev, SL)
+			DA=self.getDA(P,Tgd)
 			dis=tuple(range(-40,31,10))
 			alts=tuple(range(0,10001,2000))
 			GW=(6400,7000,8000,9000,9900)
@@ -546,7 +580,7 @@ class PythonInterface:
 			dist2_i=(wgt_dist-1200)/1000
 			dist2_ih, dist2_il = self.get_index(dist2_i, len(dist2))
 			wnd_dist=self.interp2(dist2[dist2_ih], dist2[dist2_il], tod3[dist2_ih], tod3[dist2_il], dist2[dist2_ih], dist2[dist2_il], 30, 0, wgt_dist, hwind)
-			ldr=""
+			ldr="  LDR: "+str((int(wnd_dist)/100)*100)+" ft"
 		else:
 			ldr=""
 		return ldr
