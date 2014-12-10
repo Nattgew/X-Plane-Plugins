@@ -1,0 +1,27 @@
+This is a Python plugin that uses Sandy Barbour's Python Interface.
+ 
+Tested on X-Plane 10.31.
+ 
+This is a simple plugin to add custom commands and functions, which can then be assigned to a key or button. I've added functions that are useful for me and figured I'd share. Mostly I am trying to consolidate functions into as few buttons as possible. Feel free to modify the code if you wish. If you want to share ideas, modifications, or additional functions, they might be added to the plugin.
+
+The functions are added within a "cmod" section in the custom commands. Current functions:
+
+Toggle speed brakes - from anything other than deployed, to deployed, and back to stowed.
+
+Toggle landing gear and landing lights - if landing gear is up or landing lights are off, put gear down and turn lights on. If gear is down and lights are on, turn lights off and retract gear. The idea is to couple landing lights and gear, but to also handle planes where the landing lights can't be on if the gear is not fully extended.
+	
+Toggles through flaps settings - basically the same as "flaps down 1" but returns to fully retracted after reaching the fully extended position.
+	
+AP vertical speed set +100 fpm - add 100fpm to autopilot's vertical speed setting. Using "sim/autopilot/vertical_speed_up" seems to add 200fpm.
+	
+AP vertical speed set -100 fpm - subtract 100fpm from autopilot's vertical speed setting. Using "sim/autopilot/vertical_speed_down" seems to subtract 200fpm.
+
+The following commands will behave differently depending on whether the autopilot is engaged. The idea is to only use one button or key to trim in manual flight and adjust autopilot in auto flight, by combining similar actions.
+
+With autopilot, HDG left 1 degree, else: Aileron trim left
+	
+With autopilot, HDG right 1 degree, else: Aileron trim right
+	
+With autopilot, vertical speed -100fpm, else: Elevator trim down
+	
+With autopilot, vertical speed +100 fpm, else: Elevator trim up
