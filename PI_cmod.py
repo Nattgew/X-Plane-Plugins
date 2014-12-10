@@ -17,12 +17,16 @@ class PythonInterface:
 		self.gearhand_ref=XPLMFindDataRef("sim/cockpit/switches/gear_handle_status") #int
 		self.flap_h_pos_ref=XPLMFindDataRef("sim/cockpit2/controls/flap_ratio") #float handle position 0->1
 		self.ap_vvi_ref=XPLMFindDataRef("sim/cockpit/autopilot/vertical_velocity") #float fpm
+		self.ap_hdg_ref=XPLMFindDataRef("sim/cockpit/autopilot/heading_mag") #float degm
+		self.ap_ref=XPLMFindDataRef("sim/cockpit/autopilot/autopilot_mode") #int 0=off 1=FD 2=ON
+		self.trim_ail_ref=XPLMFindDataRef("sim/flightmodel/controls/ail_trim") #float -1=left ... 1=right
+		self.trim_elv_ref=XPLMFindDataRef("sim/flightmodel/controls/elv_trim") #float -1=down ... 1=up
 		
 		self.CmdSTConn = XPLMCreateCommand("cmod/toggle/speedbrake","Toggles speed brakes")
 		self.CmdSTConnCB = self.CmdSTConnCallback
 		XPLMRegisterCommandHandler(self, self.CmdSTConn, self.CmdSTConnCB, 0, 0)
 		
-		self.CmdLTConn = XPLMCreateCommand("cmod/toggle/landinggearlights","Toggles speed brakes")
+		self.CmdLTConn = XPLMCreateCommand("cmod/toggle/landinggearlights","Toggles landing gear and lights")
 		self.CmdLTConnCB = self.CmdLTConnCallback
 		XPLMRegisterCommandHandler(self, self.CmdLTConn, self.CmdLTConnCB, 0, 0)
 		
@@ -37,6 +41,22 @@ class PythonInterface:
 		self.CmdVSdnConn = XPLMCreateCommand("cmod/custom/vspeed_down","AP vertical speed set -100 fpm")
 		self.CmdVSdnConnCB = self.CmdVSdnConnCallback
 		XPLMRegisterCommandHandler(self, self.CmdVSdnConn, self.CmdVSdnConnCB, 0, 0)
+		
+		self.CmdLCConn = XPLMCreateCommand("cmod/custom/left_cond","If AP: HDG left 1 degree, else: Aileron trim left")
+		self.CmdLCConnCB = self.CmdLCConnCallback
+		XPLMRegisterCommandHandler(self, self.CmdLCConn, self.CmdLCConnCB, 0, 0)
+		
+		self.CmdRCConn = XPLMCreateCommand("cmod/custom/left_cond","If AP: HDG right 1 degree, else: Aileron trim right")
+		self.CmdRCConnCB = self.CmdRCConnCallback
+		XPLMRegisterCommandHandler(self, self.CmdRCConn, self.CmdRCConnCB, 0, 0)
+		
+		self.CmdUCConn = XPLMCreateCommand("cmod/custom/left_cond","If AP: VS -100fpm, else: Elevator trim down")
+		self.CmdUCConnCB = self.CmdUCConnCallback
+		XPLMRegisterCommandHandler(self, self.CmdUCConn, self.CmdUCConnCB, 0, 0)
+		
+		self.CmdDCConn = XPLMCreateCommand("cmod/custom/left_cond","If AP: VS +100 fpm, else: Elevator trim up")
+		self.CmdDCConnCB = self.CmdDCConnCallback
+		XPLMRegisterCommandHandler(self, self.CmdDCConn, self.CmdDCConnCB, 0, 0)
 
 		return self.Name, self.Sig, self.Desc
 		
@@ -63,21 +83,29 @@ class PythonInterface:
 	
 	def CmdFTConnCallback(self, cmd, phase, refcon): #Flaps +1, retract if fully deployed
 		if(phase==0): #KeyDown event
-			acf_descb=[]
-			XPLMGetDatab(self.acf_desc_ref, acf_descb, 0, 500)
-			self.ac=self.getshortac(str(acf_descb))
 			handle=XPLMGetDataf(self.flap_h_pos_ref)
 			if handle==1: #Fully deployed
 				XPLMSetDataf(self.flap_h_pos_ref, 0.0) #Retract full
-			else: #Set next detent
-				if ac=="PC12":
-					flaps=(0.3,0.7,1.0) #15 30 40
-					self.nextflaps(handle, flaps)
-				elif ac=="B738":
-					flaps=(0.125,0.375,0.625,0.875,1.0) #1 5 15 30 40
-					self.nextflaps(handle, flaps)
-				else: #Fully deploy
-					XPLMSetDataf(self.flap_h_pos_ref, 1.0)
+			else:
+				flap_down_cmd=XPLMFindCommand("sim/flight_controls/flaps_down")
+				if flap_down_cmd is not None:
+					print "XDMG = Found command, flaps down"
+					XPLMCommandOnce(flap_down_cmd)
+			# acf_descb=[]
+			# XPLMGetDatab(self.acf_desc_ref, acf_descb, 0, 500)
+			# self.ac=self.getshortac(str(acf_descb))
+			# handle=XPLMGetDataf(self.flap_h_pos_ref)
+			# if handle==1: #Fully deployed
+				# XPLMSetDataf(self.flap_h_pos_ref, 0.0) #Retract full
+			# else: #Set next detent
+				# if ac=="PC12":
+					# flaps=(0.3,0.7,1.0) #15 30 40
+					# self.nextflaps(handle, flaps)
+				# elif ac=="B738":
+					# flaps=(0.125,0.375,0.625,0.875,1.0) #1 5 15 30 40
+					# self.nextflaps(handle, flaps)
+				# else: #Fully deploy
+					# XPLMSetDataf(self.flap_h_pos_ref, 1.0)
 		return 0
 	
 	def CmdVSupConnCallback(self, cmd, phase, refcon): #AP vertical speed +100 fpm
@@ -91,6 +119,35 @@ class PythonInterface:
 			vvi=XPLMGetDataf(self.ap_vvi_ref)
 			XPLMSetDataf(self.ap_vvi_ref, vvi-100)
 		return 0
+	
+	def CmdLCConnCallback(self, cmd, phase, refcon): #Left hdg or aileron trim
+		if(phase==0): #KeyDown event
+			self.CondSet(self.ap_hdg_ref, self.trim_ail_ref, -1, -0.01)
+		return 0
+	
+	def CmdRCConnCallback(self, cmd, phase, refcon): #Right hdg or aileron trim
+		if(phase==0): #KeyDown event
+			self.CondSet(self.ap_hdg_ref, self.trim_ail_ref, 1, 0.01)
+		return 0
+	
+	def CmdDCConnCallback(self, cmd, phase, refcon): #Down vert speed or elev trim
+		if(phase==0): #KeyDown event
+			self.CondSet(self.ap_vvi_ref, self.trim_elv_ref, -100, -0.01)
+		return 0
+	
+	def CmdUCConnCallback(self, cmd, phase, refcon): #Up vert speed or elev trim
+		if(phase==0): #KeyDown event
+			self.CondSet(self.ap_vvi_ref, self.trim_elv_ref, 100, 0.01)
+		return 0
+	
+	def CondSet(self, apset_ref, trim_ref, ap_del, trim_del): #Set AP ref+del if AP on, else set trim ref+del
+		ap=XPLMGetDatai(self.ap_ref)
+		if ap==2:
+			apset=XPLMGetDataf(apset_ref)
+			XPLMSetDataf(apset_ref, apset+ap_del)
+		else:
+			trim=XPLMGetDataf(trim_ref)
+			XPLMSetDataf(trim_ref, trim+trim_del)
 	
 	def nextflaps(self,handle,flaps):
 		i=0
@@ -120,6 +177,10 @@ class PythonInterface:
 		XPLMUnregisterCommandHandler(self, self.CmdFTConn, self.CmdFTConnCB, 0, 0)
 		XPLMUnregisterCommandHandler(self, self.CmdVSupConn, self.CmdVSupConnCB, 0, 0)
 		XPLMUnregisterCommandHandler(self, self.CmdVSdnConn, self.CmdVSdnConnCB, 0, 0)
+		XPLMUnregisterCommandHandler(self, self.CmdLCConn, self.CmdLCConnCB, 0, 0)
+		XPLMUnregisterCommandHandler(self, self.CmdRCConn, self.CmdRCConnCB, 0, 0)
+		XPLMUnregisterCommandHandler(self, self.CmdUCConn, self.CmdUCConnCB, 0, 0)
+		XPLMUnregisterCommandHandler(self, self.CmdDCConn, self.CmdDCConnCB, 0, 0)
 		pass
 
 	def XPluginEnable(self):
