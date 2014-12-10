@@ -215,7 +215,7 @@ class PythonInterface:
 		else:
 			ceiling=30
 			maxcabin=0
-		print "Read cabin max alt "+str(int(round(XPLMGetDataf(self.cab_max_ref))))+"m?"
+		print "AP Read cabin max alt "+str(XPLMGetDataf(self.cab_max_ref))+"m?"
 		dist=XPLMGetDataf(self.gps_dist_ref) #Distance to destination
 		#print "Found dist "+str(round(dist))+"nm"
 		general_fl=int((dist/10+2)) #General rule for PC-12 cruise altitude
@@ -271,9 +271,9 @@ class PythonInterface:
 				cabalt=dalt
 			if cabalt>maxcabin: #Max cabin altitude
 				cabalt=maxcabin
-			print "Changing cabin altitude from "+str(int(round(XPLMGetDataf(self.cab_alt_ref))))+" to "+str(int(round(cabalt)))+"m"
+			print "AP Changing cabin altitude from "+str(int(round(XPLMGetDataf(self.cab_alt_ref))))+" to "+str(int(round(cabalt)))+"m"
 			XPLMSetDataf(self.cab_alt_ref, cabalt)
-			print "Cabin altitude now set to "+str(int(round(XPLMGetDataf(self.cab_alt_ref))))+"m"
+			print "AP Cabin altitude now set to "+str(int(round(XPLMGetDataf(self.cab_alt_ref))))+"m"
 	
 	def toggleInfo(self): #Toggle whether any info is computed/shown
 		if self.started==0:
