@@ -66,7 +66,7 @@ class PythonInterface:
 		return delISA
 	
 	def getPress(self, alt, SL):
-		P=-0.000000000000071173*alt**3+0.000000014417*alt**2*-0.0010722*x+SL
+		P=-0.000000000000071173*alt**3+0.000000014417*alt**2*-0.0010722*alt+SL
 		return P
 		
 	def getHwind(self):
@@ -240,7 +240,7 @@ class PythonInterface:
 					general_fl=ceiling-1
 				else:
 					general_fl=ceiling
-		alt=general_fl*1000
+		alt=float(general_fl*1000)
 		hdg=XPLMGetDataf(self.mpsi_ref) #Get current heading, attempt to adjust towards GPS course
 		turn=hdg-aphdg
 		if turn<0:
@@ -403,7 +403,7 @@ class PythonInterface:
 				Vspeed=self.getVref(flaps, wgt, DenAlt, T, self.acf_short)
 				dalt=self.get_dest_info()
 				hwind=self.getHwind()
-				SL==XPLMGetDataf(self.baro_act_ref)
+				SL=XPLMGetDataf(self.baro_act_ref)
 				tod=self.getLandingDist(wgt, dalt, delISA, SL, hwind, self.acf_short)
 		else:
 			Vspeed=""
@@ -575,7 +575,7 @@ class PythonInterface:
 			#Weight factor
 			dist1_i=(basic_dist-2000)/1000
 			dist1_ih, dist1_il = self.get_index(dist1_i, len(dist1))
-			wgt_dist=self.interp2(tod2[dist1_ih][GW_il], tod2[dist1_il][GW_il], tod2[dist1_ih][GW_ih], tod2[dist1_il][GW_ih], dist1[dist1_ih], dist1[dist1_il], GW[GW_ih], GW[GW_il], basic_dist, wgt)
+			wgt_dist=self.interp2(dist1[dist1_ih], dist1[dist1_il], tod2[dist1_ih], tod2[dist1_il], dist1[dist1_ih], dist1[dist1_il], GWs[GW_ih], GWs[GW_il], basic_dist, wgt)
 			#Wind factor
 			dist2_i=(wgt_dist-1200)/1000
 			dist2_ih, dist2_il = self.get_index(dist2_i, len(dist2))
