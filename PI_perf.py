@@ -9,7 +9,7 @@ from XPLMNavigation import *
 
 class PythonInterface:
 
-	def CtoF(self, C):
+	def CtoF(self, C): #Not used, but could be used to display the temps in F
 		F=C*1.8+32.0
 		return F
 
@@ -55,21 +55,21 @@ class PythonInterface:
 		result=self.interp(res_h, res_l, x3, x4, xi2)
 		return result
 
-	def getDA(self, P, T):
+	def getDA(self, P, T): #Use pressure and temperature to find density altitude
 		T+=273.15
 		density_alt=self.DA_pre*(1-((P/self.P_SL)/(T/self.T_SL))**self.DA_exp)
 		return density_alt
 	
-	def getdelISA(self, alt, T):
+	def getdelISA(self, alt, T): #Find degrees C difference from ISA
 		T_ISA=15.0-self.gamma_l*alt
 		delISA=T-T_ISA
 		return delISA
 	
-	def getPress(self, alt, SL):
+	def getPress(self, alt, SL): #Get pressure from altitude and SL pressure (like a reverse altimeter)
 		P=-0.000000000000071173*alt**3+0.000000014417*alt**2*-0.0010722*alt+SL
 		return P
 		
-	def getHwind(self):
+	def getHwind(self): #Get headwind based on wind speed, wind direction, and aircraft heading
 		wdir=XPLMGetDataf(self.wind_dir_ref)
 		wspd=XPLMGetDataf(self.wind_spd_ref)
 		tpsi=XPLMGetDataf(self.tpsi_ref)
@@ -96,6 +96,7 @@ class PythonInterface:
 		self.mft=3.2808399 # m to ft
 		self.mkt=1.94384 # m/s to kt
 		self.Nlb=0.22481 # N to lbf
+		self.Npsi=0.0088168441 #Best fit for torque Nm -> psi on PC12
 		#self.d=chr(0x2103)  u'\xb0'.encode('cp1252')
 		self.d=""
 		
@@ -221,6 +222,7 @@ class PythonInterface:
 		general_fl=int((dist/10+2)) #General rule for PC-12 cruise altitude
 		dalt=self.get_dest_info()
 		#dalt=0
+		print "AP Destination altitude is "+str(dalt)
 		alt_ind=XPLMGetDataf(self.alt_ind_ref)
 		general_fl+=int(dalt/1000+alt_ind/1000)/2 #Account for departure/arrival altitudes
 		aphdg=XPLMGetDataf(self.gps_degm_ref) #Heading to destination
@@ -356,7 +358,7 @@ class PythonInterface:
 					self.TO_pwr=300
 					TOP_str=""
 			elif self.acf_short=="PC12":
-				torque_psi=0.0088168441*TRQ[0]
+				torque_psi=self.Npsi*TRQ[0]
 				pwr=str(round(torque_psi,1))+" psi"
 				if torque_psi>37.0: #Takeoff power
 					TOP_str=self.get_topwr(inElapsedSinceLastCall)
@@ -417,6 +419,8 @@ class PythonInterface:
 		machstr="  M"+str(round(mach,2))
 		self.msg[0]=self.acf_short+"  DA: "+str(int(round(DenAlt)))+" ft  GW: "+str(int(round(wgt)))+" lb  "+str(int(round(dist)))+"nm"
 		self.msg[1]="T: "+str(int(round(T)))+" "+self.d+"C  ISA +/-: "+dIstr+TOP_str+machstr
+		vvi=XPLMGetDataf(self.vvi_ref)
+		#if vvi>-500:
 		if self.Dstarted==0:
 			maxPwr=self.getMaxPwr(DenAlt, delISA, self.acf_short)
 			cruiseclb=self.getCC(DenAlt, alt, delISA, wgt, self.acf_short)
@@ -448,7 +452,6 @@ class PythonInterface:
 		if XPLMGetDataf(self.agl_ref)<762: #If under 2500 feet, update more frequently
 			delay=3
 		else:
-			vvi=XPLMGetDataf(self.vvi_ref)
 			if abs(vvi)<1:
 				vvi=1.0
 			delay=60.0/abs(vvi/500.0*XPLMGetDataf(self.sim_spd_ref))
@@ -575,7 +578,7 @@ class PythonInterface:
 			#Weight factor
 			dist1_i=(basic_dist-2000)/1000
 			dist1_ih, dist1_il = self.get_index(dist1_i, len(dist1))
-			wgt_dist=self.interp2(dist1[dist1_ih], dist1[dist1_il], tod2[dist1_ih], tod2[dist1_il], dist1[dist1_ih], dist1[dist1_il], GWs[GW_ih], GWs[GW_il], basic_dist, wgt)
+			wgt_dist=self.interp2(dist1[dist1_ih], dist1[dist1_il], tod2[dist1_ih], tod2[dist1_il], dist1[dist1_ih], dist1[dist1_il], GW[GW_ih], GW[GW_il], basic_dist, wgt)
 			#Wind factor
 			dist2_i=(wgt_dist-1200)/1000
 			dist2_ih, dist2_il = self.get_index(dist2_i, len(dist2))
@@ -694,7 +697,7 @@ class PythonInterface:
 			TOD=""
 		return TOD
 	
-	def getVref(self, flaps, wgt, DA, T, AC):
+	def getVref(self, flaps, wgt, DA, T, AC): #Get Vref landing speed
 		if AC=="B738":
 			GW=tuple(range(90,181,10))
 			vrs=((122.0,129.0,135.0,142.0,148.0,154.0,159.0,164.0,169.0,174.0),		# flaps 15
@@ -954,7 +957,7 @@ class PythonInterface:
 			bestCruise="N/A"
 		return bestCruise
 	
-	def getMaxCruise(self, DA, wgt, alt, delISA, AC):
+	def getMaxCruise(self, DA, wgt, alt, delISA, AC): #Get max cruise speed
 		maxCruise="N/A"
 		return maxCruise
 	
