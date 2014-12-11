@@ -10,7 +10,7 @@ class PythonInterface:
 		self.Desc="Modifications for using controllers"
 		self.VERSION="0.1"
 		
-		self.acf_desc_ref=XPLMFindDataRef("sim/aircraft/view/acf_descrip")
+		self.acf_desc_ref=XPLMFindDataRef("sim/aircraft/view/acf_descrip") #string array
 		self.speed_brake_ref=XPLMFindDataRef("sim/flightmodel/controls/sbrkrqst") #float -0.5=armed 0=off 1=max
 		self.landing_lights_ref=XPLMFindDataRef("sim/cockpit/electrical/landing_lights_on") #int
 		self.geardep_ref=XPLMFindDataRef("sim/aircraft/parts/acf_gear_deploy") #float array
@@ -21,6 +21,7 @@ class PythonInterface:
 		self.ap_ref=XPLMFindDataRef("sim/cockpit/autopilot/autopilot_mode") #int 0=off 1=FD 2=ON
 		self.trim_ail_ref=XPLMFindDataRef("sim/flightmodel/controls/ail_trim") #float -1=left ... 1=right
 		self.trim_elv_ref=XPLMFindDataRef("sim/flightmodel/controls/elv_trim") #float -1=down ... 1=up
+		self.view_ref=XPLMFindDataRef("sim/graphics/view/view_type") #int see docs
 		
 		self.CmdSTConn = XPLMCreateCommand("cmod/toggle/speedbrake","Toggles speed brakes")
 		self.CmdSTConnCB = self.CmdSTConnCallback
@@ -50,13 +51,17 @@ class PythonInterface:
 		self.CmdRCConnCB = self.CmdRCConnCallback
 		XPLMRegisterCommandHandler(self, self.CmdRCConn, self.CmdRCConnCB, 0, 0)
 		
-		self.CmdUCConn = XPLMCreateCommand("cmod/custom/down_cond","If AP: VS -100fpm, else: Elevator trim down")
+		self.CmdUCConn = XPLMCreateCommand("cmod/custom/up_cond","If AP: VS +100 fpm, else: Elevator trim up")
 		self.CmdUCConnCB = self.CmdUCConnCallback
 		XPLMRegisterCommandHandler(self, self.CmdUCConn, self.CmdUCConnCB, 0, 0)
 		
-		self.CmdDCConn = XPLMCreateCommand("cmod/custom/up_cond","If AP: VS +100 fpm, else: Elevator trim up")
+		self.CmdDCConn = XPLMCreateCommand("cmod/custom/down_cond","If AP: VS -100fpm, else: Elevator trim down")
 		self.CmdDCConnCB = self.CmdDCConnCallback
 		XPLMRegisterCommandHandler(self, self.CmdDCConn, self.CmdDCConnCB, 0, 0)
+		
+		self.CmdRUCConn = XPLMCreateCommand("cmod/custom/right_up_cond","If 3D/ ")
+		self.CmdRUCConnCB = self.CmdRUCConnCallback
+		XPLMRegisterCommandHandler(self, self.CmdRUCConn, self.CmdRUCConnCB, 0, 0)
 
 		return self.Name, self.Sig, self.Desc
 		
@@ -121,33 +126,72 @@ class PythonInterface:
 		return 0
 	
 	def CmdLCConnCallback(self, cmd, phase, refcon): #Left hdg or aileron trim
-		if(phase==0): #KeyDown event
-			self.CondSet(self.ap_hdg_ref, self.trim_ail_ref, -1, -0.01)
+		#if(phase==0): #KeyDown event
+		self.CondSet(self.ap_hdg_ref, self.trim_ail_ref, -1, -0.01, phase)
 		return 0
 	
 	def CmdRCConnCallback(self, cmd, phase, refcon): #Right hdg or aileron trim
-		if(phase==0): #KeyDown event
-			self.CondSet(self.ap_hdg_ref, self.trim_ail_ref, 1, 0.01)
+		#if(phase==0): #KeyDown event
+		self.CondSet(self.ap_hdg_ref, self.trim_ail_ref, 1, 0.01, phase)
 		return 0
 	
 	def CmdDCConnCallback(self, cmd, phase, refcon): #Down vert speed or elev trim
-		if(phase==0): #KeyDown event
-			self.CondSet(self.ap_vvi_ref, self.trim_elv_ref, -100, -0.01)
+		#if(phase==0): #KeyDown event
+		self.CondSet(self.ap_vvi_ref, self.trim_elv_ref, -100, -0.01, phase)
 		return 0
 	
 	def CmdUCConnCallback(self, cmd, phase, refcon): #Up vert speed or elev trim
-		if(phase==0): #KeyDown event
-			self.CondSet(self.ap_vvi_ref, self.trim_elv_ref, 100, 0.01)
+		#if(phase==0): #KeyDown event
+		self.CondSet(self.ap_vvi_ref, self.trim_elv_ref, 100, 0.01, phase)
 		return 0
 	
-	def CondSet(self, apset_ref, trim_ref, ap_del, trim_del): #Set AP ref+del if AP on, else set trim ref+del
+		# self.view_ref
+		# 1000 Forwards
+		# 1001 Down 4 Degrees*
+		# 1002 Down 8 Degrees*
+		# 1004 Left 45 Degrees
+		# 1005 Right 45 Degrees
+		# 1006 Left 90 Degrees
+		# 1007 Right 90 Degrees
+		# 1008 Left 135 Degrees
+		# 1009 Right 135 Degrees
+		# 1010 Backward
+		# 1011 Left and up
+		# 1012 Right and up
+		# 1014 Airport Beacon Tower
+		# 1015 On Runway
+		# 1017 Chase
+		# 1018 Follow
+		# 1019 Follow with Panel
+		# 1020 Spot
+		# 1021 Spot Moving
+		# 1023 Full screen with HUD
+		# 1024 Full screen no HUD
+		# 1025 Straight Down+
+		# 1026 3D Cockpit+
+	
+	def CondSet(self, apset_ref, trim_ref, ap_del, trim_del, phase): #Set AP ref+del if AP on, else set trim ref+del
 		ap=XPLMGetDatai(self.ap_ref)
 		if ap==2:
 			apset=XPLMGetDataf(apset_ref)
 			XPLMSetDataf(apset_ref, apset+ap_del)
 		else:
-			trim=XPLMGetDataf(trim_ref)
-			XPLMSetDataf(trim_ref, trim+trim_del)
+			if trim_ref==self.trim_elv_ref:
+				if trim_del>0:
+					trim_cmd=XPLMFindCommand("sim/flight_controls/pitch_trim_up")
+				else:
+					trim_cmd=XPLMFindCommand("sim/flight_controls/pitch_trim_down")
+			elif trim_ref==self.trim_ail_ref:
+				if trim_del>0:
+					trim_cmd=XPLMFindCommand("sim/flight_controls/aileron_trim_right")
+				else:
+					trim_cmd=XPLMFindCommand("sim/flight_controls/aileron_trim_left")
+			if phase==0:
+				XPLMCommandBegin(trim_cmd)
+			elif phase==2:
+				XPLMCommandEnd(trim_cmd)
+			#trim=XPLMGetDataf(trim_ref)
+			#XPLMSetDataf(trim_ref, trim+trim_del)
 	
 	def nextflaps(self,handle,flaps):
 		i=0
