@@ -46,15 +46,15 @@ class PythonInterface:
 		self.CmdLCConnCB = self.CmdLCConnCallback
 		XPLMRegisterCommandHandler(self, self.CmdLCConn, self.CmdLCConnCB, 0, 0)
 		
-		self.CmdRCConn = XPLMCreateCommand("cmod/custom/left_cond","If AP: HDG right 1 degree, else: Aileron trim right")
+		self.CmdRCConn = XPLMCreateCommand("cmod/custom/right_cond","If AP: HDG right 1 degree, else: Aileron trim right")
 		self.CmdRCConnCB = self.CmdRCConnCallback
 		XPLMRegisterCommandHandler(self, self.CmdRCConn, self.CmdRCConnCB, 0, 0)
 		
-		self.CmdUCConn = XPLMCreateCommand("cmod/custom/left_cond","If AP: VS -100fpm, else: Elevator trim down")
+		self.CmdUCConn = XPLMCreateCommand("cmod/custom/down_cond","If AP: VS -100fpm, else: Elevator trim down")
 		self.CmdUCConnCB = self.CmdUCConnCallback
 		XPLMRegisterCommandHandler(self, self.CmdUCConn, self.CmdUCConnCB, 0, 0)
 		
-		self.CmdDCConn = XPLMCreateCommand("cmod/custom/left_cond","If AP: VS +100 fpm, else: Elevator trim up")
+		self.CmdDCConn = XPLMCreateCommand("cmod/custom/up_cond","If AP: VS +100 fpm, else: Elevator trim up")
 		self.CmdDCConnCB = self.CmdDCConnCallback
 		XPLMRegisterCommandHandler(self, self.CmdDCConn, self.CmdDCConnCB, 0, 0)
 
