@@ -268,7 +268,7 @@ class PythonInterface:
 		XPLMSetDataf(self.ap_vvi_ref, 1000)
 		if maxcabin>0: #Attempt to set cabin altitude
 			if alt>10000:
-				cabalt=alt/ceil*3048 #Approximate rule for PC-12 cabin altitude
+				cabalt=alt/ceiling*3048 #Approximate rule for PC-12 cabin altitude
 			if cabalt<dalt: #Pressurize to destination altitude
 				cabalt=dalt
 			if cabalt>maxcabin: #Max cabin altitude
