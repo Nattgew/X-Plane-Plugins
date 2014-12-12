@@ -144,6 +144,11 @@ class PythonInterface:
 		#if(phase==0): #KeyDown event
 		self.CondSet(self.ap_vvi_ref, self.trim_elv_ref, 100, 0.01, phase)
 		return 0
+
+	def CmdRUCConnCallback(self, cmd, phase, refcon): #Up vert speed or elev trim
+		#if(phase==0): #KeyDown event
+		#self.CondSet(self.ap_vvi_ref, self.trim_elv_ref, 100, 0.01, phase)
+		return 0
 	
 		# self.view_ref
 		# 1000 Forwards
@@ -172,10 +177,10 @@ class PythonInterface:
 	
 	def CondSet(self, apset_ref, trim_ref, ap_del, trim_del, phase): #Set AP ref+del if AP on, else set trim ref+del
 		ap=XPLMGetDatai(self.ap_ref)
-		if ap==2:
+		if phase==0 and ap==2:
 			apset=XPLMGetDataf(apset_ref)
 			XPLMSetDataf(apset_ref, apset+ap_del)
-		else:
+		elif ap!=2:
 			if trim_ref==self.trim_elv_ref:
 				if trim_del>0:
 					trim_cmd=XPLMFindCommand("sim/flight_controls/pitch_trim_up")
