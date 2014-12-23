@@ -59,9 +59,29 @@ class PythonInterface:
 		self.CmdDCConnCB = self.CmdDCConnCallback
 		XPLMRegisterCommandHandler(self, self.CmdDCConn, self.CmdDCConnCB, 0, 0)
 		
-		self.CmdRUCConn = XPLMCreateCommand("cmod/custom/right_up_cond","If 3D/ ")
+		self.CmdRUCConn = XPLMCreateCommand("cmod/custom/right_up_cond","Based on view")
 		self.CmdRUCConnCB = self.CmdRUCConnCallback
 		XPLMRegisterCommandHandler(self, self.CmdRUCConn, self.CmdRUCConnCB, 0, 0)
+		
+		self.CmdCConn = XPLMCreateCommand("cmod/custom/right_up_cond","Cockpit view based on airplane")
+		self.CmdCConnCB = self.CmdCConnCallback
+		XPLMRegisterCommandHandler(self, self.CmdCConn, self.CmdCConnCB, 0, 0)
+		
+		self.CmdVDConn = XPLMCreateCommand("cmod/custom/view_down_cond","Cockpit view based on airplane")
+		self.CmdVDConnCB = self.CmdVDConnCallback
+		XPLMRegisterCommandHandler(self, self.CmdVDConn, self.CmdVDConnCB, 0, 0)
+		
+		self.CmdVUConn = XPLMCreateCommand("cmod/custom/view_up_cond","Cockpit view based on airplane")
+		self.CmdVUConnCB = self.CmdVUConnCallback
+		XPLMRegisterCommandHandler(self, self.CmdVUConn, self.CmdVUConnCB, 0, 0)
+		
+		self.CmdVLConn = XPLMCreateCommand("cmod/custom/view_left_cond","Cockpit view based on airplane")
+		self.CmdVLConnCB = self.CmdVLConnCallback
+		XPLMRegisterCommandHandler(self, self.CmdVLConn, self.CmdVLConnCB, 0, 0)
+		
+		self.CmdVRConn = XPLMCreateCommand("cmod/custom/view_right_cond","Cockpit view based on airplane")
+		self.CmdVRConnCB = self.CmdVRConnCallback
+		XPLMRegisterCommandHandler(self, self.CmdVRConn, self.CmdVRConnCB, 0, 0)
 
 		return self.Name, self.Sig, self.Desc
 		
@@ -69,15 +89,16 @@ class PythonInterface:
 		if(phase==0): #KeyDown event
 			position=XPLMGetDataf(self.speed_brake_ref)
 			if position<1: #armed, stowed, or not fully deployed
-				XPLMSetDataf(self.speed_brake_ref, 1.0)
+				XPLMSetDataf(self.speed_brake_ref, 1.0) #Deploy
 			else: #fully deployed
-				XPLMSetDataf(self.speed_brake_ref, 0.0)
+				XPLMSetDataf(self.speed_brake_ref, -0.5) #Armed
 		return 0
 	
 	def CmdLTConnCallback(self, cmd, phase, refcon): #Toggle landing gear and lights together
 		if(phase==0): #KeyDown event
 			gear=XPLMGetDatai(self.gearhand_ref)
 			light=XPLMGetDatai(self.landing_lights_ref)
+			print "CMOD - gear = "+str(gear)+"  light = "+str(light)
 			if gear==0 or light==0: #Gear handle up->down, may need second go at landing light
 				XPLMSetDatai(self.gearhand_ref, 1)
 				XPLMSetDatai(self.landing_lights_ref, 1)
@@ -96,9 +117,7 @@ class PythonInterface:
 				if flap_down_cmd is not None:
 					print "XDMG = Found command, flaps down"
 					XPLMCommandOnce(flap_down_cmd)
-			# acf_descb=[]
-			# XPLMGetDatab(self.acf_desc_ref, acf_descb, 0, 500)
-			# self.ac=self.getshortac(str(acf_descb))
+			# ac=self.getshortac(self.acf_desc_ref)
 			# handle=XPLMGetDataf(self.flap_h_pos_ref)
 			# if handle==1: #Fully deployed
 				# XPLMSetDataf(self.flap_h_pos_ref, 0.0) #Retract full
@@ -148,6 +167,68 @@ class PythonInterface:
 	def CmdRUCConnCallback(self, cmd, phase, refcon): #Up vert speed or elev trim
 		#if(phase==0): #KeyDown event
 		#self.CondSet(self.ap_vvi_ref, self.trim_elv_ref, 100, 0.01, phase)
+		return 0
+	
+	def CmdCConnCallback(self, cmd, phase, refcon): #Cockpit view based on airplane
+		if(phase==0): #KeyDown event
+			ac=self.getshortac(self.acf_desc_ref)
+			if ac=="C750":
+				#view 2D
+			else:
+				#view 3D
+		return 0
+	
+	def CmdVDConnCallback(self, cmd, phase, refcon): #Cockpit view based on airplane
+		#if(phase==0): #KeyDown event
+			ac=self.getshortac(self.acf_desc_ref)
+			if ac=="C750":
+				#view 2D
+				view_cmd=XPLMFindCommand("sim/view/pan_down_fast")
+			else:
+				#view 3D
+				view_cmd=XPLMFindCommand("sim/general/down_fast")
+			if view_cmd is not None:
+				print "XDMG = Found command, view down"
+				XPLMCommandOnce(view_cmd)
+		return 0
+	def CmdVUConnCallback(self, cmd, phase, refcon): #Cockpit view based on airplane
+		#if(phase==0): #KeyDown event
+			ac=self.getshortac(self.acf_desc_ref)
+			if ac=="C750":
+				#view 2D
+				view_cmd=XPLMFindCommand("sim/view/pan_up_fast")
+			else:
+				#view 3D
+				view_cmd=XPLMFindCommand("sim/general/up_fast")
+			if view_cmd is not None:
+				print "XDMG = Found command, view up"
+				XPLMCommandOnce(view_cmd)
+		return 0
+	def CmdVLConnCallback(self, cmd, phase, refcon): #Cockpit view based on airplane
+		#if(phase==0): #KeyDown event
+			ac=self.getshortac(self.acf_desc_ref)
+			if ac=="C750":
+				#view 2D
+				view_cmd=XPLMFindCommand("sim/view/pan_left_fast")
+			else:
+				#view 3D
+				view_cmd=XPLMFindCommand("sim/general/left_fast")
+			if view_cmd is not None:
+				print "XDMG = Found command, view left"
+				XPLMCommandOnce(view_cmd)
+		return 0
+	def CmdVRConnCallback(self, cmd, phase, refcon): #Cockpit view based on airplane
+		#if(phase==0): #KeyDown event
+			ac=self.getshortac(self.acf_desc_ref)
+			if ac=="C750":
+				#view 2D
+				view_cmd=XPLMFindCommand("sim/view/pan_right_fast")
+			else:
+				#view 3D
+				view_cmd=XPLMFindCommand("sim/general/right_fast")
+			if view_cmd is not None:
+				print "XDMG = Found command, view right"
+				XPLMCommandOnce(view_cmd)
 		return 0
 	
 		# self.view_ref
@@ -204,7 +285,10 @@ class PythonInterface:
 			i+=1
 		XPLMSetDataf(self.flap_h_pos_ref, flaps[i])
 	
-	def getshortac(self,acf_desc):
+	def getshortac(self,acf_desc_ref):
+		acf_descb=[]
+		XPLMGetDatab(acf_desc_ref, acf_descb, 0, 500)
+		acf_desc=str(acf_descb)
 		if acf_desc[0:27]=="['Boeing 737-800 xversion 4":
 			AC="B738"
 		elif acf_desc=="['Pilatus PC-12']":
@@ -215,6 +299,8 @@ class PythonInterface:
 			AC="CL30"
 		elif acf_desc[0:21]=="['C208B Grand Caravan":
 			AC="C208"
+		elif acf_desc[0:19]=="['Cessna Citation X":
+			AC="C750"
 		else:
 			AC=acf_desc
 			print str(acf_desc)
@@ -230,6 +316,10 @@ class PythonInterface:
 		XPLMUnregisterCommandHandler(self, self.CmdRCConn, self.CmdRCConnCB, 0, 0)
 		XPLMUnregisterCommandHandler(self, self.CmdUCConn, self.CmdUCConnCB, 0, 0)
 		XPLMUnregisterCommandHandler(self, self.CmdDCConn, self.CmdDCConnCB, 0, 0)
+		XPLMUnregisterCommandHandler(self, self.CmdVDConn, self.CmdVDConnCallback, 0, 0)
+		XPLMUnregisterCommandHandler(self, self.CmdVUConn, self.CmdVUConnCallback, 0, 0)
+		XPLMUnregisterCommandHandler(self, self.CmdVLConn, self.CmdVLConnCallback, 0, 0)
+		XPLMUnregisterCommandHandler(self, self.CmdVRConn, self.CmdVRConnCallback, 0, 0)
 		pass
 
 	def XPluginEnable(self):
