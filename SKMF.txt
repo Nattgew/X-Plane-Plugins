@@ -1,7 +1,15 @@
-Had a frustrating experience finding the right airport over the weekend, though I'd share in case anyone else runs across it or knows how to fix it.
+Had a frustrating experience finding the right airport, though I'd share in case anyone else runs across it or knows how to fix it.
 
 I was trying to fly into Miraflores (SKMF). I dialed SKMF into the default FMS, and flew there. But then things got weird.
 
 Even though my GPS coordinates matched the coordinates for SKMF listed on the FSE airport page, FSE was convinced that I was at SP0B. I was SE of SKAC on Skyvector, and NE of where SP0B is on FSE (SPEE on Skyvector). FSE shows SKMF where it is on Skyvector. I ended up getting distance and bearing information for SKMF to the two nearest VOR stations and using those to fly to the right area in X-Plane, and landed in a clear area.
 
 I'm not 100% sure I had the latest version of the FSE airports for X-Plane, but I searched the latest version of the apt.dat and didn't find SKMF.
+
+I also had trouble with SKCD. There is an NDB there, but no airport.
+
+I also had trouble with SP0A and SPLN. They show up on top of each other, but FSE has SPLN a bit to the northeast.
+
+
+
+I find myself at high elevation airports sometimes, and have been annoyed by the "cabin altitude" warning. I read through the manuals and I think I figured out how to change the landing field elevation. But I also read through the section about alerts, and it says that both lights and aural alerts are reset when pressing the warning/caution button. But in the case of the "cabin altitude" warning, pressing the button extinguishes the light but the aural warning keeps going. Is there some other way to silence the aural warning?
