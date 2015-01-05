@@ -204,25 +204,47 @@ class PythonInterface:
 		return 0
 	
 	def APset(self): #Sets cruise altitude and heading based on destination, sets VS to 1000 fpm
+		if self.acf_short=="":
+			self.acf_short=self.getacfshort(str(acf_descb))
+		dist=XPLMGetDataf(self.gps_dist_ref) #Distance to destination
 		if self.acf_short=="PC12":
 			ceiling=30
 			maxcabin=10000
+			general_fl=int((dist/10+2)) #General rule for PC-12 cruise altitude
+			climb=1000
+			speed=190
+			gph=50
 		elif self.acf_short=="B190":
 			ceiling=25
 			maxcabin=10000
+			general_fl=int((dist/10+4)) #Faster climb rate at slower speed than PC-12
+			climb=2000
+			speed=200
+			gph=110
 		elif self.acf_short=="CL30":
 			ceiling=45
 			maxcabin=0 #Automatic
+			general_fl=int((dist/10*1.25)) #Approximate rule
+			climb=3500
+			speed=380
+			gph=300
 		else:
 			ceiling=30
 			maxcabin=0
-		print "AP Read cabin max alt "+str(XPLMGetDataf(self.cab_max_ref))+"m?"
-		dist=XPLMGetDataf(self.gps_dist_ref) #Distance to destination
+			general_fl=int((dist/10+2)) #General rule for PC-12 cruise altitude
+			climb=1000
+			speed=0
+			gph=0
+		if speed>0:
+			fuel=dist/speed*gph
+			print "AP fuel estimate: "+str(int(round(fuel)))+" gal"
+		else:
+			fuel=0
+		#print "AP Read cabin max alt "+str(XPLMGetDataf(self.cab_max_ref))+"m?"
 		#print "Found dist "+str(round(dist))+"nm"
-		general_fl=int((dist/10+2)) #General rule for PC-12 cruise altitude
-		dalt=self.get_dest_info()
-		#dalt=0
-		print "AP Destination altitude is "+str(dalt)
+		#dalt=self.get_dest_info()
+		dalt=0
+		#print "AP Destination altitude is "+str(dalt)
 		alt_ind=XPLMGetDataf(self.alt_ind_ref)
 		general_fl+=int(dalt/1000+alt_ind/1000)/2 #Account for departure/arrival altitudes
 		aphdg=XPLMGetDataf(self.gps_degm_ref) #Heading to destination
@@ -243,39 +265,42 @@ class PythonInterface:
 				else:
 					general_fl=ceiling
 		alt=float(general_fl*1000)
-		hdg=XPLMGetDataf(self.mpsi_ref) #Get current heading, attempt to adjust towards GPS course
-		turn=hdg-aphdg
-		if turn<0:
-			turn+=360
-		if turn>180: # right turn
-			if aphdg>hdg:
-				offset=(aphdg-hdg)/5
-			else:
-				offset=(360-hdg+aphdg)/5
-		else: # left turn
-			if aphdg<hdg:
-				offset=(aphdg-hdg)/5
-			else:
-				offset=-(360-aphdg+hdg)/5
-		hdginit=aphdg+offset
-		if hdginit>360:
-			hdginit-=360
-		elif hdginit<0:
-			hdginit+=360
+		if self.acf_short=="CL30":
+			hdginit=aphdg
+		else:
+			hdg=XPLMGetDataf(self.mpsi_ref) #Get current heading, attempt to adjust towards GPS course
+			turn=hdg-aphdg
+			if turn<0:
+				turn+=360
+			if turn>180: # right turn
+				if aphdg>hdg:
+					offset=(aphdg-hdg)/5
+				else:
+					offset=(360-hdg+aphdg)/5
+			else: # left turn
+				if aphdg<hdg:
+					offset=(aphdg-hdg)/5
+				else:
+					offset=-(360-aphdg+hdg)/5
+			hdginit=aphdg+offset
+			if hdginit>360:
+				hdginit-=360
+			elif hdginit<0:
+				hdginit+=360
 		#Set autopilot values
 		XPLMSetDataf(self.ap_hdg_ref, hdginit)
 		XPLMSetDataf(self.ap_alt_ref, alt)
-		XPLMSetDataf(self.ap_vvi_ref, 1000)
-		if maxcabin>0: #Attempt to set cabin altitude
-			if alt>10000:
-				cabalt=alt/ceiling*3048 #Approximate rule for PC-12 cabin altitude
-			if cabalt<dalt: #Pressurize to destination altitude
-				cabalt=dalt
-			if cabalt>maxcabin: #Max cabin altitude
-				cabalt=maxcabin
-			print "AP Changing cabin altitude from "+str(int(round(XPLMGetDataf(self.cab_alt_ref))))+" to "+str(int(round(cabalt)))+"m"
-			XPLMSetDataf(self.cab_alt_ref, cabalt)
-			print "AP Cabin altitude now set to "+str(int(round(XPLMGetDataf(self.cab_alt_ref))))+"m"
+		XPLMSetDataf(self.ap_vvi_ref, climb)
+		# if maxcabin>0: #Attempt to set cabin altitude
+			# if alt>10000:
+				# cabalt=alt/ceiling*3048 #Approximate rule for PC-12 cabin altitude
+			# if cabalt<dalt: #Pressurize to destination altitude
+				# cabalt=dalt
+			# if cabalt>maxcabin: #Max cabin altitude
+				# cabalt=maxcabin
+			# print "AP Changing cabin altitude from "+str(int(round(XPLMGetDataf(self.cab_alt_ref))))+" to "+str(int(round(cabalt)))+"m"
+			# XPLMSetDataf(self.cab_alt_ref, cabalt)
+			# print "AP Cabin altitude now set to "+str(int(round(XPLMGetDataf(self.cab_alt_ref))))+"m"
 	
 	def toggleInfo(self): #Toggle whether any info is computed/shown
 		if self.started==0:
