@@ -205,6 +205,8 @@ class PythonInterface:
 	
 	def APset(self): #Sets cruise altitude and heading based on destination, sets VS to 1000 fpm
 		if self.acf_short=="":
+			acf_descb=[]
+			XPLMGetDatab(self.acf_desc_ref, acf_descb, 0, 500)
 			self.acf_short=self.getacfshort(str(acf_descb))
 		dist=XPLMGetDataf(self.gps_dist_ref) #Distance to destination
 		if self.acf_short=="PC12":

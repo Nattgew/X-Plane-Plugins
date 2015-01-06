@@ -172,63 +172,63 @@ class PythonInterface:
 	def CmdCConnCallback(self, cmd, phase, refcon): #Cockpit view based on airplane
 		if(phase==0): #KeyDown event
 			ac=self.getshortac(self.acf_desc_ref)
-			if ac=="C750":
+			#if ac=="C750":
 				#view 2D
-			else:
+			#else:
 				#view 3D
 		return 0
 	
 	def CmdVDConnCallback(self, cmd, phase, refcon): #Cockpit view based on airplane
 		#if(phase==0): #KeyDown event
-			ac=self.getshortac(self.acf_desc_ref)
-			if ac=="C750":
-				#view 2D
-				view_cmd=XPLMFindCommand("sim/view/pan_down_fast")
-			else:
-				#view 3D
-				view_cmd=XPLMFindCommand("sim/general/down_fast")
-			if view_cmd is not None:
-				print "XDMG = Found command, view down"
-				XPLMCommandOnce(view_cmd)
+		ac=self.getshortac(self.acf_desc_ref)
+		if ac=="C750":
+			#view 2D
+			view_cmd=XPLMFindCommand("sim/view/pan_down_fast")
+		else:
+			#view 3D
+			view_cmd=XPLMFindCommand("sim/general/down_fast")
+		if view_cmd is not None:
+			print "XDMG = Found command, view down"
+			XPLMCommandOnce(view_cmd)
 		return 0
 	def CmdVUConnCallback(self, cmd, phase, refcon): #Cockpit view based on airplane
 		#if(phase==0): #KeyDown event
-			ac=self.getshortac(self.acf_desc_ref)
-			if ac=="C750":
-				#view 2D
-				view_cmd=XPLMFindCommand("sim/view/pan_up_fast")
-			else:
-				#view 3D
-				view_cmd=XPLMFindCommand("sim/general/up_fast")
-			if view_cmd is not None:
-				print "XDMG = Found command, view up"
-				XPLMCommandOnce(view_cmd)
+		ac=self.getshortac(self.acf_desc_ref)
+		if ac=="C750":
+			#view 2D
+			view_cmd=XPLMFindCommand("sim/view/pan_up_fast")
+		else:
+			#view 3D
+			view_cmd=XPLMFindCommand("sim/general/up_fast")
+		if view_cmd is not None:
+			print "XDMG = Found command, view up"
+			XPLMCommandOnce(view_cmd)
 		return 0
 	def CmdVLConnCallback(self, cmd, phase, refcon): #Cockpit view based on airplane
 		#if(phase==0): #KeyDown event
-			ac=self.getshortac(self.acf_desc_ref)
-			if ac=="C750":
-				#view 2D
-				view_cmd=XPLMFindCommand("sim/view/pan_left_fast")
-			else:
-				#view 3D
-				view_cmd=XPLMFindCommand("sim/general/left_fast")
-			if view_cmd is not None:
-				print "XDMG = Found command, view left"
-				XPLMCommandOnce(view_cmd)
+		ac=self.getshortac(self.acf_desc_ref)
+		if ac=="C750":
+			#view 2D
+			view_cmd=XPLMFindCommand("sim/view/pan_left_fast")
+		else:
+			#view 3D
+			view_cmd=XPLMFindCommand("sim/general/left_fast")
+		if view_cmd is not None:
+			print "XDMG = Found command, view left"
+			XPLMCommandOnce(view_cmd)
 		return 0
 	def CmdVRConnCallback(self, cmd, phase, refcon): #Cockpit view based on airplane
 		#if(phase==0): #KeyDown event
-			ac=self.getshortac(self.acf_desc_ref)
-			if ac=="C750":
-				#view 2D
-				view_cmd=XPLMFindCommand("sim/view/pan_right_fast")
-			else:
-				#view 3D
-				view_cmd=XPLMFindCommand("sim/general/right_fast")
-			if view_cmd is not None:
-				print "XDMG = Found command, view right"
-				XPLMCommandOnce(view_cmd)
+		ac=self.getshortac(self.acf_desc_ref)
+		if ac=="C750":
+			#view 2D
+			view_cmd=XPLMFindCommand("sim/view/pan_right_fast")
+		else:
+			#view 3D
+			view_cmd=XPLMFindCommand("sim/general/right_fast")
+		if view_cmd is not None:
+			print "XDMG = Found command, view right"
+			XPLMCommandOnce(view_cmd)
 		return 0
 	
 		# self.view_ref
