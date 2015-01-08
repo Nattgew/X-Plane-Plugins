@@ -6,6 +6,7 @@ from XPLMDefs import *
 from math import *
 from XPLMUtilities import *
 from XPLMNavigation import *
+import os
 
 class PythonInterface:
 
@@ -139,6 +140,7 @@ class PythonInterface:
 		self.ap_alt_ref=XPLMFindDataRef("sim/cockpit/autopilot/altitude")
 		self.ap_hdg_ref=XPLMFindDataRef("sim/cockpit/autopilot/heading_mag")
 		self.ap_vvi_ref=XPLMFindDataRef("sim/cockpit/autopilot/vertical_velocity")
+		self.ap_spd_ref=XPLMFindDataRef("sim/cockpit/autopilot/airspeed")
 		self.cab_alt_ref=XPLMFindDataRef("sim/cockpit/pressure/cabin_altitude_set_m_msl")
 		self.cab_max_ref=XPLMFindDataRef("sim/cockpit/pressure/max_allowable_altitude")
 		
@@ -158,6 +160,8 @@ class PythonInterface:
 		self.prop_type=[]
 		self.flaps=(0,1)
 		self.acf_short=""
+		self.current_dest=""
+		self.elevate_dest=0
 		
 		self.gameLoopCB=self.gameLoopCallback
 		self.DrawWindowCB=self.DrawWindowCallback
@@ -203,92 +207,114 @@ class PythonInterface:
 			self.APset()
 		return 0
 	
-	def APset(self): #Sets cruise altitude and heading based on destination, sets VS to 1000 fpm
+	def APset(self): #Sets cruise altitude and heading based on destination, sets VS
 		if self.acf_short=="":
 			acf_descb=[]
 			XPLMGetDatab(self.acf_desc_ref, acf_descb, 0, 500)
 			self.acf_short=self.getacfshort(str(acf_descb))
 		dist=XPLMGetDataf(self.gps_dist_ref) #Distance to destination
-		if self.acf_short=="PC12":
-			ceiling=30
-			maxcabin=10000
-			general_fl=int((dist/10+2)) #General rule for PC-12 cruise altitude
-			climb=1000
-			speed=190
-			gph=50
-		elif self.acf_short=="B190":
-			ceiling=25
-			maxcabin=10000
-			general_fl=int((dist/10+4)) #Faster climb rate at slower speed than PC-12
-			climb=2000
-			speed=200
-			gph=110
-		elif self.acf_short=="CL30":
-			ceiling=45
-			maxcabin=0 #Automatic
-			general_fl=int((dist/10*1.25)) #Approximate rule
-			climb=3500
-			speed=380
-			gph=300
-		else:
-			ceiling=30
-			maxcabin=0
-			general_fl=int((dist/10+2)) #General rule for PC-12 cruise altitude
-			climb=1000
-			speed=0
-			gph=0
-		if speed>0:
-			fuel=dist/speed*gph
-			print "AP fuel estimate: "+str(int(round(fuel)))+" gal"
-		else:
-			fuel=0
-		#print "AP Read cabin max alt "+str(XPLMGetDataf(self.cab_max_ref))+"m?"
 		#print "Found dist "+str(round(dist))+"nm"
-		#dalt=self.get_dest_info()
-		dalt=0
-		#print "AP Destination altitude is "+str(dalt)
+		gear=XPLMGetDatai(self.gear_h_pos_ref)
 		alt_ind=XPLMGetDataf(self.alt_ind_ref)
-		general_fl+=int(dalt/1000+alt_ind/1000)/2 #Account for departure/arrival altitudes
-		aphdg=XPLMGetDataf(self.gps_degm_ref) #Heading to destination
-		if aphdg<180: #NEodd
-			if general_fl%2==0:
-				general_fl-=1
-			if general_fl>ceiling:
-				if ceiling%2==0:
-					general_fl=ceiling-1
-				else:
-					general_fl=ceiling
-		else: #SWeven
-			if general_fl%2==1:
-				general_fl-=1
-			if general_fl>ceiling:
-				if ceiling%2==1:
-					general_fl=ceiling-1
-				else:
-					general_fl=ceiling
-		alt=float(general_fl*1000)
-		if self.acf_short=="CL30":
-			hdginit=aphdg
+		hdg=XPLMGetDataf(self.mpsi_ref) #Get current heading, attempt to adjust towards GPS course
+		dalt=self.get_dest_info()
+		#dalt=0
+		print "AP Destination altitude is "+str(dalt)
+		if gear==1:
+			if self.acf_short=="PC12":
+				ceiling=30
+				maxcabin=10000
+				general_fl=int((dist/10+2)) #General rule for PC-12 cruise altitude
+				climb=1000
+				speed=210
+				gph=60
+			elif self.acf_short=="B190":
+				ceiling=25
+				maxcabin=10000
+				general_fl=int((dist/10+4)) #Faster climb rate at slower speed than PC-12
+				climb=2000
+				speed=200
+				gph=110
+			elif self.acf_short=="CL30":
+				ceiling=45
+				maxcabin=0 #Automatic
+				general_fl=int((dist/10*1.25)) #Approximate rule
+				climb=3500
+				speed=380
+				gph=300
+			else:
+				ceiling=30
+				maxcabin=0
+				general_fl=int((dist/10+2)) #General rule for PC-12 cruise altitude
+				climb=1000
+				speed=0
+				gph=0
+			if speed>0:
+				fuel=dist/speed*gph
+				print "AP fuel estimate: "+str(int(round(fuel)))+" gal"
+				XPLMSetDataf(self.ap_spd_ref, fuel) #Other plugin will show speed change, speed setting not important
+			else:
+				fuel=0
+			general_fl+=int(dalt/1000+alt_ind/1000)/2 #Account for departure/arrival altitudes
+			aphdg=XPLMGetDataf(self.gps_degm_ref) #Heading to destination
+			if aphdg<180: #NEodd
+				if general_fl%2==0:
+					general_fl-=1
+				if general_fl>ceiling:
+					if ceiling%2==0:
+						general_fl=ceiling-1
+					else:
+						general_fl=ceiling
+			else: #SWeven
+				if general_fl%2==1:
+					general_fl-=1
+				if general_fl>ceiling:
+					if ceiling%2==1:
+						general_fl=ceiling-1
+					else:
+						general_fl=ceiling
+			alt=float(general_fl*1000)
+			if self.acf_short=="CL30":
+				hdginit=aphdg
+			else:
+				turn=hdg-aphdg
+				if turn<0:
+					turn+=360
+				if turn>180: # right turn
+					if aphdg>hdg:
+						offset=(aphdg-hdg)/5
+					else:
+						offset=(360-hdg+aphdg)/5
+				else: # left turn
+					if aphdg<hdg:
+						offset=(aphdg-hdg)/5
+					else:
+						offset=-(360-aphdg+hdg)/5
+				hdginit=aphdg+offset
+				if hdginit>360:
+					hdginit-=360
+				elif hdginit<0:
+					hdginit+=360
 		else:
-			hdg=XPLMGetDataf(self.mpsi_ref) #Get current heading, attempt to adjust towards GPS course
-			turn=hdg-aphdg
-			if turn<0:
-				turn+=360
-			if turn>180: # right turn
-				if aphdg>hdg:
-					offset=(aphdg-hdg)/5
+			if dalt>0:
+				alt=dalt
+			else:
+				alt=alt_ind/3 #Guess if we don't know the actual landing elevation
+			hdginit=hdg
+			if self.acf_short=="PC12":
+				if alt_ind>20000:
+					climb=-1300
+				elif alt_ind>15000:
+					climb=-1200
 				else:
-					offset=(360-hdg+aphdg)/5
-			else: # left turn
-				if aphdg<hdg:
-					offset=(aphdg-hdg)/5
-				else:
-					offset=-(360-aphdg+hdg)/5
-			hdginit=aphdg+offset
-			if hdginit>360:
-				hdginit-=360
-			elif hdginit<0:
-				hdginit+=360
+					climb=-1000
+				alt+=1000
+			elif self.acf_short=="B190":
+				climb=-1500
+				alt+=1500
+			else:
+				climb=-1000
+				alt+=2000
 		#Set autopilot values
 		XPLMSetDataf(self.ap_hdg_ref, hdginit)
 		XPLMSetDataf(self.ap_alt_ref, alt)
@@ -462,7 +488,8 @@ class PythonInterface:
 			self.msg[4]="FL: "+maxFL+"  FL: "+optFL+tod+Vspeed#+" Flaps: "+str(flaps)
 		else:
 			print "Doing descent stuff..."
-			dalt=self.get_dest_info()
+			if dalt is None:
+				dalt=self.get_dest_info()
 			hwind=self.getHwind()
 			SL==XPLMGetDataf(self.baro_act_ref)
 			ldr=self.getLandingDist(wgt, dalt, delISA, SL, hwind, self.acf_short)
@@ -505,10 +532,9 @@ class PythonInterface:
 			print str(acf_desc[0:8])
 		return AC
 		
-	def get_dest_info(self): #Get info from FMS system about destination (aka "crash x-plane")
+	def get_dest_info(self): #Get info about destination (aka "crash x-plane")
 		destindex=XPLMGetDisplayedFMSEntry()
 		destid=[]
-		dalt=[]
 		print "Getting info for entry "+str(destindex)+"..."
 		# XPLMGetFMSEntryInfo(
 		   # int                  inIndex,    
@@ -518,13 +544,28 @@ class PythonInterface:
 		   # int *                outAltitude,    /* Can be NULL */
 		   # float *              outLat,    /* Can be NULL */
 		   # float *              outLon);    /* Can be NULL */
-		XPLMGetFMSEntryInfo(destindex, None, destid, None, dalt, None, None)
-		#print type(dalt)
-		#print type(destid)
-		print "Going to "+str(destid[0])
-		print "Alt "+str(dalt[0])+" MSL"
+		XPLMGetFMSEntryInfo(destindex, None, destid, None, None, None, None)
+		dest=str(destid[0])
+		print "Going to "+dest
+		if dest != self.current_dest:
+			datfile = open(os.path.join('Resources','default scenery','default apt dat','Earth nav data','apt.dat'), "r")
+			for line in datfile:
+				if dest in line:
+					print line
+					params=line.split()
+					dalt=int(params[1])
+					#dalt=0
+			datfile.close()
+			#print type(dalt)
+			#print type(destid)
+			
+			print "Alt "+str(dalt)+" MSL"
+			self.current_dest=dest
+			self.elevate_dest=dalt
+		else:
+			dalt=self.elevate_dest
 		
-		return dalt[0]
+		return dalt
 	
 	def getDpro(self, AC): #Show applicable descent profile
 		if AC=="B738":
@@ -532,6 +573,8 @@ class PythonInterface:
 		elif AC=="PC12":
 			print "Getting PC12 profile"
 			profile="2000 fpm at lower of M.48/236 kias"
+		elif AC=="CL30":
+			profile="M.78 to FL350, M.75 to 270kt"
 		else:
 			profile="Have fun"
 		return profile
