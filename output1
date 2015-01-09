@@ -1,0 +1,35 @@
+[x11grab @ 0x2457080] device: :0.0+1280+0 -> display: :0.0 x: 1280 y: 0 width: 1920 height: 1080
+[x11grab @ 0x2457080] shared memory extension found
+Input #0, x11grab, from ':0.0+1280+0':
+  Duration: N/A, start: 1420763901.251681, bitrate: 1327104 kb/s
+    Stream #0:0: Video: rawvideo (BGR[0] / 0x524742), bgr0, 1920x1080, 1327104 kb/s, 20 tbr, 1000k tbn, 20 tbc
+Guessed Channel Layout for  Input Stream #1.0 : stereo
+Input #1, alsa, from 'pulse':
+  Duration: N/A, start: 1420763901.289036, bitrate: 1536 kb/s
+    Stream #1:0: Audio: pcm_s16le, 48000 Hz, 2 channels, s16, 1536 kb/s
+gopLength=20
+averageBitRate=1000
+maxBitRate=1000
+vbvBufferSize=1000
+
+
+
+
+
+
+Output #0, flv, to 'rtmp://live.twitch.tv/app/':
+
+
+    Stream #0:0: Video: h264, none, q=2-31, 128 kb/s, 20 fps
+
+    Metadata:
+      encoder         : Lavc56.8.102 libnvenc
+    Stream #0:1: Audio: mp3, 0 channels, 128 kb/s
+
+    Metadata:
+      encoder         : Lavc56.8.102 libmp3lame
+Stream mapping:
+  Stream #0:0 -> #0:0 (rawvideo (native) -> h264 (libnvenc))
+  Stream #1:0 -> #0:1 (pcm_s16le (native) -> mp3 (libmp3lame))
+Error while opening encoder for output stream #0:0 - maybe incorrect parameters such as bit_rate, rate, width or height
+
