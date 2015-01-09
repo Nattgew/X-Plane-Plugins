@@ -17,3 +17,4 @@ The popup now shows the change in altimeter setting versus the previous setting.
 * Changed transition altitude behavior to be more reliable and stable
 * Changed altitude error calculation to scale with altitude (Based on the US altimeter accuracy regulation)
 * Altitude error should not be shown when above transition level
+* Added code comments for better readability
