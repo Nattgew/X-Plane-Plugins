@@ -34,10 +34,10 @@ class PythonInterface:
 		pass
 
 	def XPluginStart(self):
-		self.Name="Altimeter Helper 1.2"
+		self.Name="Altimeter Helper 1.3"
 		self.Sig= "natt.python.altimeterhelper"
 		self.Desc="A plugin that helps with altimeter settings"
-		self.VERSION="1.2"
+		self.VERSION="1.3"
 		
 		self.baro_set_ref=XPLMFindDataRef("sim/cockpit/misc/barometer_setting")
 		self.baro_act_ref=XPLMFindDataRef("sim/weather/barometer_sealevel_inhg")
