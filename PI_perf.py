@@ -36,13 +36,13 @@ class PythonInterface:
 		if y2==y1:
 			result=y1
 		elif x2==x1:
-			print "Interpolating the same point?"
+			print "UH OH Interpolating the same point?"
 			result=y1
 		elif y2==0:
-			print "Interpolating with 0 y2"
+			print "UH OH Interpolating with 0 y2"
 			result=y1
 		elif y1==0:
-			print "Interpolating with 0 y1"
+			print "UH OH Interpolating with 0 y1"
 			result=y2
 		else:
 			result=(y2-y1)/(x2-x1)*(xi-x1)+y1
@@ -213,13 +213,10 @@ class PythonInterface:
 			XPLMGetDatab(self.acf_desc_ref, acf_descb, 0, 500)
 			self.acf_short=self.getacfshort(str(acf_descb))
 		dist=XPLMGetDataf(self.gps_dist_ref) #Distance to destination
-		#print "Found dist "+str(round(dist))+"nm"
 		gear=XPLMGetDatai(self.gear_h_pos_ref)
 		alt_ind=XPLMGetDataf(self.alt_ind_ref)
 		hdg=XPLMGetDataf(self.mpsi_ref) #Get current heading, attempt to adjust towards GPS course
 		dalt=self.get_dest_info()
-		#dalt=0
-		print "AP Destination altitude is "+str(dalt)
 		if gear==1:
 			if self.acf_short=="PC12":
 				ceiling=30
@@ -296,11 +293,7 @@ class PythonInterface:
 				elif hdginit<0:
 					hdginit+=360
 		else:
-			if dalt>0:
-				alt=dalt
-			else:
-				alt=alt_ind/3 #Guess if we don't know the actual landing elevation
-			hdginit=hdg
+			alt=dalt
 			if self.acf_short=="PC12":
 				if alt_ind>20000:
 					climb=-1300
@@ -444,17 +437,13 @@ class PythonInterface:
 				TOP_str=""
 		gears=[]
 		XPLMGetDatavf(self.geardep_ref, gears, 0, 10)
-		#print "Gear "+str(gears[0])
 		if gears[0]==1: #Landing or taking off
-			#print "XDMG = Gear down"
 			flaps=XPLMGetDataf(self.flap_h_pos_ref)
 			if XPLMGetDataf(self.f_norm_ref) != 0: #Weight on wheels
-				#print "XDMG = On ground"
 				Vspeed=self.getV1(flaps, wgt, DenAlt, T, self.acf_short)
 				hwind=self.getHwind()
 				tod=self.getTOD(flaps, wgt, DenAlt, T, delISA, hwind, self.acf_short)
 			else:
-				#print "XDMG = In air"
 				Vspeed=self.getVref(flaps, wgt, DenAlt, T, self.acf_short)
 				dalt=self.get_dest_info()
 				hwind=self.getHwind()
@@ -487,7 +476,6 @@ class PythonInterface:
 			self.msg[3]="Crs: "+maxcruise+"  LR: "+cruise+"  AS: "+twospeed
 			self.msg[4]="FL: "+maxFL+"  FL: "+optFL+tod+Vspeed#+" Flaps: "+str(flaps)
 		else:
-			print "Doing descent stuff..."
 			if dalt is None:
 				dalt=self.get_dest_info()
 			hwind=self.getHwind()
@@ -495,7 +483,6 @@ class PythonInterface:
 			ldr=self.getLandingDist(wgt, dalt, delISA, SL, hwind, self.acf_short)
 			#time=XPLMGetDataf(self.gps_time_ref)
 			#dist=XPLMGetDataf(self.gps_dist_ref)
-			print "Finding descent info"
 			ddist=self.getDesc(dist, alt, dalt, DenAlt, delISA, self.acf_short)
 			dprof=self.getDpro(self.acf_short)
 			#Assemble the message
@@ -535,7 +522,6 @@ class PythonInterface:
 	def get_dest_info(self): #Get info about destination (aka "crash x-plane")
 		destindex=XPLMGetDisplayedFMSEntry()
 		destid=[]
-		print "Getting info for entry "+str(destindex)+"..."
 		# XPLMGetFMSEntryInfo(
 		   # int                  inIndex,    
 		   # XPLMNavType *        outType,    /* Can be NULL */
@@ -546,20 +532,14 @@ class PythonInterface:
 		   # float *              outLon);    /* Can be NULL */
 		XPLMGetFMSEntryInfo(destindex, None, destid, None, None, None, None)
 		dest=str(destid[0])
-		print "Going to "+dest
 		if dest != self.current_dest:
-			datfile = open(os.path.join('Resources','default scenery','default apt dat','Earth nav data','apt.dat'), "r")
-			for line in datfile:
-				if dest in line:
-					print line
-					params=line.split()
-					dalt=int(params[1])
-					#dalt=0
-			datfile.close()
-			#print type(dalt)
-			#print type(destid)
-			
-			print "Alt "+str(dalt)+" MSL"
+			dalt=0
+			with open(os.path.join('Resources','default scenery','default apt dat','Earth nav data','apt.dat'), 'r') as datfile:
+				for line in datfile:
+					if dest in line:
+						params=line.split()
+						dalt=int(params[1])
+						break
 			self.current_dest=dest
 			self.elevate_dest=dalt
 		else:
@@ -571,7 +551,6 @@ class PythonInterface:
 		if AC=="B738":
 			profile="M.78 to FL350, M.75 to 280kt"
 		elif AC=="PC12":
-			print "Getting PC12 profile"
 			profile="2000 fpm at lower of M.48/236 kias"
 		elif AC=="CL30":
 			profile="M.78 to FL350, M.75 to 270kt"
@@ -584,7 +563,6 @@ class PythonInterface:
 			ddist_nm=(alt-dalt)/3000 #General rule for jet descents
 			ddist=str(int(round(ddist_nm)))+"nm"
 		elif AC=="PC12":
-			print "Getting PC12 descent"
 			alts=tuple(range(5000,30001,5000))
 			isas=tuple(range(-40,31,10))
 			dnms=((9.6,20.0,31.0,0,0,0), 			# -40
