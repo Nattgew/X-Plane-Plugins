@@ -14,6 +14,6 @@ Visit SKMF
 * Double check V1.0 FSE file
 
 
--vcodec libnvenc -tune film -preset $QUALITY -x264opts keyint=$GOP:min-keyint=$GOPMIN:bitrate=$CBR:vbv-maxrate=$CBR::vbv-bufsize=$CBR
 
--pix_fmt yuv420p -s $OUTRES
+
+
