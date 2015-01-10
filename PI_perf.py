@@ -58,7 +58,10 @@ class PythonInterface:
 
 	def getDA(self, P, T): #Use pressure and temperature to find density altitude
 		T+=273.15
-		density_alt=self.DA_pre*(1-((P/self.P_SL)/(T/self.T_SL))**self.DA_exp)
+		PT=(P/self.P_SL)/(T/self.T_SL)
+		if PT < 0:
+			print "PERF - DA from "+str(int(round(P)))+" and "+str(int(round(T)))+" gives number "+PT
+		density_alt=self.DA_pre*(1-PT**self.DA_exp)
 		return density_alt
 	
 	def getdelISA(self, alt, T): #Find degrees C difference from ISA
@@ -216,6 +219,7 @@ class PythonInterface:
 		gear=XPLMGetDatai(self.gear_h_pos_ref)
 		alt_ind=XPLMGetDataf(self.alt_ind_ref)
 		hdg=XPLMGetDataf(self.mpsi_ref) #Get current heading, attempt to adjust towards GPS course
+		aphdg=XPLMGetDataf(self.gps_degm_ref) #Heading to destination
 		dalt=self.get_dest_info()
 		if gear==1:
 			if self.acf_short=="PC12":
@@ -253,7 +257,7 @@ class PythonInterface:
 			else:
 				fuel=0
 			general_fl+=int(dalt/1000+alt_ind/1000)/2 #Account for departure/arrival altitudes
-			aphdg=XPLMGetDataf(self.gps_degm_ref) #Heading to destination
+			print "AP - Cruise at "+str(int(round(general_fl)))+" for "+str(int(round(alt_ind)))+"ft "+str(int(round(dist)))+"nm to "+str(dalt)
 			if aphdg<180: #NEodd
 				if general_fl%2==0:
 					general_fl-=1
@@ -294,6 +298,7 @@ class PythonInterface:
 					hdginit+=360
 		else:
 			alt=dalt
+			hdginit=aphdg
 			if self.acf_short=="PC12":
 				if alt_ind>20000:
 					climb=-1300
@@ -533,13 +538,24 @@ class PythonInterface:
 		XPLMGetFMSEntryInfo(destindex, None, destid, None, None, None, None)
 		dest=str(destid[0])
 		if dest != self.current_dest:
-			dalt=0
+			dalt=-10000
 			with open(os.path.join('Resources','default scenery','default apt dat','Earth nav data','apt.dat'), 'r') as datfile:
 				for line in datfile:
 					if dest in line:
 						params=line.split()
 						dalt=int(params[1])
 						break
+			if dalt == -10000:
+				print "AP - "+dest+" not found, trying FSE airports..."
+				with open(os.path.join('Custom Scenery','zzzz_FSE_Airports','Earth nav data','apt.dat'), 'r') as fdatfile:
+					for line in fdatfile:
+						if dest in line:
+							params=line.split()
+							dalt=int(params[1])
+							break
+			if dalt == -10000:
+				print "AP - "+dest+" not found, giving up"
+				dalt=0
 			self.current_dest=dest
 			self.elevate_dest=dalt
 		else:
@@ -771,7 +787,7 @@ class PythonInterface:
 			#print 'Vref %.0f %.0f %.0f %.0f %.0f = %.0f' % (vapps[wgt_ih], vapps[wgt_il], GW[wgt_ih], GW[wgt_il], wgt, vapp)
 			Vref="  Vref: "+str(int(round(vapp)))+" kias"
 		else:
-			ddist="N/A"
+			Vref="N/A"
 		return Vref
 
 	def getV1(self, flaps, wgt, DA, T, AC): #Get V1 speed
