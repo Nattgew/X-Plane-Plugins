@@ -60,7 +60,7 @@ class PythonInterface:
 		T+=273.15
 		PT=(P/self.P_SL)/(T/self.T_SL)
 		if PT < 0:
-			print "PERF - DA from "+str(int(round(P)))+" and "+str(int(round(T)))+" gives number "+PT
+			print "PERF - DA from "+str(int(round(P)))+" and "+str(int(round(T)))+" gives number "+str(int(round(PT)))
 		density_alt=self.DA_pre*(1-PT**self.DA_exp)
 		return density_alt
 	
@@ -395,6 +395,7 @@ class PythonInterface:
 		mach=XPLMGetDataf(self.mach_ref)
 		DenAlt=self.getDA(P,T) #ft
 		delISA=self.getdelISA(alt, T)
+		dalt=None
 		if self.eng_type[0]==2 or self.eng_type[0]==8: #Turboprop
 			TRQ=[]
 			XPLMGetDatavf(self.TRQ_ref, TRQ, 0, self.num_eng)
