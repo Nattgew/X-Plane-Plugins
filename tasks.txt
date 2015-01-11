@@ -1,19 +1,8 @@
-Upload new altimeter plugin
-
 Test CL30 warnings
 * Do warnings besides cabin altitude also not silence?
 * Is there a warning both starting at high airport and landing at one?
 
 Test CL30 landing altitude
-* Double check flight with manual set before takeoff
+* Double check flight with manual set before takeoff - no change
 * Double check flight with FMS1/2 set before takeoff
-* Double check following checklist from "cold and dark"
-
-Visit SKMF
-* Do X-Plane coordinates make sense at X-Plane's SKMF or the real location?
-* Double check V1.0 FSE file
-
-
-
-
-
+* Double check following checklist from "cold and dark" - no change
