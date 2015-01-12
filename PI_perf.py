@@ -538,24 +538,25 @@ class PythonInterface:
 		   # float *              outLon);    /* Can be NULL */
 		XPLMGetFMSEntryInfo(destindex, None, destid, None, None, None, None)
 		dest=str(destid[0])
+		search=" "+dest+" "
 		if dest != self.current_dest:
 			dalt=-10000
 			with open(os.path.join('Resources','default scenery','default apt dat','Earth nav data','apt.dat'), 'r') as datfile:
 				for line in datfile:
-					if dest in line:
+					if search in line:
 						params=line.split()
 						dalt=int(params[1])
 						break
 			if dalt == -10000:
 				print "AP - "+dest+" not found, trying FSE airports..."
 				with open(os.path.join('Custom Scenery','zzzz_FSE_Airports','Earth nav data','apt.dat'), 'r') as fdatfile:
-					for line in fdatfile:
+					for search in fdatfile:
 						if dest in line:
 							params=line.split()
 							dalt=int(params[1])
 							break
 			if dalt == -10000:
-				print "AP - "+dest+" not found, giving up"
+				print "AP -"+search+"not found, giving up"
 				dalt=0
 			self.current_dest=dest
 			self.elevate_dest=dalt
