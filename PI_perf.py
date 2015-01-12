@@ -102,7 +102,7 @@ class PythonInterface:
 		self.Nlb=0.22481 # N to lbf
 		self.Npsi=0.0088168441 #Best fit for torque Nm -> psi on PC12
 		#self.d=chr(0x2103)  u'\xb0'.encode('cp1252')
-		self.d=""
+		self.d="" #In case I ever figure out how to print degree symbol
 		
 		self.N1_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_N1_")
 		self.EGT_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_EGT_c")
@@ -540,22 +540,22 @@ class PythonInterface:
 		dest=str(destid[0])
 		search=" "+dest+" "
 		if dest != self.current_dest:
-			dalt=-10000
+			dalt=None
 			with open(os.path.join('Resources','default scenery','default apt dat','Earth nav data','apt.dat'), 'r') as datfile:
 				for line in datfile:
 					if search in line:
 						params=line.split()
 						dalt=int(params[1])
 						break
-			if dalt == -10000:
-				print "AP - "+dest+" not found, trying FSE airports..."
+			if dalt is None:
+				print "AP -"+search+"not found, trying FSE airports..."
 				with open(os.path.join('Custom Scenery','zzzz_FSE_Airports','Earth nav data','apt.dat'), 'r') as fdatfile:
 					for search in fdatfile:
-						if dest in line:
+						if search in line:
 							params=line.split()
 							dalt=int(params[1])
 							break
-			if dalt == -10000:
+			if dalt is None:
 				print "AP -"+search+"not found, giving up"
 				dalt=0
 			self.current_dest=dest
