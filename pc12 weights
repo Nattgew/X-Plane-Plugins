@@ -4,7 +4,7 @@ http://www.fseconomy.net/forum/fse-general-discussion/8364-fuel-prices#47352
 
 FSE:
 MTOW - 4500
-OEW - 2605
+EW - 2605
 1895 payload (no fuel)
 406 gal
 
@@ -13,6 +13,20 @@ EW - 6565 lb - 2978 kg
 fuel - 2704 lb - 1227 kg
 MTOW - 10495 lb - 4760 kg
 1782 kg payload (no fuel)
+
+Wiki
+MTOW - 4,740 kg (10,450 lb)
+EW - 2,761 kg (5,867 lb)
+1979 payload (no fuel)
+
+FLYINGMAG NG
+Ramp: 10495
+MTOW: 10450
+EW: 6373
+ZFW: 9039
+payload max: 2666
+payload max fuel: 1429
+max fuel: 2693
 
 
 2978+1895=4873 kg, 113 kg over weight, 249 lb
