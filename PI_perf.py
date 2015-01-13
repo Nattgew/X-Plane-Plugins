@@ -550,7 +550,7 @@ class PythonInterface:
 			if dalt is None:
 				print "AP -"+search+"not found, trying FSE airports..."
 				with open(os.path.join('Custom Scenery','zzzz_FSE_Airports','Earth nav data','apt.dat'), 'r') as fdatfile:
-					for search in fdatfile:
+					for line in fdatfile:
 						if search in line:
 							params=line.split()
 							dalt=int(params[1])
