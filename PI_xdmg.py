@@ -201,7 +201,7 @@ class PythonInterface:
 		pass
 
 	def MixTape(self, m):
-		print "XDMG = Setting mixture "+str(round(m,2))
+		#print "XDMG = Setting mixture "+str(round(m,2))
 		XPLMSetDatavf(self.mix_ref, [m, m, m, m, m, m, m, m], 0, self.num_eng)
 	
 	def CPtoggle(self):
