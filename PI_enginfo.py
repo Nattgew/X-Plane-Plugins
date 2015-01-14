@@ -14,6 +14,7 @@ class PythonInterface:
 		self.VERSION="1.0"
 		
 		self.acf_desc_ref=XPLMFindDataRef("sim/aircraft/view/acf_descrip")
+		self.num_eng_ref=XPLMFindDataRef("sim/aircraft/engine/acf_num_engines")
 		# self.RPM_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_N2_")
 		# self.CHT_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_CHT_c")
 		# self.ITT_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_ITT_c")
@@ -22,7 +23,6 @@ class PythonInterface:
 		# self.ITTr_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_ITT")
 		# self.EGTr_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_EGT")
 		# self.mix_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_mixt")
-		# self.num_eng_ref=XPLMFindDataRef("sim/aircraft/engine/acf_num_engines")
 		# self.m_EGT_ref=XPLMFindDataRef("sim/aircraft/engine/acf_max_EGT")
 		# self.m_ITT_ref=XPLMFindDataRef("sim/aircraft/engine/acf_max_ITT")
 		# self.m_CHT_ref=XPLMFindDataRef("sim/aircraft/engine/acf_max_CHT")
@@ -50,9 +50,9 @@ class PythonInterface:
 		# self.ind_EGT_ref=XPLMFindDataRef("sim/cockpit2/engine/indicators/EGT_deg_C")
 		# self.ind_CHT_ref=XPLMFindDataRef("sim/cockpit2/engine/indicators/CHT_deg_C")
 		
-		self.wgt_MTOW_ref=XPLMFindDataRef("sim/aircraft/weight/acf_m_max")	#?
-		self.wgt_EW_ref=XPLMFindDataRef("sim/aircraft/weight/acf_m_empty")	#?
-		self.wgt_flb_ref=XPLMFindDataRef("sim/aircraft/weight/acf_m_fuel_tot")	#float	660+	yes	lbs
+		self.wgt_MTOW_ref=XPLMFindDataRef("sim/aircraft/weight/acf_m_max")	#MTOW lbs
+		self.wgt_EW_ref=XPLMFindDataRef("sim/aircraft/weight/acf_m_empty")	#EW lbs
+		self.wgt_flb_ref=XPLMFindDataRef("sim/aircraft/weight/acf_m_fuel_tot")	#Current weight lbs
 		
 		self.wgt_pld_ref=XPLMFindDataRef("sim/flightmodel/weight/m_fixed")	#float	660+	yes	kgs	payload
 		self.wgt_tot_ref=XPLMFindDataRef("sim/flightmodel/weight/m_total")	#float	660+	no	kgs
