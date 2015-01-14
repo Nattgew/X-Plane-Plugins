@@ -4,5 +4,11 @@ Test CL30 warnings
 
 Test CL30 landing altitude
 * Double check flight with manual set before takeoff - no change
-* Double check flight with FMS1/2 set before takeoff
+* Double check flight with FMS1/2 set before takeoff - no change
 * Double check following checklist from "cold and dark" - no change
+* Double check with new version
+
+Test CL30 electrical bus
+* Make sure on first load the tie is connected
+
+Get capture of FSE POST
