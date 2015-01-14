@@ -1,6 +1,6 @@
 Bus Tie
 
-With the new 10.31 upate, using the "start with engines running" option in X-Plane, the electric bus tie is closed (connected) after loading the plane. Connecting the APU generator, and then disconnecting it, opens the bus tie. The bus tie will close again if engines are cut (hardware mixture lever), or if ground power is applied, and you have to cycle the APU switch again to open the tie.
+With the new 10.31 upate, using the "start with engines running" option in X-Plane, the electric bus tie is closed (connected) after loading the plane. Connecting the APU generator, and then disconnecting it, opens the bus tie. The bus tie will close again if engines are cut (hardware mixture lever), or if ground power is applied, and you have to cycle the APU generator again to open the tie.
 
 
 
