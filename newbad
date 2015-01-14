@@ -1,6 +1,6 @@
 Bus Tie
 
-With the new 10.31 upate, using the "start with engines running" option in X-Plane, the electric bus tie is closed (connected) after loading the plane. Connecting the APU generator, and then disconnecting it, opens the bus tie. The bus tie will close again if engines are cut (hardware mixture lever), or if ground power is applied, and you have to cycle the APU generator again to open the tie.
+With the new 10.31 upate, using the "start with engines running" option in X-Plane, the electric bus tie is closed (connected) after loading the plane. Connecting the APU generator, and then disconnecting it, opens the bus tie. The bus tie will close again if engines are cut (hardware mixture lever), or if ground power is applied, and you have to cycle the APU generator again to open the tie. It's not a big deal, the APU should probably be running before I cut the engines, but I'm just wondering if this is the intended behavior.
 
 
 
@@ -8,8 +8,8 @@ Performance
 
 I noticed that fuel burn and flight performance were mentioned as being changed in the recent update. Here is what I found in my initial flights.
 
-I generally climb at 250 kias to 10,000 feet, then 270 kias to M0.76, and then cruise at M0.80. Previously the plane generally had an L/D of 11 to 15, clean configuration at normal speeds. Now it maxes out around 12 in cruise, and is 10 or lower at lower altitudes. This means more thrust (and fuel burn) required to hold a speed, slower climb speeds, and harder to maintain cruise speed.
+I generally climb at 250 kias to 10,000 feet, then 270 kias to M0.76, and then cruise at M0.80. Previously the plane generally had an L/D of 11 to 15, clean configuration at normal speeds. Now it maxes out around 12 in cruise, and is 10 or lower at lower altitudes/higher speeds. This means more thrust (and fuel burn) required to hold a speed, slower climb speeds, and harder to maintain cruise speed. I can reach FL410 within 20 minutes, but higher weights struggle to get that high now.
 
-Which leads me to fuel burn. Previously I was getting about 270 gph from takeoff to landing. Things online seem to suggest 270 gph or lower is standard, so that matches well. With the update (and lower L/D), it now burns more fuel, my tests have averaged 290 gph. I used to be able to get under 800 lb/h in each engine during cruise easily. Now, even at light load and high altitude, it's over 800 lb/h per engine. This corresponds to about 240 gph total, but it burns three times that in initial climb, and only half that in descent. Cruise requires more fuel flow at lower altitudes, but, strangely, idle requires less.
+Which leads me to fuel burn. Previously I was getting about 270 gph from takeoff to landing. Things online seem to suggest 270 gph or lower is standard, so that matches well. With the update (and lower L/D), it now burns more fuel, my tests have averaged 290 gph. I used to be able to get under 800 lb/h in each engine during cruise easily. Now, even at light load and high altitude, it's over 800 lb/h per engine. This corresponds to about 240 gph total, but it burns three times that in initial climb, and only half that in descent. Cruise requires more fuel flow at lower altitudes, but, strangely, idle requires less. Descent planning hasn't changed much though because idle thrust seems to have also gone up.
 
-These test flights were at low weights, only 6*170lb passengers, and 3500 lb of fuel.
+Most test flights were at low weights, only 6*170lb passengers, and 3500 lb of fuel.
