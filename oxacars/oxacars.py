@@ -1,4 +1,4 @@
-#import os
+import os
 #import sys
 from math import *
 from urllib import urlopen
@@ -54,7 +54,7 @@ class PythonInterface:
 	def XPluginStart(self):
 		self.Name="OXACARS 1.0"
 		self.Sig= "natt.python.oxacars"
-		self.Desc="XACARS plugin for the 64-bit Linux"
+		self.Desc="XACARS plugin for 64-bit Linux"
 		self.VERSION="1.0"
 		
 		OXItem=XPLMAppendMenuItem(XPLMFindPluginsMenu(), "OXACARS py", 0, 1)
@@ -129,22 +129,30 @@ class PythonInterface:
 		self.DATA1v1="XACARS|1.1"
 		self.DATA1v2="XACARS|2.0"
 
-		self.testvalues=1
-		default=1
-		if default==1:
-			self.pirepurl="http://www.xacars.net/acars/pirep.php"
-			self.acarsurl="http://www.xacars.net/acars/liveacars.php"
-			self.fdurl="http://www.xacars.net/acars/flightdata.php"
-			self.Ppass="xactestingpass"
-			uname="xactesting"
-			self.PID="XAC1001"
-		else:
-			self.pirepurl="http://www.swavirtual.com/wn/xacars/pirep.php"
-			self.acarsurl="http://www.swavirtual.com/wn/xacars/liveacars.php"
-			self.fdurl="http://www.swavirtual.com/wn/xacars/flightdata.php"
-			self.Ppass="pass"
-			uname="uname"
-			self.PID="pid"
+		self.pirepurl="http://www.xacars.net/acars/pirep.php"
+		self.acarsurl="http://www.xacars.net/acars/liveacars.php"
+		self.fdurl="http://www.xacars.net/acars/flightdata.php"
+		self.Ppass="xactestingpass"
+		uname="xactesting"
+		self.PID="XAC1001"
+		
+		with open(os.path.join('Resources','plugins','PythonScripts','oxacars','settings.txt'), 'r') as settings:
+			for line in settings:
+				fields=line.split("=")
+				if "PIREP" in line:
+					self.pirepurl=fields[1]
+				elif "ACARS" in line:
+					self.acarsurl=fields[1]
+				elif "FD" in line:
+					self.fdurl=fields[1]
+				elif "password" in line:
+					self.Ppass=fields[1]
+				elif "username" in line:
+					self.Ppass=fields[1]
+				elif "PID" in line:
+					self.PID=fields[1]
+				else:
+					print "OXACARS - settings line not recognized"
 		
 		self.dist_trav_ref=XPLMFindDataRef("sim/flightmodel/controls/dist")  # float 660+ yes meters Distance Traveled
 		self.eng_run_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_running")  # int[8] boolean
