@@ -1,0 +1,43 @@
+XPLMSetDataf(XPLMFindDataRef("sim/private/controls/clouds/cloud_shadow_lighten_ratio"),       0.85 )
+XPLMSetDataf(XPLMFindDataRef("sim/private/controls/atmo/atmo_scale_raleigh"),        20.0 )
+XPLMSetDataf(XPLMFindDataRef("sim/private/controls/atmo/inscatter_gain_mie"),     5.0 )
+XPLMSetDataf(XPLMFindDataRef("sim/private/controls/atmo/inscatter_gain_raleigh"),        10.0 )
+XPLMSetDataf(XPLMFindDataRef("sim/private/controls/atmo/scatter_raleigh_b"),         40 )
+XPLMSetDataf(XPLMFindDataRef("sim/private/controls/atmo/scatter_raleigh_g"),      10.30 )
+XPLMSetDataf(XPLMFindDataRef("sim/private/controls/atmo/scatter_raleigh_r"),    0.010 )
+XPLMSetDataf(XPLMFindDataRef("sim/private/controls/skyc/white_out_in_clouds"),     0.5 )
+XPLMSetDataf(XPLMFindDataRef("sim/private/controls/clouds/plot_radius"),    1.20 )
+XPLMSetDataf(XPLMFindDataRef("sim/private/controls/clouds/soft_occlude"),  1.00 )
+XPLMSetDataf(XPLMFindDataRef("sim/private/controls/skyc/mie_scattering_foggy"),  25.000 )
+XPLMSetDataf(XPLMFindDataRef("sim/private/controls/skyc/mie_scattering_ocast"),  7.00 )
+XPLMSetDataf(XPLMFindDataRef("sim/private/controls/lights/bloom_far"), 3000.00 )
+XPLMSetDataf(XPLMFindDataRef("sim/private/controls/lights/bloom_near"), 120.00 )
+XPLMSetDataf(XPLMFindDataRef("sim/private/controls/lights/mix_big"), 80.000 )
+XPLMSetDataf(XPLMFindDataRef("sim/private/controls/lights/mix_small"), 25.00)
+XPLMSetDataf(XPLMFindDataRef("sim/private/controls/lights/bloom_for_zoom"), 0.60)
+XPLMSetDataf(XPLMFindDataRef("sim/private/controls/hdr/gain_min"), -4.8)
+XPLMSetDataf(XPLMFindDataRef("sim/private/controls/clouds/ambient_gain"), 4.0)
+
+
+hdr/gain_min=-2.8
+atmo/atmo_scale_raleigh=20.000
+atmo/inscatter_gain_mie=2.000
+atmo/inscatter_gain_raleigh=13.000
+atmo/scatter_raleigh_b=10.000
+atmo/scatter_raleigh_g=2.800
+atmo/scatter_raleigh_r=0.010
+
+
+defineProperty("CloudShadowLightenRatio", globalPropertyf("sim/private/controls/clouds/cloud_shadow_lighten_ratio")) set(CloudShadowLightenRatio, 0.8)
+defineProperty("AtmoScaleRaleigh", globalPropertyf("sim/private/controls/atmo/atmo_scale_raleigh")) set(AtmoScaleRaleigh, 25.0)
+defineProperty("AtmoInscatterGainMie", globalPropertyf("sim/private/controls/atmo/atmo/inscatter_gain_mie")) set(AtmoInscatterGainMie, 3.0)
+defineProperty("AtmoInscatterGainRaleigh", globalPropertyf("sim/private/controls/atmo/inscatter_gain_raleigh")) set(AtmoInscatterGainRaleigh, 3.0)
+defineProperty("AtmoScatterRaleighb", globalPropertyf("sim/private/controls/atmo/atmo/scatter_raleigh_b")) set(AtmoScatterRaleighb, 30.64)
+
+
+.) first of all, if you want to minimize the distant blur issue at medium and hi altitudes, set your max visibility to 40-60 miles (the exact value depends on the latitude, just experiment); the visiblity reverts back to the max (100 miles) above the lowest cloud layer, so if you want to retain the limited visibility at altiude, be sure to set the lowest cloud layer altitude at a higher value than the altitude you're flying at; this works even if the cloud layer is set to "clear" (no clouds);
+.) atmo/atmo_scale_raleigh (default value 13) : at low altitude, you can use values in the range 20-40; at high altitude, use values in the lower range (e.g. around 20) otherwise the sky gets too dark;
+.) atmo/inscatter_gain_mie (default value 1) : this controls the distant white-ish atmospheric haze; use values around 3-5 or even lower; if the distant landscape gets too washed out, decrease this value;
+.) atmo/inscatter_gain_raleigh (default value 1) : this controls the blue-ish atmospheric haze; use values similar to, or a little lower than, the atmo_scale_raleigh value you're currently using;
+.) atmo/scatter_raileigh_b (default value 19.6) : this controls the intensity of the blue tint in the haze; this value is very subjective and usually can be varied in a wide range, from 50 to 200;
+.) clouds/clouds_shadow_lighten_ratio (default value 0.5) : this controls the darkness of cloud shadows; use values between 0.8 and 1.0 max; on my PC, cloud shadows heavily flicker when changing the point of view, so they're mainly good for screenshots.
