@@ -212,7 +212,7 @@ class PythonInterface:
 			XPLMCommandOnce(cutoff_toggle_cmd)
 
 	def gameLoopCallback(self, inElapsedSinceLastCall, elapsedSim, counter, refcon):
-		newdmg=0 #Whether to try new damage calculating method
+		newdmg=1 #Whether to try new damage calculating method
 		rpms=[]
 		XPLMGetDatavf(self.RPM_ref, rpms, 0, self.num_eng)
 		if rpms[0]>0:
