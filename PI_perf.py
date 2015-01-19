@@ -310,6 +310,9 @@ class PythonInterface:
 			elif self.acf_short=="B190":
 				climb=-1500
 				alt+=1500
+			elif self.acf_short=="CL30":
+				climb=-2500
+				alt+=2000
 			else:
 				climb=-1000
 				alt+=2000
@@ -541,12 +544,15 @@ class PythonInterface:
 		   # float *              outLon);    /* Can be NULL */
 		XPLMGetFMSEntryInfo(destindex, None, destid, None, None, None, None)
 		dest=str(destid[0])
-		search=" "+dest+" "
+		search0=" 0 0 "+dest+" "
+		search1=" 0 1 "+dest+" "
+		search2=" 1 0 "+dest+" "
+		search3=" 1 1 "+dest+" "
 		if dest != self.current_dest:
 			dalt=None
 			with open(os.path.join('Resources','default scenery','default apt dat','Earth nav data','apt.dat'), 'r') as datfile:
 				for line in datfile:
-					if search in line:
+					if search0 in line or search1 in line or search2 in line or search3 in line:
 						params=line.split()
 						dalt=int(params[1])
 						break
@@ -554,16 +560,17 @@ class PythonInterface:
 				print "AP -"+search+"not found, trying FSE airports..."
 				with open(os.path.join('Custom Scenery','zzzz_FSE_Airports','Earth nav data','apt.dat'), 'r') as fdatfile:
 					for line in fdatfile:
-						if search in line:
+						if search0 in line or search1 in line or search2 in line or search3 in line:
 							params=line.split()
 							dalt=int(params[1])
 							break
 			if dalt is None:
-				print "AP -"+search+"not found, giving up"
+				print "AP - "+dest+" not found, giving up"
 				dalt=0
 			self.current_dest=dest
 			self.elevate_dest=dalt
 		else:
+			print "AP - Reusing elevation value"
 			dalt=self.elevate_dest
 		
 		return dalt
@@ -576,7 +583,7 @@ class PythonInterface:
 		elif AC=="CL30":
 			profile="M.78 to FL350, M.75 to 270kt"
 		elif AC=="DH8D":
-			profs=(238,9000),
+			profs=((238,9000),
 					(250,10000),
 					(277,11000),
 					(260,20000),
@@ -975,7 +982,7 @@ class PythonInterface:
 			dis_ih, dis_il = self.get_index(dis_i, len(dis))
 			cc=self.interp2(ias[dis_ih][alt_il], ias[dis_il][alt_il], ias[dis_ih][alt_ih], ias[dis_il][alt_ih], dis[dis_ih], dis[dis_il], alts[alt_ih], alts[alt_il], delISA, alt)
 			bestCC=str(int(round(cc)))+" kias"
-		elif AC="DH8D":
+		elif AC=="DH8D":
 			wgts=tuple(range(39600,63801,1100))
 			wgts.append(64500)
 			ias=(130,130,130,130,131,133,134,135,137,139,140,141,143,144,146,147,148,150,151,153,154,155,157,158)
