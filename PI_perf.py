@@ -6,6 +6,7 @@ from XPLMDefs import *
 from math import *
 from XPLMUtilities import *
 from XPLMNavigation import *
+import re
 import os
 
 class PythonInterface:
@@ -94,7 +95,7 @@ class PythonInterface:
 		R=8.31432 # gas constant J/mol K
 		g=9.80665 # gravity m/s^2
 		M=0.0289644 # molar mass of dry air kg/mol
-		self.DA_pre=self.T_SL/self.gamma_l
+		self.DA_pre=self.T_SL/self.gamma_l # Numbers for calculating DA
 		self.DA_exp=gamma_u*R/(g*M-gamma_u*R)
 		self.kglb=2.20462262 # kg to lb
 		self.mft=3.2808399 # m to ft
@@ -216,46 +217,55 @@ class PythonInterface:
 			XPLMGetDatab(self.acf_desc_ref, acf_descb, 0, 500)
 			self.acf_short=self.getacfshort(str(acf_descb))
 		dist=XPLMGetDataf(self.gps_dist_ref) #Distance to destination
-		gear=XPLMGetDatai(self.gear_h_pos_ref)
-		alt_ind=XPLMGetDataf(self.alt_ind_ref)
+		gear=XPLMGetDatai(self.gear_h_pos_ref) #Landing gear position
+		alt_ind=XPLMGetDataf(self.alt_ind_ref) #Indicated altitude
 		hdg=XPLMGetDataf(self.mpsi_ref) #Get current heading, attempt to adjust towards GPS course
 		aphdg=XPLMGetDataf(self.gps_degm_ref) #Heading to destination
-		dalt=self.get_dest_info()
+		dalt=ceil(self.get_dest_info()/100)*100 #Destination altitude, round to nearest 100 ft
 		if gear==1:
+			maxcabin=0 #Default assume automatic
 			if self.acf_short=="PC12":
 				ceiling=30
 				maxcabin=10000
-				general_fl=int((dist/10+2)) #General rule for PC-12 cruise altitude
+				general_fl=int(dist/10+2) #General rule for PC-12 cruise altitude
 				climb=1000
 				speed=210
 				gph=60
 			elif self.acf_short=="B190":
 				ceiling=25
 				maxcabin=10000
-				general_fl=int((dist/10+4)) #Faster climb rate at slower speed than PC-12
+				general_fl=int(dist/10+4) #Faster climb rate at slower speed than PC-12
 				climb=2000
 				speed=200
 				gph=110
 			elif self.acf_short=="CL30":
+				T=XPLMGetDataf(self.temp_ref) #deg C
+				delISA=self.getdelISA(alt_ind, T)
+				wgt=XPLMGetDataf(self.wgt_ref)*self.kglb
+				if delISA > 15 or wgt > 35000:
+					factor=1.25 #Slower climb at higher temps/weights
+				else:
+					factor=1.5
 				ceiling=45
-				maxcabin=0 #Automatic
-				general_fl=int((dist/10*1.25)) #Approximate rule
+				general_fl=int(dist/10*factor) #Approximate rule
 				climb=3500
 				speed=380
 				gph=300
+			elif self.acf_short=="DH8D":
+				ceiling=27
+				general_fl=int(dist/10+4) #Approximate rule
+				climb=1500
+				speed=300
+				gph=250
 			else:
 				ceiling=30
-				maxcabin=0
-				general_fl=int((dist/10+2)) #General rule for PC-12 cruise altitude
+				general_fl=int(dist/10+2) #General rule for PC-12 cruise altitude
 				climb=1000
 				speed=0
-				gph=0
 			if speed>0:
 				fuel=dist/speed*gph
 				print "AP fuel estimate: "+str(int(round(fuel)))+" gal"
 				XPLMSetDataf(self.ap_spd_ref, fuel) #Other plugin will show speed change, speed setting not important
-			else:
-				fuel=0
 			general_fl+=int(dalt/1000+alt_ind/1000)/2 #Account for departure/arrival altitudes
 			print "AP - Cruise at "+str(int(round(general_fl)))+" for "+str(int(round(alt_ind)))+"ft "+str(int(round(dist)))+"nm to "+str(dalt)
 			if aphdg<180: #NEodd
@@ -275,27 +285,24 @@ class PythonInterface:
 					else:
 						general_fl=ceiling
 			alt=float(general_fl*1000)
-			if self.acf_short=="CL30":
-				hdginit=aphdg
-			else:
-				turn=hdg-aphdg
-				if turn<0:
-					turn+=360
-				if turn>180: # right turn
-					if aphdg>hdg:
-						offset=(aphdg-hdg)/5
-					else:
-						offset=(360-hdg+aphdg)/5
-				else: # left turn
-					if aphdg<hdg:
-						offset=(aphdg-hdg)/5
-					else:
-						offset=-(360-aphdg+hdg)/5
-				hdginit=aphdg+offset
-				if hdginit>360:
-					hdginit-=360
-				elif hdginit<0:
-					hdginit+=360
+			turn=hdg-aphdg
+			if turn<0:
+				turn+=360
+			if turn>180: # right turn
+				if aphdg>hdg:
+					offset=(aphdg-hdg)/5
+				else:
+					offset=(360-hdg+aphdg)/5
+			else: # left turn
+				if aphdg<hdg:
+					offset=(aphdg-hdg)/5
+				else:
+					offset=-(360-aphdg+hdg)/5
+			hdginit=aphdg+offset
+			if hdginit>360:
+				hdginit-=360
+			elif hdginit<0:
+				hdginit+=360
 		else:
 			alt=dalt
 			hdginit=aphdg
@@ -311,7 +318,7 @@ class PythonInterface:
 				climb=-1500
 				alt+=1500
 			elif self.acf_short=="CL30":
-				climb=-2500
+				climb=-2000
 				alt+=2000
 			else:
 				climb=-1000
@@ -464,8 +471,6 @@ class PythonInterface:
 		dIstr=str(int(round(delISA)))+" "+self.d+"C"
 		if delISA>0:
 			dIstr="+"+dIstr
-		#gspeed=str(int(round(gs)))+" kts"
-		#speed=str(int(round(kias)))+" kias"
 		dist=XPLMGetDataf(self.gps_dist_ref)
 		machstr="  M"+str(round(mach,2))
 		self.msg[0]=self.acf_short+"  DA: "+str(int(round(DenAlt)))+" ft  GW: "+str(int(round(wgt)))+" lb  "+str(int(round(dist)))+"nm"
@@ -490,8 +495,6 @@ class PythonInterface:
 			hwind=self.getHwind()
 			SL==XPLMGetDataf(self.baro_act_ref)
 			ldr=self.getLandingDist(wgt, dalt, delISA, SL, hwind, self.acf_short)
-			#time=XPLMGetDataf(self.gps_time_ref)
-			#dist=XPLMGetDataf(self.gps_dist_ref)
 			ddist=self.getDesc(dist, alt, dalt, DenAlt, delISA, self.acf_short)
 			dprof=self.getDpro(self.acf_short, alt)
 			#Assemble the message
@@ -525,7 +528,7 @@ class PythonInterface:
 			AC="C208"
 		elif acf_desc=="['DeHavilland Dash 8 Q400']":
 			AC="DH8D"
-			self.flaps=(0.25,0.5,0.75,1.0) #5 10 15 35
+			self.flaps=(0.25,0.5,0.75,1.0) #FIX ME 5 10 15 35
 		else:
 			AC=acf_desc
 			print str(acf_desc[0:8])
@@ -534,33 +537,26 @@ class PythonInterface:
 	def get_dest_info(self): #Get info about destination (aka "crash x-plane")
 		destindex=XPLMGetDisplayedFMSEntry()
 		destid=[]
-		# XPLMGetFMSEntryInfo(
-		   # int                  inIndex,    
-		   # XPLMNavType *        outType,    /* Can be NULL */
-		   # char *               outID,    /* Can be NULL */
-		   # XPLMNavRef *         outRef,    /* Can be NULL */
-		   # int *                outAltitude,    /* Can be NULL */
-		   # float *              outLat,    /* Can be NULL */
-		   # float *              outLon);    /* Can be NULL */
 		XPLMGetFMSEntryInfo(destindex, None, destid, None, None, None, None)
 		dest=str(destid[0])
-		search0=" 0 0 "+dest+" "
-		search1=" 0 1 "+dest+" "
-		search2=" 1 0 "+dest+" "
-		search3=" 1 1 "+dest+" "
+		
+		regex = re.compile(r'\b[0-1]\b[0-1]\b'%dest%r'\b')
+
 		if dest != self.current_dest:
 			dalt=None
 			with open(os.path.join('Resources','default scenery','default apt dat','Earth nav data','apt.dat'), 'r') as datfile:
 				for line in datfile:
-					if search0 in line or search1 in line or search2 in line or search3 in line:
+					match = regex.search(line)
+					if match:
 						params=line.split()
 						dalt=int(params[1])
 						break
 			if dalt is None:
-				print "AP -"+search+"not found, trying FSE airports..."
+				print "AP - "+dest+" not found, trying FSE airports..."
 				with open(os.path.join('Custom Scenery','zzzz_FSE_Airports','Earth nav data','apt.dat'), 'r') as fdatfile:
 					for line in fdatfile:
-						if search0 in line or search1 in line or search2 in line or search3 in line:
+						match = regex.search(line)
+						if match:
 							params=line.split()
 							dalt=int(params[1])
 							break
@@ -570,7 +566,7 @@ class PythonInterface:
 			self.current_dest=dest
 			self.elevate_dest=dalt
 		else:
-			print "AP - Reusing elevation value"
+			print "AP - Reusing elevation value for "+dest
 			dalt=self.elevate_dest
 		
 		return dalt
@@ -590,7 +586,7 @@ class PythonInterface:
 					(250,21000),
 					(240,24000),
 					(233,27000))
-			for i in range(len(profs)-1,0):
+			for i in range(7,0):
 				if alt>profs[i][1]:
 					profile=profs[i][0]+" kias to "+profs[i][1]
 			# if alt>25000:
@@ -859,9 +855,9 @@ class PythonInterface:
 					wgt_i=(wgt-63800)/700
 				wgt_ih, wgt_il = self.get_index(wgt_i, len(wgts))
 				vr=self.interp(ias[flap_i][wgt_ih], ias[flap_i][wgt_il], wgts[wgt_ih], wgts[wgt_il], wgt)
-				Vref=str(int(round(vr)))+" kias"
+				Vref="  Vref: "+str(int(round(vr)))+" kias"
 		else:
-			Vref="N/A"
+			Vref=""
 		return Vref
 
 	def getV1(self, flaps, wgt, DA, T, AC): #Get V1 speed
@@ -902,7 +898,7 @@ class PythonInterface:
 					if v1s[flap_i][wgt_il]!=0:
 						v1f=v1s[flap_i][wgt_il]
 					else: #Zero value means V1 is too high
-						V1="> V1max"
+						V1="  V1 > V1max"
 				else:
 					while v1s[flap_i][wgt_ih]==0 or v1s[flap_i][wgt_il]==0:
 						wgt_il-=1
@@ -920,7 +916,7 @@ class PythonInterface:
 				if round(flaps,1) == self.flaps[i]:
 					flap_i=i
 			if flap_i==-1:
-				V1=""
+				V1="  V1: Check Flaps"
 			else:
 				if wgt<10000:
 					wgt_i=wgt/900-64/9
@@ -949,7 +945,7 @@ class PythonInterface:
 					wgt_i=(wgt-63800)/700
 				wgt_ih, wgt_il = self.get_index(wgt_i, len(wgts))
 				vr=self.interp(ias[flap_i][wgt_ih], ias[flap_i][wgt_il], wgts[wgt_ih], wgts[wgt_il], wgt)
-				V1=str(int(round(vr)))+" kias"
+				V1="  V1: "+str(int(round(vr)))+" kias"
 		else:
 			V1=""
 		return V1
