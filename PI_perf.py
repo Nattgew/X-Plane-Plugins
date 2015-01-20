@@ -26,7 +26,12 @@ class PythonInterface:
 			fhi=1
 		return (fhi, flo)
 		
-	def get_topwr(self, elapsed): #Iterate countdown timer for takeoff power
+	def get_topwr(self, init): #Iterate countdown timer for takeoff power
+		flightTimer=XPLMGetDataf(self.flighttime_ref)
+		if self.TO_pwr==init: #Haven't started counting yet
+			self.flightTimerLast=flightTimer-1 #Assume 1 second elapsed
+		elapsed=flightTimer-self.flightTimerLast
+		self.flightTimerLast=flightTimer
 		self.TO_pwr-=elapsed
 		counter_m=int(self.TO_pwr/60)
 		counter_s=int(self.TO_pwr%60)
@@ -129,6 +134,7 @@ class PythonInterface:
 		self.flap_pos_ref=XPLMFindDataRef("sim/flightmodel2/controls/flap_handle_deploy_ratio") # actual position
 		self.flap_h_pos_ref=XPLMFindDataRef("sim/cockpit2/controls/flap_ratio") # handle position
 		self.gear_h_pos_ref=XPLMFindDataRef("sim/cockpit2/controls/gear_handle_down")
+		self.throt_pos_ref=XPLMFindDataRef("sim/cockpit2/engine/actuators/throttle_ratio_all") # throttle position
 		#self.gps_dme_ref=XPLMFindDataRef("sim/cockpit2/radios/indicators/gps_dme_distance_nm")
 		self.gps_degm_ref=XPLMFindDataRef("sim/cockpit2/radios/indicators/gps_bearing_deg_mag")
 		self.gps_time_ref=XPLMFindDataRef("sim/cockpit/radios/gps_dme_time_secs")
@@ -147,6 +153,7 @@ class PythonInterface:
 		self.ap_spd_ref=XPLMFindDataRef("sim/cockpit/autopilot/airspeed")
 		self.cab_alt_ref=XPLMFindDataRef("sim/cockpit/pressure/cabin_altitude_set_m_msl")
 		self.cab_max_ref=XPLMFindDataRef("sim/cockpit/pressure/max_allowable_altitude")
+		self.flighttime_ref=XPLMFindDataRef("sim/time/total_flight_time_sec")
 		
 		self.started=0
 		self.Dstarted=0
@@ -221,8 +228,8 @@ class PythonInterface:
 		alt_ind=XPLMGetDataf(self.alt_ind_ref) #Indicated altitude
 		hdg=XPLMGetDataf(self.mpsi_ref) #Get current heading, attempt to adjust towards GPS course
 		aphdg=XPLMGetDataf(self.gps_degm_ref) #Heading to destination
-		dalt=ceil(self.get_dest_info()/100)*100 #Destination altitude, round to nearest 100 ft
-		if gear==1:
+		dalt=ceil(self.get_dest_info()/100)*100 #Destination altitude, round up to nearest 100 ft
+		if gear==1: #If gear down, set AP for climb to destination
 			maxcabin=0 #Default assume automatic
 			if self.acf_short=="PC12":
 				ceiling=30
@@ -303,11 +310,11 @@ class PythonInterface:
 				hdginit-=360
 			elif hdginit<0:
 				hdginit+=360
-		else:
+		else: #If gear up, set AP for descent to destination
 			alt=dalt
 			hdginit=aphdg
 			if self.acf_short=="PC12":
-				if alt_ind>20000:
+				if alt_ind>22000:
 					climb=-1300
 				elif alt_ind>15000:
 					climb=-1200
@@ -399,58 +406,11 @@ class PythonInterface:
 		T=XPLMGetDataf(self.temp_ref) #deg C
 		alt=XPLMGetDataf(self.alt_ref)*self.mft
 		wgt=XPLMGetDataf(self.wgt_ref)*self.kglb
-		alt_ind=XPLMGetDataf(self.alt_ind_ref)
-		kias=XPLMGetDataf(self.ias_ref)
-		gs=XPLMGetDataf(self.gs_ref)*self.mkt
 		mach=XPLMGetDataf(self.mach_ref)
 		DenAlt=self.getDA(P,T) #ft
 		delISA=self.getdelISA(alt, T)
 		dalt=None
-		if self.eng_type[0]==2 or self.eng_type[0]==8: #Turboprop
-			TRQ=[]
-			XPLMGetDatavf(self.TRQ_ref, TRQ, 0, self.num_eng)
-			pwr=str(round(TRQ[0],1))+" Nm"
-			if self.acf_short=="B190":
-				torque_ftlb1=self.Nlb*self.mft*TRQ[0]
-				torque_ftlb2=self.Nlb*self.mft*TRQ[1]
-				pwr=str(int(round(torque_ftlb1)))+"|"+str(int(round(torque_ftlb2)))+" ftlb"
-				if torque_ftlb1>3750.0 or torque_ftlb2>3750.0: #Takeoff power
-					TOP_str=self.get_topwr(inElapsedSinceLastCall)
-				else:
-					self.TO_pwr=300
-					TOP_str=""
-			elif self.acf_short=="PC12":
-				torque_psi=self.Npsi*TRQ[0]
-				pwr=str(round(torque_psi,1))+" psi"
-				if torque_psi>37.0: #Takeoff power
-					TOP_str=self.get_topwr(inElapsedSinceLastCall)
-				else:
-					self.TO_pwr=300
-					TOP_str=""
-			else:
-				torque_ftlb=self.Nlb*self.mft*TRQ[0]
-				pwr=str(round(torque_ftlb,1))+" ftlb"
-				TOP_str=""
-		elif self.eng_type[0]==4 or self.eng_type[0]==5: #Jet
-			N1=[]
-			XPLMGetDatavf(self.N1_ref, N1, 0, self.num_eng)
-			if self.acf_short=="B738" or self.acf_short=="CL30":
-				pwr=str(round(N1[0],1))+"|"+str(round(N1[1],1))+" %N1"
-				TOP_str=""
-			else:
-				pwr=str(round(N1[0],1))+" %N1"
-				TOP_str=""
-		else: #Piston
-			if self.prop_type[0]==0: #Fixed pitch
-				RPM=[]
-				XPLMGetDatavf(self.RPM_ref, RPM, 0, self.num_eng)
-				pwr=str(int(round(RPM[0]*60/pi)))+" rpm"
-				TOP_str=""
-			else: #Variable pitch?
-				EGT=[]
-				XPLMGetDatavf(self.EGT_ref, EGT, 0, self.num_eng)
-				pwr=str(int(round(EGT[0]*60/pi)))+"C EGT"
-				TOP_str=""
+		pwr, TOP_str = self.getPower()
 		gears=[]
 		XPLMGetDatavf(self.geardep_ref, gears, 0, 10)
 		if gears[0]==1: #Landing or taking off
@@ -476,8 +436,10 @@ class PythonInterface:
 		self.msg[0]=self.acf_short+"  DA: "+str(int(round(DenAlt)))+" ft  GW: "+str(int(round(wgt)))+" lb  "+str(int(round(dist)))+"nm"
 		self.msg[1]="T: "+str(int(round(T)))+" "+self.d+"C  ISA +/-: "+dIstr+TOP_str+machstr
 		vvi=XPLMGetDataf(self.vvi_ref)
-		#if vvi>-500:
 		if self.Dstarted==0:
+			gs=XPLMGetDataf(self.gs_ref)*self.mkt
+			alt_ind=XPLMGetDataf(self.alt_ind_ref)
+			kias=XPLMGetDataf(self.ias_ref)
 			maxPwr=self.getMaxPwr(DenAlt, delISA, self.acf_short)
 			cruiseclb=self.getCC(DenAlt, alt, delISA, wgt, self.acf_short)
 			cruise=self.getCruise(DenAlt, wgt, alt_ind, delISA, self.acf_short)
@@ -513,7 +475,7 @@ class PythonInterface:
 		
 		return delay
 		
-	def getacfshort(self, acf_desc): #Use short name to ID A/C type
+	def getacfshort(self, acf_desc): #Return short name to ID A/C type
 		if acf_desc[0:27]=="['Boeing 737-800 xversion 4":
 			AC="B738"
 			self.flaps=(0.125,0.375,0.625,0.875,1.0) #1 5 15 30 40
@@ -533,15 +495,70 @@ class PythonInterface:
 			AC=acf_desc
 			print str(acf_desc[0:8])
 		return AC
+	
+	def getPower(self): #Return power level, determine takeoff power
+		if self.eng_type[0]==2 or self.eng_type[0]==8: #Turboprop
+			TRQ=[]
+			XPLMGetDatavf(self.TRQ_ref, TRQ, 0, self.num_eng)
+			pwr=str(round(TRQ[0],1))+" Nm"
+			if self.acf_short=="B190":
+				torque_ftlb1=self.Nlb*self.mft*TRQ[0]
+				torque_ftlb2=self.Nlb*self.mft*TRQ[1]
+				pwr=str(int(round(torque_ftlb1)))+"|"+str(int(round(torque_ftlb2)))+" ftlb"
+				if torque_ftlb1>3750.0 or torque_ftlb2>3750.0: #Takeoff power
+					TOP_str=self.get_topwr(300)
+				else:
+					self.TO_pwr=300
+					TOP_str=""
+			elif self.acf_short=="PC12":
+				torque_psi=self.Npsi*TRQ[0]
+				pwr=str(round(torque_psi,1))+" psi"
+				if torque_psi>37.0: #Takeoff power
+					TOP_str=self.get_topwr(300)
+				else:
+					self.TO_pwr=300
+					TOP_str=""
+			else:
+				torque_ftlb=self.Nlb*self.mft*TRQ[0]
+				pwr=str(round(torque_ftlb,1))+" ftlb"
+				TOP_str=""
+		elif self.eng_type[0]==4 or self.eng_type[0]==5: #Jet
+			N1=[]
+			XPLMGetDatavf(self.N1_ref, N1, 0, self.num_eng)
+			if self.acf_short=="B738":
+				pwr=str(round(N1[0],1))+"|"+str(round(N1[1],1))+" %N1"
+				TOP_str=""
+			elif self.acf_short=="CL30":
+				pwr=str(round(N1[0],1))+"|"+str(round(N1[1],1))+" %N1"
+				throt=XPLMGetDataf(self.throt_pos_ref)
+				if throt>0.93: #Takeoff power FIX ME
+					TOP_str=self.get_topwr(300)
+				else:
+					self.TO_pwr=300
+					TOP_str=""
+			else:
+				pwr=str(round(N1[0],1))+" %N1"
+				TOP_str=""
+		else: #Piston
+			if self.prop_type[0]==0: #Fixed pitch
+				RPM=[]
+				XPLMGetDatavf(self.RPM_ref, RPM, 0, self.num_eng)
+				pwr=str(int(round(RPM[0]*60/pi)))+" rpm"
+				TOP_str=""
+			else: #Variable pitch?
+				EGT=[]
+				XPLMGetDatavf(self.EGT_ref, EGT, 0, self.num_eng)
+				pwr=str(int(round(EGT[0])))+"C EGT"
+				TOP_str=""
+		
+		return pwr, TOP_str
 		
 	def get_dest_info(self): #Get info about destination (aka "crash x-plane")
 		destindex=XPLMGetDisplayedFMSEntry()
 		destid=[]
 		XPLMGetFMSEntryInfo(destindex, None, destid, None, None, None, None)
 		dest=str(destid[0])
-		
-		regex = re.compile(r'\b[0-1]\b[0-1]\b'%dest%r'\b')
-
+		regex = re.compile(r'\b[01] [01] '+dest+r'\b')
 		if dest != self.current_dest:
 			dalt=None
 			with open(os.path.join('Resources','default scenery','default apt dat','Earth nav data','apt.dat'), 'r') as datfile:
@@ -579,26 +596,31 @@ class PythonInterface:
 		elif AC=="CL30":
 			profile="M.78 to FL350, M.75 to 270kt"
 		elif AC=="DH8D":
-			profs=((238,9000),
-					(250,10000),
-					(277,11000),
-					(260,20000),
-					(250,21000),
-					(240,24000),
-					(233,27000))
-			for i in range(7,0):
+			profs=((238,0),
+				(250,10000),
+				(277,11000),
+				(260,20000),
+				(250,21000),
+				(240,24000),
+				(233,27000))
+			for i in range(6,-1,-1):
 				if alt>profs[i][1]:
-					profile=profs[i][0]+" kias to "+profs[i][1]
-			# if alt>25000:
-				# profile="240 kias to FL250"
-			# elif alt>23000:
-				# profile="250 kias to FL230"
+					profile=str(profs[i][0])+" kias to "+str(profs[i][1])
+					break
+			# if alt>27000:
+				# profile="233 kias to FL270"
+			# elif alt>24000:
+				# profile="240 kias to FL240"
 			# elif alt>21000:
-				# profile="260 kias to FL180"
+				# profile="250 kias to FL210"
+			# elif alt>20000:
+				# profile="260 kias to FL200"
+			# elif alt>11000:
+				# profile="277 kias to 11000"
 			# elif alt>10000:
-				# profile="277 kias to 10000"
+				# profile="250 kias to 10000"
 			# else:
-				# profile="250 kias"
+				# profile="230 kias to land"
 		else:
 			profile="Have fun"
 		return profile
@@ -627,7 +649,7 @@ class PythonInterface:
 				alt_ih-=1
 			ddist_nm=self.interp2(dnms[isa_ih][alt_il], dnms[isa_il][alt_il], dnms[isa_ih][alt_ih], dnms[isa_il][alt_ih], isas[isa_ih], isas[isa_il], alts[alt_ih], alts[alt_il], delISA, DA) #Interpolate table to find value\
 			ddist=str(int(round(ddist_nm)))+"nm"
-		elif AC=="DH8D": #fix me
+		elif AC=="DH8D":
 			alts=tuple(range(2000,24001,2000))
 			alts.append(25000)
 			alts.append(27000)
