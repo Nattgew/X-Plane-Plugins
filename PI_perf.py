@@ -1,13 +1,14 @@
-from XPLMProcessing import *
-from XPLMDataAccess import *
-from XPLMDisplay import *
-from XPLMGraphics import *
-from XPLMDefs import *
-from math import *
-from XPLMUtilities import *
-from XPLMNavigation import *
+from XPLMProcessing import * #Flight loops
+from XPLMDataAccess import * #Datarefs
+from XPLMDisplay import * #Draw window
+from XPLMGraphics import * #Draw things
+from XPLMDefs import * #Object definitions
+from XPLMUtilities import * #Commands
+from XPLMNavigation import * #Nav/FMS tools
+import math
 import re
 import os
+import fileinput
 
 class PythonInterface:
 
@@ -16,8 +17,8 @@ class PythonInterface:
 		return F
 
 	def get_index(self, i, length): #Make sure the index is not outside the bounds of the array
-		flo=int(floor(i))
-		fhi=int(ceil(i))
+		flo=int(math.floor(i))
+		fhi=int(math.ceil(i))
 		if fhi>length-1:
 			flo=length-2
 			fhi=length-1
@@ -78,13 +79,13 @@ class PythonInterface:
 	def getPress(self, alt, SL): #Get pressure from altitude and SL pressure (like a reverse altimeter)
 		P=-0.000000000000071173*alt**3+0.000000014417*alt**2*-0.0010722*alt+SL
 		return P
-		
+	
 	def getHwind(self): #Get headwind based on wind speed, wind direction, and aircraft heading
 		wdir=XPLMGetDataf(self.wind_dir_ref)
 		wspd=XPLMGetDataf(self.wind_spd_ref)
 		tpsi=XPLMGetDataf(self.tpsi_ref)
 		theta=radians(wdir-tpsi)
-		hwind=wspd*cos(theta)
+		hwind=wspd*math.cos(theta)
 		return hwind
 	
 	def XPluginStart(self):
@@ -157,10 +158,10 @@ class PythonInterface:
 		
 		self.started=0
 		self.Dstarted=0
-		self.msg=[]
-		for i in range(0,5):
-			self.msg.append("")
-		self.msg[0]="Starting..."
+		self.msg=[""]*5
+		# for i in range(0,5):
+			# self.msg.append("")
+		# self.msg[0]="Starting..."
 		winPosX=20
 		winPosY=700
 		win_w=270
@@ -223,103 +224,18 @@ class PythonInterface:
 			acf_descb=[]
 			XPLMGetDatab(self.acf_desc_ref, acf_descb, 0, 500)
 			self.acf_short=self.getacfshort(str(acf_descb))
-		dist=XPLMGetDataf(self.gps_dist_ref) #Distance to destination
 		gear=XPLMGetDatai(self.gear_h_pos_ref) #Landing gear position
 		alt_ind=XPLMGetDataf(self.alt_ind_ref) #Indicated altitude
-		hdg=XPLMGetDataf(self.mpsi_ref) #Get current heading, attempt to adjust towards GPS course
 		aphdg=XPLMGetDataf(self.gps_degm_ref) #Heading to destination
-		dalt=ceil(self.get_dest_info()/100)*100 #Destination altitude, round up to nearest 100 ft
+		dalt=math.ceil(self.get_dest_info()/100)*100 #Destination altitude, round up to nearest 100 ft
 		if gear==1: #If gear down, set AP for climb to destination
-			maxcabin=0 #Default assume automatic
-			if self.acf_short=="PC12":
-				ceiling=30
-				maxcabin=10000
-				general_fl=int(dist/10+2) #General rule for PC-12 cruise altitude
-				climb=1000
-				speed=210
-				gph=60
-			elif self.acf_short=="B190":
-				ceiling=25
-				maxcabin=10000
-				general_fl=int(dist/10+4) #Faster climb rate at slower speed than PC-12
-				climb=2000
-				speed=200
-				gph=110
-			elif self.acf_short=="CL30":
-				T=XPLMGetDataf(self.temp_ref) #deg C
-				delISA=self.getdelISA(alt_ind, T)
-				wgt=XPLMGetDataf(self.wgt_ref)*self.kglb
-				if delISA > 15 or wgt > 35000:
-					factor=1.25 #Slower climb at higher temps/weights
-				else:
-					factor=1.5
-				ceiling=45
-				general_fl=int(dist/10*factor) #Approximate rule
-				climb=3500
-				speed=380
-				gph=300
-			elif self.acf_short=="DH8D":
-				ceiling=27
-				general_fl=int(dist/10+4) #Approximate rule
-				climb=1500
-				speed=300
-				gph=250
-			else:
-				ceiling=30
-				general_fl=int(dist/10+2) #General rule for PC-12 cruise altitude
-				climb=1000
-				speed=0
-			if speed>0:
-				fuel=dist/speed*gph
-				print "AP fuel estimate: "+str(int(round(fuel)))+" gal"
-				XPLMSetDataf(self.ap_spd_ref, fuel) #Other plugin will show speed change, speed setting not important
-			general_fl+=int(dalt/1000+alt_ind/1000)/2 #Account for departure/arrival altitudes
-			print "AP - Cruise at "+str(int(round(general_fl)))+" for "+str(int(round(alt_ind)))+"ft "+str(int(round(dist)))+"nm to "+str(dalt)
-			if aphdg<180: #NEodd
-				if general_fl%2==0:
-					general_fl-=1
-				if general_fl>ceiling:
-					if ceiling%2==0:
-						general_fl=ceiling-1
-					else:
-						general_fl=ceiling
-			else: #SWeven
-				if general_fl%2==1:
-					general_fl-=1
-				if general_fl>ceiling:
-					if ceiling%2==1:
-						general_fl=ceiling-1
-					else:
-						general_fl=ceiling
-			alt=float(general_fl*1000)
-			turn=hdg-aphdg
-			if turn<0:
-				turn+=360
-			if turn>180: # right turn
-				if aphdg>hdg:
-					offset=(aphdg-hdg)/5
-				else:
-					offset=(360-hdg+aphdg)/5
-			else: # left turn
-				if aphdg<hdg:
-					offset=(aphdg-hdg)/5
-				else:
-					offset=-(360-aphdg+hdg)/5
-			hdginit=aphdg+offset
-			if hdginit>360:
-				hdginit-=360
-			elif hdginit<0:
-				hdginit+=360
+			alt,climb=self.getFL(dalt,alt_ind,aphdg)
+			hdginit=self.getHDG(aphdg)
 		else: #If gear up, set AP for descent to destination
 			alt=dalt
 			hdginit=aphdg
 			if self.acf_short=="PC12":
-				if alt_ind>22000:
-					climb=-1300
-				elif alt_ind>15000:
-					climb=-1200
-				else:
-					climb=-1000
+				climb=-1300 if alt_ind>22000 else -1200 if alt_ind>15000 else -1000
 				alt+=1000
 			elif self.acf_short=="B190":
 				climb=-1500
@@ -345,6 +261,78 @@ class PythonInterface:
 			# XPLMSetDataf(self.cab_alt_ref, cabalt)
 			# print "AP Cabin altitude now set to "+str(int(round(XPLMGetDataf(self.cab_alt_ref))))+"m"
 	
+	def getFL(self,dalt,alt_ind,aphdg):
+		dist=XPLMGetDataf(self.gps_dist_ref) #Distance to destination
+		maxcabin=0 #Default assume automatic
+		if self.acf_short=="PC12":
+			ceiling=30
+			maxcabin=10000
+			general_fl=int(dist/10+2) #General rule for PC-12 cruise altitude
+			climb=1000
+			speed=210
+			gph=60
+		elif self.acf_short=="B190":
+			ceiling=25
+			maxcabin=10000
+			general_fl=int(dist/10+4) #Faster climb rate at slower speed than PC-12
+			climb=2000
+			speed=200
+			gph=110
+		elif self.acf_short=="CL30":
+			T=XPLMGetDataf(self.temp_ref) #deg C
+			delISA=self.getdelISA(alt_ind, T)
+			wgt=XPLMGetDataf(self.wgt_ref)*self.kglb
+			factor=1.25 if delISA > 15 or wgt > 35000 else 1.5 #Slower climb at higher temps/weights
+			ceiling=45
+			general_fl=int(dist/10*factor) #Approximate rule
+			climb=3500
+			speed=380
+			gph=300
+		elif self.acf_short=="DH8D":
+			ceiling=27
+			general_fl=int(dist/10+4) #Approximate rule
+			climb=1500
+			speed=300
+			gph=250
+		else:
+			ceiling=30
+			general_fl=int(dist/10+2) #General rule for PC-12 cruise altitude
+			climb=1000
+			speed=0
+			gph=0
+		if speed>0:
+			fuel=dist/speed*gph
+			print "AP fuel estimate: "+str(int(round(fuel)))+" gal"
+			XPLMSetDataf(self.ap_spd_ref, fuel) #Other plugin will show speed change, speed setting not important
+		general_fl+=int(dalt/1000+alt_ind/1000)/2 #Account for departure/arrival altitudes
+		if aphdg<180: #NEodd
+			general_fl-=1 if general_fl%2==0
+			if general_fl>ceiling:
+				general_fl=ceiling-1 if ceiling%2==0 else ceiling
+		else: #SWeven
+			general_fl-=1 if general_fl%2==1:
+			if general_fl>ceiling:
+				general_fl=ceiling-1 if ceiling%2==1 else ceiling
+		alt=float(general_fl*1000)
+		print "AP - Cruise at "+str(int(round(alt)))+" for "+str(int(round(alt_ind)))+"ft "+str(int(round(dist)))+"nm to "+str(int(round(dalt)))
+		return alt, climb
+	
+	def getHDG(self, aphdg):
+		hdg=XPLMGetDataf(self.mpsi_ref) #Get current heading, attempt to adjust towards GPS course
+		turn=hdg-aphdg
+		if turn<0:
+			turn+=360
+		elif turn>180: # right turn
+			offset=(aphdg-hdg)/5 if aphdg>hdg else (360-hdg+aphdg)/5
+		else: # left turn
+			offset=(aphdg-hdg)/5 if aphdg<hdg else -(360-aphdg+hdg)/5
+		hdginit=aphdg+offset
+		if hdginit>360:
+			hdginit-=360
+		elif hdginit<0:
+			hdginit+=360
+		return hdginit
+	
 	def toggleInfo(self): #Toggle whether any info is computed/shown
 		if self.started==0:
 			self.num_eng=XPLMGetDatai(self.num_eng_ref) #Find number of engines
@@ -364,8 +352,7 @@ class PythonInterface:
 	
 	def toggleDInfo(self): #Toggles descent mode
 		if self.Dstarted==0:
-			if self.started==0: #Start main loop if we haven't
-				self.toggleInfo()
+			self.toggleInfo() if self.started==0 #Start main loop if we haven't
 			self.Dstarted=1
 		else:
 			self.Dstarted=0
@@ -381,10 +368,8 @@ class PythonInterface:
 				XPLMDrawString(color, left+5, top-(20+15*i), self.msg[i], 0, xplmFont_Basic)
 
 	def XPluginStop(self):
-		if self.Dstarted==1:
-			self.toggleDInfo()
-		if self.started==1:
-			self.toggleInfo()
+		self.toggleDInfo() if self.Dstarted==1
+		self.toggleInfo() if self.started==1
 		XPLMUnregisterCommandHandler(self, self.CmdAPsetConn,  self.CmdAPsetConnCB, 0, 0)
 		XPLMUnregisterCommandHandler(self, self.CmdSHConn, self.CmdSHConnCB, 0, 0)
 		XPLMUnregisterCommandHandler(self, self.CmdSDConn, self.CmdSDConnCB, 0, 0)
@@ -429,8 +414,7 @@ class PythonInterface:
 			Vspeed=""
 			tod=""
 		dIstr=str(int(round(delISA)))+" "+self.d+"C"
-		if delISA>0:
-			dIstr="+"+dIstr
+		dIstr="+"+dIstr if delISA>0
 		dist=XPLMGetDataf(self.gps_dist_ref)
 		machstr="  M"+str(round(mach,2))
 		self.msg[0]=self.acf_short+"  DA: "+str(int(round(DenAlt)))+" ft  GW: "+str(int(round(wgt)))+" lb  "+str(int(round(dist)))+"nm"
@@ -452,8 +436,7 @@ class PythonInterface:
 			self.msg[3]="Crs: "+maxcruise+"  LR: "+cruise+"  AS: "+twospeed
 			self.msg[4]="FL: "+maxFL+"  FL: "+optFL+tod+Vspeed#+" Flaps: "+str(flaps)
 		else:
-			if dalt is None:
-				dalt=self.get_dest_info()
+			dalt=self.get_dest_info() if dalt is None:
 			hwind=self.getHwind()
 			SL==XPLMGetDataf(self.baro_act_ref)
 			ldr=self.getLandingDist(wgt, dalt, delISA, SL, hwind, self.acf_short)
@@ -467,11 +450,9 @@ class PythonInterface:
 		if XPLMGetDataf(self.agl_ref)<762: #If under 2500 feet, update more frequently
 			delay=3
 		else:
-			if abs(vvi)<1:
-				vvi=1.0
+			vvi=1.0 if abs(vvi)<1
 			delay=60.0/abs(vvi/500.0*XPLMGetDataf(self.sim_spd_ref))
-			if delay>60:
-				delay=60
+			delay=60 if delay>60
 		
 		return delay
 		
@@ -558,32 +539,40 @@ class PythonInterface:
 		destid=[]
 		XPLMGetFMSEntryInfo(destindex, None, destid, None, None, None, None)
 		dest=str(destid[0])
-		regex = re.compile(r'\b[01] [01] '+dest+r'\b')
 		if dest != self.current_dest:
-			dalt=None
-			with open(os.path.join('Resources','default scenery','default apt dat','Earth nav data','apt.dat'), 'r') as datfile:
-				for line in datfile:
-					match = regex.search(line)
-					if match:
-						params=line.split()
-						dalt=int(params[1])
-						break
-			if dalt is None:
-				print "AP - "+dest+" not found, trying FSE airports..."
-				with open(os.path.join('Custom Scenery','zzzz_FSE_Airports','Earth nav data','apt.dat'), 'r') as fdatfile:
-					for line in fdatfile:
-						match = regex.search(line)
-						if match:
-							params=line.split()
-							dalt=int(params[1])
-							break
-			if dalt is None:
+			regex=re.compile(r'\b[01] [01] '+dest+r'\b')
+			dir1=os.path.join('Resources','default scenery','default apt dat','Earth nav data','apt.dat')
+			dir2=os.path.join('Custom Scenery','zzzz_FSE_Airports','Earth nav data','apt.dat')
+			for line in fileinput.input([dir1,dir2]): # I am forever indebted to Padraic Cunningham for this code
+				if regex.search(line):
+					params=line.split()
+					dalt=float(params[1])
+					break
+			else:
 				print "AP - "+dest+" not found, giving up"
-				dalt=0
+				dalt=0.0
+			# dalt=None
+			# with open(os.path.join('Resources','default scenery','default apt dat','Earth nav data','apt.dat'), 'r') as datfile:
+				# for line in datfile:
+					# if regex.search(line):
+						# params=line.split()
+						# dalt=int(params[1])
+						# break
+			# if dalt is None:
+				# print "AP - "+dest+" not found, trying FSE airports..."
+				# with open(os.path.join('Custom Scenery','zzzz_FSE_Airports','Earth nav data','apt.dat'), 'r') as fdatfile:
+					# for line in fdatfile:
+						# if regex.search(line):
+							# params=line.split()
+							# dalt=int(params[1])
+							# break
+			# if dalt is None:
+				# print "AP - "+dest+" not found, giving up"
+				# dalt=0
 			self.current_dest=dest
 			self.elevate_dest=dalt
 		else:
-			print "AP - Reusing elevation value for "+dest
+			#print "AP - Reusing elevation value for "+dest
 			dalt=self.elevate_dest
 		
 		return dalt
@@ -654,12 +643,7 @@ class PythonInterface:
 			alts.append(25000)
 			alts.append(27000)
 			dnms=(4,7,12,18,23,28,34,40,62,85,105,125,132,155)
-			if alt<24000:
-				alt_i=(alt-2000)/2000
-			elif alt<25000:
-				alt_i=(alt-24000)/1000+11
-			else:
-				alt_i=(alt-25000)/1000+12
+			alt_i=(alt-2000)/2000 if alt<24000 else (alt-24000)/1000+11 if alt<25000 else (alt-25000)/1000+12
 			alt_ih, alt_il = self.get_index(alt_i, len(alts))
 			ddist_nm=self.interp(dnms[alt_ih], dnms[alt_il], alts[alt_ih], alts[alt_il], alt_i)
 			ddist=str(int(round(ddist_nm)))+"nm"
@@ -692,12 +676,7 @@ class PythonInterface:
 				wind_i=abs(hwind/10)
 			alt_i=DA/2000
 			di_i=(delISA+40)/10
-			if wgt<=7000:
-				GW_i=(wgt-6400)/600
-			elif wgt>=9000:
-				GW_i=(wgt-6300)/900
-			else:
-				GW_i=(wgt-6000)/1000
+			GW_i=(wgt-6400)/600 if wgt<=7000 else (wgt-6300)/900 if wgt>=9000 else (wgt-6000)/1000
 			alt_ih, alt_il = self.get_index(alt_i, len(alts))
 			di_ih, di_il = self.get_index(di_i, len(dis))
 			GW_ih, GW_il = self.get_index(GW_i, len(GW))
@@ -747,10 +726,7 @@ class PythonInterface:
 				wind_i=abs(hwind/10)
 			alt_i=DA/2000
 			oat_i=(T+34)/2
-			if wgt<=14200:
-				GW_i=(wgt-10000)/4200
-			else:
-				GW_i=(wgt-11800)/2400
+			GW_i=(wgt-10000)/4200 if wgt<=14200 else (wgt-11800)/2400
 			alt_ih, alt_il = self.get_index(alt_i, len(alts))
 			oat_ih, oat_il = self.get_index(oat_i, len(oats))
 			GW_ih, GW_il = self.get_index(GW_i, len(GW))
@@ -802,12 +778,7 @@ class PythonInterface:
 				wind_i=abs(hwind/10)
 			di_i=(delISA+40)/10
 			alt_i=DA/2000
-			if wgt<7000:
-				GW_i=(wgt-6400)/600
-			elif wgt<10000:
-				GW_i=(wgt-6000)/1000
-			else:
-				GW_i=(wgt-8200)/450
+			GW_i=(wgt-6400)/600 if wgt<7000 else (wgt-6000)/1000 if wgt<10000 else (wgt-8200)/450
 			di_ih, di_il = self.get_index(di_i, len(dis))
 			alt_ih, alt_il = self.get_index(alt_i, len(alts))
 			GW_ih, GW_il = self.get_index(GW_i, len(GW))
@@ -836,8 +807,7 @@ class PythonInterface:
 				(109.0,116.0,122.0,128.0,133.0,139.0,144.0,148.0,153.0,157.0))		# flaps 40
 			flap_i=-1
 			for i in range(2,5): #Reference correct flap setting
-				if flaps == self.flaps[i]:
-					flap_i=i-2
+				flap_i=i-2 if flaps == self.flaps[i]
 			if flap_i==-1:
 				Vref="LAND CONFIG"
 			else:
@@ -866,15 +836,11 @@ class PythonInterface:
 				flap_i=0
 			else:
 				for i in range(5): #Reference correct flaps setting
-					if flaps == self.flaps[i]:
-						flap_i=i
+					flap_i=i if flaps == self.flaps[i]
 			if flap_i==-1:
 				V1=""
 			else:
-				if wgt<63800:
-					wgt_i=(wgt-39600)/1100
-				else:
-					wgt_i=(wgt-63800)/700
+				wgt_i=(wgt-39600)/1100 if wgt<63800 else (wgt-63800)/700
 				wgt_ih, wgt_il = self.get_index(wgt_i, len(wgts))
 				vr=self.interp(ias[flap_i][wgt_ih], ias[flap_i][wgt_il], wgts[wgt_ih], wgts[wgt_il], wgt)
 				Vref="  Vref: "+str(int(round(vr)))+" kias"
@@ -909,8 +875,7 @@ class PythonInterface:
 					(104.0,111.0,117.0,123.0,129.0,0,0,0,0,0))			# flaps 15
 			flap_i=-1
 			for i in range(3): #Reference correct flaps setting
-				if flaps == self.flaps[i]:
-					flap_i=i
+				flap_i=i if flaps == self.flaps[i]
 			if flap_i==-1:
 				V1=""
 			else:
@@ -919,6 +884,7 @@ class PythonInterface:
 				if v1s[flap_i][wgt_ih]==0:
 					if v1s[flap_i][wgt_il]!=0:
 						v1f=v1s[flap_i][wgt_il]
+						V1="  V1: "+str(int(round(v1f)))+" kias"
 					else: #Zero value means V1 is too high
 						V1="  V1 > V1max"
 				else:
@@ -935,15 +901,11 @@ class PythonInterface:
 			#(59,63,67,71,74,76)) # flaps 30
 			flap_i=-1
 			for i in range(0,2):
-				if round(flaps,1) == self.flaps[i]:
-					flap_i=i
+				flap_i=i if round(flaps,1) == self.flaps[i]
 			if flap_i==-1:
 				V1="  V1: Check Flaps"
 			else:
-				if wgt<10000:
-					wgt_i=wgt/900-64/9
-				else:
-					wgt_i=wgt/450-164/9
+				wgt_i=wgt/900-64/9 if wgt<10000 else wgt/450-164/9
 				wgt_ih, wgt_il = self.get_index(wgt_i, len(GW))
 				#print 'Interp: %.0f %.0f %.0f %.0f %.0f' % (vrs[flap_i][wgt_ih], vrs[flap_i][wgt_il], GW[wgt_ih], GW[wgt_il], wgt)
 				vr=self.interp(vrs[flap_i][wgt_ih], vrs[flap_i][wgt_il], GW[wgt_ih], GW[wgt_il], wgt)
@@ -956,15 +918,11 @@ class PythonInterface:
 				(100,100,100,100,100,100,100,100,101,102,104,105,107,108,109,111,112,113,114,116,117,118,119,120))	#15
 			flap_i=-1
 			for i in range(3): #Reference correct flaps setting
-				if flaps == self.flaps[i]:
-					flap_i=i
+				flap_i=i if flaps == self.flaps[i]
 			if flap_i==-1:
 				V1=""
 			else:
-				if wgt<63800:
-					wgt_i=(wgt-39600)/1100
-				else:
-					wgt_i=(wgt-63800)/700
+				wgt_i=(wgt-39600)/1100 if wgt<63800 else (wgt-63800)/700
 				wgt_ih, wgt_il = self.get_index(wgt_i, len(wgts))
 				vr=self.interp(ias[flap_i][wgt_ih], ias[flap_i][wgt_il], wgts[wgt_ih], wgts[wgt_il], wgt)
 				V1="  V1: "+str(int(round(vr)))+" kias"
@@ -976,10 +934,7 @@ class PythonInterface:
 		if AC=="B190":
 			wgts=(10,12,14,16,16.6)
 			spds=(121,125,130,134,135)
-			if wgt>16000:
-				wgt_i=(wgt-16000)/600
-			else:
-				wgt_i=(wgt-10000)/2000
+			wgt_i=(wgt-16000)/600 if wgt>16000 else (wgt-10000)/2000
 			wgt_ih, wgt_il = self.get_index(wgt_i, len(wgts))
 			cc=self.interp(spds[wgt_ih], spds[wgt_il], wgts[wgt_ih], wgts[wgt_il], wgt/1000)
 			bestCC=str(int(round(cc)))+" kias"
@@ -1004,10 +959,7 @@ class PythonInterface:
 			wgts=tuple(range(39600,63801,1100))
 			wgts.append(64500)
 			ias=(130,130,130,130,131,133,134,135,137,139,140,141,143,144,146,147,148,150,151,153,154,155,157,158)
-			if wgt<63800:
-				wgt_i=(wgt-39600)/1100
-			else:
-				wgt_i=(wgt-63800)/700
+			wgt_i=(wgt-39600)/1100 if wgt<63800 else (wgt-63800)/700
 			wgt_ih, wgt_il = self.get_index(wgt_i, len(wgts))
 			cc=self.interp(ias[wgt_ih], ias[wgt_il], wgts[wgt_ih], wgts[wgt_il], wgt)
 			bestCC=str(int(round(cc)))+" kias"
@@ -1037,10 +989,7 @@ class PythonInterface:
 			temps=(10,15,20)
 			wt_i=wgt/5000-24
 			dI_i=delISA/5-2
-			if dI_i < 0: #+10 and +20 are to be used for temps below/above those as well
-				dI_i=0
-			elif dI_i > 2:
-				dI_i=2
+			dI_i=0 if dI_i < 0 else 2 if dI_i > 2: #+10 and +20 are to be used for temps below/above those as well
 			wt_ih, wt_il = self.get_index(wt_i, len(GW))
 			dI_ih, dI_il = self.get_index(dI_i, len(temps))
 			ma=self.interp2(alts[dI_ih][wt_il], alts[dI_il][wt_il], alts[dI_ih][wt_ih], alts[dI_il][wt_ih], temps[dI_ih], temps[dI_il], GW[wt_ih], GW[wt_il], delISA, wgt/1000)
@@ -1125,10 +1074,7 @@ class PythonInterface:
 				(202,198,193,188,183,178,173,168,162,157,151,146,140,133,126,117),		# 10000lb
 				(202,197,193,188,183,178,173,168,162,157,152,146,140,134,127,118)))		# 10400lb
 			dis=tuple(range(-40,31,10))
-			if wgt>10000:
-				wgt_i=wgt/400-22
-			else:
-				wgt_i=wgt/1000-7
+			wgt_i=wgt/400-22 if wgt>10000 else wgt/1000-7
 			alt_i=alt/2000
 			dis_i=delISA/10+4
 			wgt_ih, wgt_il = self.get_index(wgt_i, len(GW))
