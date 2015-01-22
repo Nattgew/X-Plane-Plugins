@@ -29,7 +29,7 @@ class PythonInterface:
 		
 	def get_topwr(self, init): #Iterate countdown timer for takeoff power
 		flightTimer=XPLMGetDataf(self.flighttime_ref)
-		if self.TO_pwr==init: #Haven't started counting yet
+		if self.TO_pwr==init or self.flightTimerLast==-1: #Haven't started counting yet
 			self.flightTimerLast=flightTimer-1 #Assume 1 second elapsed
 		elapsed=flightTimer-self.flightTimerLast
 		self.flightTimerLast=flightTimer
@@ -84,7 +84,7 @@ class PythonInterface:
 		wdir=XPLMGetDataf(self.wind_dir_ref)
 		wspd=XPLMGetDataf(self.wind_spd_ref)
 		tpsi=XPLMGetDataf(self.tpsi_ref)
-		theta=radians(wdir-tpsi)
+		theta=math.radians(wdir-tpsi)
 		hwind=wspd*math.cos(theta)
 		return hwind
 	
@@ -174,6 +174,7 @@ class PythonInterface:
 		self.acf_short=""
 		self.current_dest=""
 		self.elevate_dest=0
+		self.flightTimerLast=-1
 		
 		self.gameLoopCB=self.gameLoopCallback
 		self.DrawWindowCB=self.DrawWindowCallback
@@ -306,11 +307,13 @@ class PythonInterface:
 			XPLMSetDataf(self.ap_spd_ref, fuel) #Other plugin will show speed change, speed setting not important
 		general_fl+=int(dalt/1000+alt_ind/1000)/2 #Account for departure/arrival altitudes
 		if aphdg<180: #NEodd
-			general_fl-=1 if general_fl%2==0
+			if general_fl%2==0:
+				general_fl-=1 
 			if general_fl>ceiling:
 				general_fl=ceiling-1 if ceiling%2==0 else ceiling
 		else: #SWeven
-			general_fl-=1 if general_fl%2==1:
+			if general_fl%2==1:
+				general_fl-=1
 			if general_fl>ceiling:
 				general_fl=ceiling-1 if ceiling%2==1 else ceiling
 		alt=float(general_fl*1000)
@@ -322,7 +325,7 @@ class PythonInterface:
 		turn=hdg-aphdg
 		if turn<0:
 			turn+=360
-		elif turn>180: # right turn
+		if turn>180: # right turn
 			offset=(aphdg-hdg)/5 if aphdg>hdg else (360-hdg+aphdg)/5
 		else: # left turn
 			offset=(aphdg-hdg)/5 if aphdg<hdg else -(360-aphdg+hdg)/5
@@ -352,7 +355,8 @@ class PythonInterface:
 	
 	def toggleDInfo(self): #Toggles descent mode
 		if self.Dstarted==0:
-			self.toggleInfo() if self.started==0 #Start main loop if we haven't
+			if self.started==0:
+				self.toggleInfo() #Start main loop if we haven't
 			self.Dstarted=1
 		else:
 			self.Dstarted=0
@@ -368,8 +372,10 @@ class PythonInterface:
 				XPLMDrawString(color, left+5, top-(20+15*i), self.msg[i], 0, xplmFont_Basic)
 
 	def XPluginStop(self):
-		self.toggleDInfo() if self.Dstarted==1
-		self.toggleInfo() if self.started==1
+		if self.Dstarted==1:
+			self.toggleDInfo() 
+		if self.started==1:
+			self.toggleInfo()
 		XPLMUnregisterCommandHandler(self, self.CmdAPsetConn,  self.CmdAPsetConnCB, 0, 0)
 		XPLMUnregisterCommandHandler(self, self.CmdSHConn, self.CmdSHConnCB, 0, 0)
 		XPLMUnregisterCommandHandler(self, self.CmdSDConn, self.CmdSDConnCB, 0, 0)
@@ -414,7 +420,8 @@ class PythonInterface:
 			Vspeed=""
 			tod=""
 		dIstr=str(int(round(delISA)))+" "+self.d+"C"
-		dIstr="+"+dIstr if delISA>0
+		if delISA>0:
+			dIstr="+"+dIstr
 		dist=XPLMGetDataf(self.gps_dist_ref)
 		machstr="  M"+str(round(mach,2))
 		self.msg[0]=self.acf_short+"  DA: "+str(int(round(DenAlt)))+" ft  GW: "+str(int(round(wgt)))+" lb  "+str(int(round(dist)))+"nm"
@@ -436,7 +443,8 @@ class PythonInterface:
 			self.msg[3]="Crs: "+maxcruise+"  LR: "+cruise+"  AS: "+twospeed
 			self.msg[4]="FL: "+maxFL+"  FL: "+optFL+tod+Vspeed#+" Flaps: "+str(flaps)
 		else:
-			dalt=self.get_dest_info() if dalt is None:
+			if dalt is None:
+				dalt=self.get_dest_info()
 			hwind=self.getHwind()
 			SL==XPLMGetDataf(self.baro_act_ref)
 			ldr=self.getLandingDist(wgt, dalt, delISA, SL, hwind, self.acf_short)
@@ -450,9 +458,11 @@ class PythonInterface:
 		if XPLMGetDataf(self.agl_ref)<762: #If under 2500 feet, update more frequently
 			delay=3
 		else:
-			vvi=1.0 if abs(vvi)<1
+			if abs(vvi)<1:			
+				vvi=1.0
 			delay=60.0/abs(vvi/500.0*XPLMGetDataf(self.sim_spd_ref))
-			delay=60 if delay>60
+			if delay>60:
+				delay=60
 		
 		return delay
 		
@@ -547,6 +557,7 @@ class PythonInterface:
 				if regex.search(line):
 					params=line.split()
 					dalt=float(params[1])
+					fileinput.close()
 					break
 			else:
 				print "AP - "+dest+" not found, giving up"
@@ -807,7 +818,8 @@ class PythonInterface:
 				(109.0,116.0,122.0,128.0,133.0,139.0,144.0,148.0,153.0,157.0))		# flaps 40
 			flap_i=-1
 			for i in range(2,5): #Reference correct flap setting
-				flap_i=i-2 if flaps == self.flaps[i]
+				if flaps == self.flaps[i]:
+					flap_i=i-2
 			if flap_i==-1:
 				Vref="LAND CONFIG"
 			else:
@@ -836,7 +848,8 @@ class PythonInterface:
 				flap_i=0
 			else:
 				for i in range(5): #Reference correct flaps setting
-					flap_i=i if flaps == self.flaps[i]
+					if flaps == self.flaps[i]:
+						flap_i=i
 			if flap_i==-1:
 				V1=""
 			else:
@@ -875,7 +888,8 @@ class PythonInterface:
 					(104.0,111.0,117.0,123.0,129.0,0,0,0,0,0))			# flaps 15
 			flap_i=-1
 			for i in range(3): #Reference correct flaps setting
-				flap_i=i if flaps == self.flaps[i]
+				if flaps == self.flaps[i]:
+					flap_i=i
 			if flap_i==-1:
 				V1=""
 			else:
@@ -901,7 +915,8 @@ class PythonInterface:
 			#(59,63,67,71,74,76)) # flaps 30
 			flap_i=-1
 			for i in range(0,2):
-				flap_i=i if round(flaps,1) == self.flaps[i]
+				if round(flaps,1) == self.flaps[i]:
+					flap_i=i
 			if flap_i==-1:
 				V1="  V1: Check Flaps"
 			else:
@@ -918,7 +933,8 @@ class PythonInterface:
 				(100,100,100,100,100,100,100,100,101,102,104,105,107,108,109,111,112,113,114,116,117,118,119,120))	#15
 			flap_i=-1
 			for i in range(3): #Reference correct flaps setting
-				flap_i=i if flaps == self.flaps[i]
+				if flaps == self.flaps[i]:
+					flap_i=i 
 			if flap_i==-1:
 				V1=""
 			else:
@@ -989,7 +1005,10 @@ class PythonInterface:
 			temps=(10,15,20)
 			wt_i=wgt/5000-24
 			dI_i=delISA/5-2
-			dI_i=0 if dI_i < 0 else 2 if dI_i > 2: #+10 and +20 are to be used for temps below/above those as well
+			if dI_i < 0: #+10 and +20 are to be used for temps below/above those as well
+				dI_i=0
+			elif dI_i > 2:
+				dI_i=2
 			wt_ih, wt_il = self.get_index(wt_i, len(GW))
 			dI_ih, dI_il = self.get_index(dI_i, len(temps))
 			ma=self.interp2(alts[dI_ih][wt_il], alts[dI_il][wt_il], alts[dI_ih][wt_ih], alts[dI_il][wt_ih], temps[dI_ih], temps[dI_il], GW[wt_ih], GW[wt_il], delISA, wgt/1000)
