@@ -544,42 +544,26 @@ class PythonInterface:
 		
 		return pwr, TOP_str
 		
-	def get_dest_info(self): #Get info about destination (aka "crash x-plane")
+	def get_dest_info(self): #Get info about destination
 		destindex=XPLMGetDisplayedFMSEntry()
 		destid=[]
 		XPLMGetFMSEntryInfo(destindex, None, destid, None, None, None, None)
 		dest=str(destid[0])
 		if dest != self.current_dest:
-			regex=re.compile(r'\b[01] [01] '+dest+r'\b')
+			# r'\b[01] [01] '+dest+r'\b'
+			# r'^(1\s+)|(16\s+)|(17\s+)\d{1,5}\s+[01]\s+[01]\s+'+dest+r'\b'
+			regex=re.compile(r'^(1\s)|(16\s)|(17\s).*?'+dest+r'\b').search
 			dir1=os.path.join('Resources','default scenery','default apt dat','Earth nav data','apt.dat')
 			dir2=os.path.join('Custom Scenery','zzzz_FSE_Airports','Earth nav data','apt.dat')
 			for line in fileinput.input([dir1,dir2]): # I am forever indebted to Padraic Cunningham for this code
-				if regex.search(line):
+				if regex(line):
 					params=line.split()
 					dalt=float(params[1])
-					fileinput.close()
 					break
 			else:
 				print "AP - "+dest+" not found, giving up"
 				dalt=0.0
-			# dalt=None
-			# with open(os.path.join('Resources','default scenery','default apt dat','Earth nav data','apt.dat'), 'r') as datfile:
-				# for line in datfile:
-					# if regex.search(line):
-						# params=line.split()
-						# dalt=int(params[1])
-						# break
-			# if dalt is None:
-				# print "AP - "+dest+" not found, trying FSE airports..."
-				# with open(os.path.join('Custom Scenery','zzzz_FSE_Airports','Earth nav data','apt.dat'), 'r') as fdatfile:
-					# for line in fdatfile:
-						# if regex.search(line):
-							# params=line.split()
-							# dalt=int(params[1])
-							# break
-			# if dalt is None:
-				# print "AP - "+dest+" not found, giving up"
-				# dalt=0
+			fileinput.close()
 			self.current_dest=dest
 			self.elevate_dest=dalt
 		else:
@@ -607,20 +591,6 @@ class PythonInterface:
 				if alt>profs[i][1]:
 					profile=str(profs[i][0])+" kias to "+str(profs[i][1])
 					break
-			# if alt>27000:
-				# profile="233 kias to FL270"
-			# elif alt>24000:
-				# profile="240 kias to FL240"
-			# elif alt>21000:
-				# profile="250 kias to FL210"
-			# elif alt>20000:
-				# profile="260 kias to FL200"
-			# elif alt>11000:
-				# profile="277 kias to 11000"
-			# elif alt>10000:
-				# profile="250 kias to 10000"
-			# else:
-				# profile="230 kias to land"
 		else:
 			profile="Have fun"
 		return profile
