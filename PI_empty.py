@@ -1,9 +1,9 @@
-from XPLMProcessing import *
-from XPLMDataAccess import *
-from XPLMDisplay import *
-from XPLMGraphics import *
-from XPLMDefs import *
-from XPLMUtilities import *
+from XPLMProcessing import * #Flight loops
+from XPLMDataAccess import * #Datarefs
+from XPLMDisplay import * #Draw window
+from XPLMGraphics import * #Draw things
+from XPLMDefs import * #Object definitions
+from XPLMUtilities import * #Commands
 
 class PythonInterface:
 
