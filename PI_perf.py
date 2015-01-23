@@ -317,7 +317,7 @@ class PythonInterface:
 			if general_fl>ceiling:
 				general_fl=ceiling-1 if ceiling%2==1 else ceiling
 		alt=float(general_fl*1000)
-		print "AP - Cruise at "+str(int(round(alt)))+" for "+str(int(round(alt_ind)))+"ft "+str(int(round(dist)))+"nm to "+str(int(round(dalt)))
+		print "AP - Cruise at "+str(int(round(alt)))+" for "+str(int(round(alt_ind)))+"ft "+str(int(round(dist)))+"nm to "+str(int(round(dalt)))+"ft"
 		return alt, climb
 	
 	def getHDG(self, aphdg):
@@ -552,7 +552,7 @@ class PythonInterface:
 		if dest != self.current_dest:
 			# r'\b[01] [01] '+dest+r'\b'
 			# r'^(1\s+)|(16\s+)|(17\s+)\d{1,5}\s+[01]\s+[01]\s+'+dest+r'\b'
-			regex=re.compile(r'^(1\s)|(16\s)|(17\s).*?'+dest+r'\b').search
+			regex=re.compile(r'^(1|16|17)\s.*?'+dest+r'\b').search
 			dir1=os.path.join('Resources','default scenery','default apt dat','Earth nav data','apt.dat')
 			dir2=os.path.join('Custom Scenery','zzzz_FSE_Airports','Earth nav data','apt.dat')
 			for line in fileinput.input([dir1,dir2]): # I am forever indebted to Padraic Cunningham for this code
