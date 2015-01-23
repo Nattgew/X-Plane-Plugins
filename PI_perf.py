@@ -127,6 +127,7 @@ class PythonInterface:
 		self.mach_ref=XPLMFindDataRef("sim/flightmodel/misc/machno")
 		self.alt_ind_ref=XPLMFindDataRef("sim/flightmodel/misc/h_ind")
 		self.acf_desc_ref=XPLMFindDataRef("sim/aircraft/view/acf_descrip")
+		self.acf_icao_ref=XPLMFindDataRef("sim/aircraft/view/acf_ICAO")
 		self.eng_type_ref=XPLMFindDataRef("sim/aircraft/prop/acf_en_type")
 		self.prop_type_ref=XPLMFindDataRef("sim/aircraft/prop/acf_prop_type")
 		self.num_eng_ref=XPLMFindDataRef("sim/aircraft/engine/acf_num_engines")
@@ -551,8 +552,8 @@ class PythonInterface:
 		dest=str(destid[0])
 		if dest != self.current_dest:
 			# r'\b[01] [01] '+dest+r'\b'
-			# r'^(1\s+)|(16\s+)|(17\s+)\d{1,5}\s+[01]\s+[01]\s+'+dest+r'\b'
-			regex=re.compile(r'^(1|16|17)\s.*?'+dest+r'\b').search
+			# r'^1(6?|7?)\s+\d{1,5}\s+[01]\s+[01]\s+'+dest+r'\b'
+			regex=re.compile(r'^1(6?|7?)\s.*?'+dest+r'\b'+dest+r'\b').search
 			dir1=os.path.join('Resources','default scenery','default apt dat','Earth nav data','apt.dat')
 			dir2=os.path.join('Custom Scenery','zzzz_FSE_Airports','Earth nav data','apt.dat')
 			for line in fileinput.input([dir1,dir2]): # I am forever indebted to Padraic Cunningham for this code
