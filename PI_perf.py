@@ -553,7 +553,7 @@ class PythonInterface:
 		if dest != self.current_dest:
 			# r'\b[01] [01] '+dest+r'\b'
 			# r'^1(6?|7?)\s+\d{1,5}\s+[01]\s+[01]\s+'+dest+r'\b'
-			regex=re.compile(r'^1(6?|7?)\s.*?'+dest+r'\b'+dest+r'\b').search
+			regex=re.compile(r'^1(6?|7?)\s.*?'+dest+r'\b').search
 			dir1=os.path.join('Resources','default scenery','default apt dat','Earth nav data','apt.dat')
 			dir2=os.path.join('Custom Scenery','zzzz_FSE_Airports','Earth nav data','apt.dat')
 			for line in fileinput.input([dir1,dir2]): # I am forever indebted to Padraic Cunningham for this code
