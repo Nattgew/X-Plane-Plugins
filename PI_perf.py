@@ -271,7 +271,7 @@ class PythonInterface:
 			maxcabin=10000
 			general_fl=int(dist/10+2) #General rule for PC-12 cruise altitude
 			climb=1000
-			speed=210
+			speed=200
 			gph=60
 		elif self.acf_short=="B190":
 			ceiling=25
@@ -289,13 +289,19 @@ class PythonInterface:
 			general_fl=int(dist/10*factor) #Approximate rule
 			climb=3500
 			speed=380
-			gph=300
+			gph=330
 		elif self.acf_short=="DH8D":
 			ceiling=27
 			general_fl=int(dist/10+4) #Approximate rule
 			climb=1500
 			speed=300
 			gph=250
+		elif self.acf_short=="CONI":
+			ceiling=24
+			general_fl=int(dist/10+2)
+			climb=2000
+			speed=300
+			gph=800
 		else:
 			ceiling=30
 			general_fl=int(dist/10+2) #General rule for PC-12 cruise altitude
@@ -318,6 +324,8 @@ class PythonInterface:
 			if general_fl>ceiling:
 				general_fl=ceiling-1 if ceiling%2==1 else ceiling
 		alt=float(general_fl*1000)
+		if alt<dalt+2000:
+			alt=dalt+2000
 		print "AP - Cruise at "+str(int(round(alt)))+" for "+str(int(round(alt_ind)))+"ft "+str(int(round(dist)))+"nm to "+str(int(round(dalt)))+"ft"
 		return alt, climb
 	
@@ -483,6 +491,8 @@ class PythonInterface:
 		elif acf_desc=="['DeHavilland Dash 8 Q400']":
 			AC="DH8D"
 			self.flaps=(0.25,0.5,0.75,1.0) #FIX ME 5 10 15 35
+		elif acf_desc=="['L-1049G Constellation']":
+			AC="CONI"
 		else:
 			AC=acf_desc
 			print str(acf_desc[0:8])
