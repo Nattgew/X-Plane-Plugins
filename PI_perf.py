@@ -113,7 +113,6 @@ class PythonInterface:
 		
 		self.N1_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_N1_")
 		self.EGT_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_EGT_c")
-		self.ITT_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_ITT_c")
 		self.TRQ_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_TRQ") #NewtonMeters
 		self.RPM_ref=XPLMFindDataRef("sim/flightmodel/engine/POINT_tacrad") #prop speed, rad/sec?
 		self.alt_ref=XPLMFindDataRef("sim/flightmodel/position/elevation")
@@ -126,6 +125,7 @@ class PythonInterface:
 		self.f_norm_ref=XPLMFindDataRef("sim/flightmodel/forces/fnrml_gear")
 		self.mach_ref=XPLMFindDataRef("sim/flightmodel/misc/machno")
 		self.alt_ind_ref=XPLMFindDataRef("sim/flightmodel/misc/h_ind")
+		self.acf_EW_ref=XPLMFindDataRef("sim/aircraft/weight/acf_m_empty")
 		self.acf_desc_ref=XPLMFindDataRef("sim/aircraft/view/acf_descrip")
 		self.acf_icao_ref=XPLMFindDataRef("sim/aircraft/view/acf_ICAO")
 		self.eng_type_ref=XPLMFindDataRef("sim/aircraft/prop/acf_en_type")
@@ -133,16 +133,11 @@ class PythonInterface:
 		self.num_eng_ref=XPLMFindDataRef("sim/aircraft/engine/acf_num_engines")
 		self.geardep_ref=XPLMFindDataRef("sim/aircraft/parts/acf_gear_deploy")
 		self.wgt_ref=XPLMFindDataRef("sim/flightmodel/weight/m_total")
-		self.flap_pos_ref=XPLMFindDataRef("sim/flightmodel2/controls/flap_handle_deploy_ratio") # actual position
 		self.flap_h_pos_ref=XPLMFindDataRef("sim/cockpit2/controls/flap_ratio") # handle position
 		self.gear_h_pos_ref=XPLMFindDataRef("sim/cockpit2/controls/gear_handle_down")
 		self.throt_pos_ref=XPLMFindDataRef("sim/cockpit2/engine/actuators/throttle_ratio_all") # throttle position
-		#self.gps_dme_ref=XPLMFindDataRef("sim/cockpit2/radios/indicators/gps_dme_distance_nm")
 		self.gps_degm_ref=XPLMFindDataRef("sim/cockpit2/radios/indicators/gps_bearing_deg_mag")
-		self.gps_time_ref=XPLMFindDataRef("sim/cockpit/radios/gps_dme_time_secs")
 		self.gps_dist_ref=XPLMFindDataRef("sim/cockpit/radios/gps_dme_dist_m")
-		self.gps_degt_ref=XPLMFindDataRef("sim/cockpit/radios/gps_dir_degt")
-		self.gps_dest_index_ref=XPLMFindDataRef("sim/cockpit/gps/destination_index")
 		self.baro_ref=XPLMFindDataRef("sim/weather/barometer_current_inhg")
 		self.temp_ref=XPLMFindDataRef("sim/weather/temperature_ambient_c")
 		self.wind_dir_ref=XPLMFindDataRef("sim/weather/wind_direction_degt")
@@ -160,9 +155,6 @@ class PythonInterface:
 		self.started=0
 		self.Dstarted=0
 		self.msg=[""]*5
-		# for i in range(0,5):
-			# self.msg.append("")
-		# self.msg[0]="Starting..."
 		winPosX=20
 		winPosY=700
 		win_w=270
@@ -223,9 +215,7 @@ class PythonInterface:
 	
 	def APset(self): #Sets cruise altitude and heading based on destination, sets VS
 		if self.acf_short=="":
-			acf_descb=[]
-			XPLMGetDatab(self.acf_desc_ref, acf_descb, 0, 500)
-			self.acf_short=self.getacfshort(str(acf_descb))
+			self.acf_short=self.getacfshort()
 		gear=XPLMGetDatai(self.gear_h_pos_ref) #Landing gear position
 		alt_ind=XPLMGetDataf(self.alt_ind_ref) #Indicated altitude
 		aphdg=XPLMGetDataf(self.gps_degm_ref) #Heading to destination
@@ -245,6 +235,9 @@ class PythonInterface:
 			elif self.acf_short=="CL30":
 				climb=-2000
 				alt+=2000
+			elif self.acf_short=="CONI":
+				climb=-1500
+				alt+=1500
 			else:
 				climb=-1000
 				alt+=2000
@@ -290,6 +283,22 @@ class PythonInterface:
 			climb=3500
 			speed=380
 			gph=330
+		elif self.acf_short=="B738":
+			T=XPLMGetDataf(self.temp_ref) #deg C
+			delISA=self.getdelISA(alt_ind, T)
+			wgt=XPLMGetDataf(self.wgt_ref)*self.kglb
+			factor=1.1 if delISA > 15 or wgt > 145000 else 1.25 #Slower climb at higher temps/weights
+			ceiling=42
+			general_fl=int(dist/10*factor)
+			climb=2000
+			speed=380
+			gph=900
+		elif self.acf_short=="C750":
+			ceiling=51
+			general_fl=int(dist/10*1.5)
+			climb=4000
+			speed=420
+			gph=330
 		elif self.acf_short=="DH8D":
 			ceiling=27
 			general_fl=int(dist/10+4) #Approximate rule
@@ -302,6 +311,12 @@ class PythonInterface:
 			climb=2000
 			speed=300
 			gph=800
+		elif self.acf_short=="DC3":
+			ceiling=23
+			general_fl=int(dist/10)
+			climb=1000
+			speed=180
+			gph=95
 		else:
 			ceiling=30
 			general_fl=int(dist/10+2) #General rule for PC-12 cruise altitude
@@ -315,7 +330,7 @@ class PythonInterface:
 		general_fl+=int(dalt/1000+alt_ind/1000)/2 #Account for departure/arrival altitudes
 		if aphdg<180: #NEodd
 			if general_fl%2==0:
-				general_fl-=1 
+				general_fl-=1
 			if general_fl>ceiling:
 				general_fl=ceiling-1 if ceiling%2==0 else ceiling
 		else: #SWeven
@@ -348,9 +363,7 @@ class PythonInterface:
 	def toggleInfo(self): #Toggle whether any info is computed/shown
 		if self.started==0:
 			self.num_eng=XPLMGetDatai(self.num_eng_ref) #Find number of engines
-			acf_descb=[]
-			XPLMGetDatab(self.acf_desc_ref, acf_descb, 0, 500)
-			self.acf_short=self.getacfshort(str(acf_descb)) #Find name of aircraft
+			self.acf_short=self.getacfshort() #Find name of aircraft
 			XPLMGetDatavi(self.eng_type_ref, self.eng_type, 0, self.num_eng) #Find type of engines
 			XPLMGetDatavi(self.prop_type_ref, self.prop_type, 0, self.num_eng)
 			#print str(self.acf_descb)
@@ -475,24 +488,36 @@ class PythonInterface:
 		
 		return delay
 		
-	def getacfshort(self, acf_desc): #Return short name to ID A/C type
-		if acf_desc[0:27]=="['Boeing 737-800 xversion 4":
+	def getacfshort(self): #Return short name to ID A/C type
+		acf_descb=[]
+		XPLMGetDatab(self.acf_desc_ref, acf_descb, 0, 500)
+		acf_desc=str(acf_descb)
+		XPLMGetDatab(self.acf_icao_ref, acf_descb, 0, 40)
+		acf_icao=str(acf_descb)
+		if acf_desc[0:27]=="['Boeing 737-800 xversion 4" or acf_icao="B738":
 			AC="B738"
 			self.flaps=(0.125,0.375,0.625,0.875,1.0) #1 5 15 30 40
-		elif acf_desc=="['Pilatus PC-12']":
+		elif acf_desc=="['Pilatus PC-12']" or acf_icao="PC12":
+			XPLMSetDataf(self.acf_EW_ref,5743.04)
 			AC="PC12"
 			self.flaps=(0.3,0.7,1.0) #15 30 40
-		elif acf_desc[0:9]=="['BE1900D":
+		elif acf_desc[0:9]=="['BE1900D" or acf_icao="B190":
 			AC="B190"
-		elif acf_desc=="['Bombardier Challenger 300']":
+		elif acf_desc=="['Bombardier Challenger 300']" or acf_icao="CL30":
 			AC="CL30"
-		elif acf_desc[0:21]=="['C208B Grand Caravan":
+		elif acf_desc[0:21]=="['C208B Grand Caravan" or acf_icao="C208":
 			AC="C208"
-		elif acf_desc=="['DeHavilland Dash 8 Q400']":
+		elif acf_desc=="['DeHavilland Dash 8 Q400']" or acf_icao="DH8D":
 			AC="DH8D"
 			self.flaps=(0.25,0.5,0.75,1.0) #FIX ME 5 10 15 35
-		elif acf_desc=="['L-1049G Constellation']":
+		elif acf_desc=="['L-1049G Constellation']" or acf_icao="CONI":
 			AC="CONI"
+		elif acf_desc=="['Douglas DC-3']" or acf_icao="DC3":
+			AC="DC3"
+		elif acf_desc=="['Cessna Citation X']" or acf_icao="C750":
+			AC="C750"
+		elif acf_icao!="": #I guess we'll trust it
+			AC=acf_icao
 		else:
 			AC=acf_desc
 			print str(acf_desc[0:8])
