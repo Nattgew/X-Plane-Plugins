@@ -46,6 +46,7 @@ class PythonInterface:
 		self.fly_ref=XPLMFindDataRef("fse/status/flying")
 		self.acf_desc_ref=XPLMFindDataRef("sim/aircraft/view/acf_descrip")
 		self.pbrake_ref=XPLMFindDataRef("sim/flightmodel/controls/parkbrake")	#float	660+	yes	[0..1]	Parking Brake, 1 = max
+		self.flap_h_pos_ref=XPLMFindDataRef("sim/cockpit2/controls/flap_ratio")
 
 		self.started=0
 		self.err=0
@@ -59,6 +60,7 @@ class PythonInterface:
 		ePosY=400
 		win_w=230
 		win_h=80
+		self.end_flight=0
 		self.num_eng=0
 		self.runtime=0
 		self.chtDamage=0
@@ -114,32 +116,7 @@ class PythonInterface:
 	def CmdFSEendConnCallback(self, cmd, phase, refcon):
 		if(phase==0): #KeyDown event
 			print "XDMG = Finish FSE flight..."
-			XPLMSetDataf(self.pbrake_ref, 1.0)
-			#acf_descb=[]
-			#XPLMGetDatab(self.acf_desc_ref, acf_descb, 0, 500)
-			#if str(acf_descb)=="['Pilatus PC-12']":
-			mixes=[]
-			XPLMGetDatavf(self.mix_ref, mixes, 0, self.num_eng)
-			if self.eng_type[0]==2 or self.eng_type[0]==8: #Turboprop
-				print "XDMG = Using turboprop process..."
-				if mixes[0]>0:
-					self.CPtoggle() #Toggle the cutoff protection on PC-12
-					print "XDMG = Mixture cutoff"
-					self.MixTape(0.0)
-				#print "XDMG = Waiting 2..."
-				#sleep(2.0)
-				else:
-					print "XDMG = Mixture idle"
-					self.MixTape(0.45) #Set to ground idle
-					self.CPtoggle()
-			else: #Jets and regular props probably want full mix on ground
-				print "XDMG = Using jet process..."
-				if mixes[0]>0:
-					print "XDMG = Mixture cutoff"
-					self.MixTape(0.0)
-				else:
-					self.MixTape(1.0) #Set to ground idle
-			print "XDMG = FSE flight end finished"
+			self.end_flight=5
 		return 0
 		
 	def showhide(self):
@@ -220,7 +197,7 @@ class PythonInterface:
 		altitude=XPLMGetDataf(self.alt_ref)*3.33
 		ias=XPLMGetDataf(self.ias_ref)
 		flying=XPLMGetDatai(self.fly_ref)
-		if flying==0 and ias>60 and altitude<20:
+		if flying==0 and ias>60 and (altitude<20 or altitude>10000 and altitude<11000):
 			self.e1="FSE FLIGHT NOT STARTED"
 			self.err=1
 			return 1
@@ -230,6 +207,29 @@ class PythonInterface:
 		XPLMGetDatavf(self.mix_ref, mixes, 0, self.num_eng)
 		if (mixes[0] > 0.95 and altitude > 900):
 			self.MixTape(0.949)	
+			
+		#Flight end stuff
+		if self.end_flight==5:
+			print "XDMG - Parking brake set, toggle cutoff protection, flaps up"
+			XPLMSetDataf(self.pbrake_ref, 1.0)
+			self.CPtoggle() #Toggle the cutoff protection on PC-12
+			XPLMSetDataf(self.flap_h_pos_ref, 0.0) #Retract flaps full
+			self.end_flight=4
+		elif self.end_flight==4:
+			print "XDMG - Mixture cutoff"
+			self.MixTape(0.0)
+			self.end_flight=3
+		elif self.end_flight==3:
+			print "XDMG - Mixture restore"
+			if self.eng_type[0]==2 or self.eng_type[0]==8: #Turboprop
+				self.MixTape(0.45)
+			else:
+				self.MixTape(1.0)
+			self.end_flight==2
+		elif self.end_flight==2:
+			print "XDMG - Toggle cutoff protection"
+			self.CPtoggle()
+			self.end_flight==0
 		
 		if newdmg==0: #Use standard FSE damage calcs
 			#Let's do some damage
