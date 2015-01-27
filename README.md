@@ -49,14 +49,7 @@ Toggles:
 
 <ul><li>Speed brakes</li>
 <li>Landing gear and lights (together)</li>
-<li>Flaps (down through all settings, then retracted)</li>
-<li>Landing distance</li>
-<li>Landing reference speed</li>
-<li>Takeoff rotation speed</li>
-<li>Cruise climb speed</li>
-<li>Max/Optimum flight level (B738)</li>
-<li>Best cruise speed</li>
-<li>Max cruise power</li></ul>
+<li>Flaps (down through all settings, then retracted)</li></ul>
 
 Conditionals:
 
