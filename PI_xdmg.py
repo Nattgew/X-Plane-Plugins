@@ -225,7 +225,7 @@ class PythonInterface:
 				self.MixTape(0.45)
 			else:
 				self.MixTape(1.0)
-			self.end_flight==2
+			self.end_flight=2
 		elif self.end_flight==2:
 			print "XDMG - Toggle cutoff protection"
 			self.CPtoggle()
