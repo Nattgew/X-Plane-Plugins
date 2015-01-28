@@ -85,7 +85,7 @@ class PythonInterface:
 		self.CmdVRConnCB = self.CmdVRConnCallback
 		XPLMRegisterCommandHandler(self, self.CmdVRConn, self.CmdVRConnCB, 0, 0)
 		
-		self.CmdCPConn = XPLMCreateCommand("cmod/custom/view_right_cond","Cockpit front view based on airplane")
+		self.CmdCPConn = XPLMCreateCommand("cmod/custom/view_cockpit_cond","Cockpit front view based on airplane")
 		self.CmdCPConnCB = self.CmdCPConnCallback
 		XPLMRegisterCommandHandler(self, self.CmdCPConn, self.CmdCPConnCB, 0, 0)
 
@@ -189,16 +189,20 @@ class PythonInterface:
 	
 	def CmdCPConnCallback(self, cmd, phase, refcon): #Cockpit view based on airplane
 		if(phase==0): #KeyDown event
-			self.cmdif3D("sim/view/3d_cockpit","sim/view/forward")
+			print "CMOD - switch to front view"
+			self.cmdif3D("sim/view/3d_cockpit_cmnd_look","sim/view/forward_with_panel")
 		return 0
 	
 	def cmdif3D(self, cmd3D, cmd2D): #Run command depending on 3D cockpit
 		ac,has3D=self.getshortac(self.acf_desc_ref)
+		print "CMOD - has3D = "+str(has3D)
 		if has3D==1:
 			#view 3D
+			print "CMOD - running 3D command"
 			view_cmd=XPLMFindCommand(cmd3D)
 		else:
 			#view 2D
+			print "CMOD - running 2D command"
 			view_cmd=XPLMFindCommand(cmd2D)
 		if view_cmd is not None:
 			#print "XDMG = Found command, running"
@@ -239,7 +243,7 @@ class PythonInterface:
 				apset=XPLMGetDataf(apset_ref)
 				XPLMSetDataf(apset_ref, apset+ap_del)
 			elif phase==1:
-				if self.cmdhold>10 and self.cmdhold%5=0:
+				if self.cmdhold>10 and self.cmdhold%5==0:
 					apset=XPLMGetDataf(apset_ref)
 					XPLMSetDataf(apset_ref, apset+ap_del)
 				self.cmdhold+=1
