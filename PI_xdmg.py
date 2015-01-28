@@ -4,7 +4,6 @@ from XPLMDisplay import *
 from XPLMGraphics import *
 from XPLMDefs import *
 from XPLMUtilities import *
-from time import *
 
 class PythonInterface:
 
@@ -183,10 +182,12 @@ class PythonInterface:
 	
 	def CPtoggle(self):
 		print "XDMG = Running cutoff toggle function..."
-		cutoff_toggle_cmd=XPLMFindCommand("/pc12/engine/cutoff_protection_toggle")
+		cutoff_toggle_cmd=XPLMFindCommand("pc12/engine/cutoff_protection_toggle")
 		if cutoff_toggle_cmd is not None:
 			print "XDMG = Found command, toggling switch"
 			XPLMCommandOnce(cutoff_toggle_cmd)
+			# XPLMCommandBegin(cutoff_toggle_cmd)
+			# XPLMCommandEnd(cutoff_toggle_cmd)
 
 	def gameLoopCallback(self, inElapsedSinceLastCall, elapsedSim, counter, refcon):
 		newdmg=1 #Whether to try new damage calculating method
@@ -240,8 +241,7 @@ class PythonInterface:
 				if _diff>0:
 					self.chtDamage+=_diff
 			self.defaultcht=chts[0]
-			if (mixes[0] > 0.95 and XPLMGetDataf(self.alt_ref) > 1000):
-				#SMOKIN'
+			if (mixes[0] > 0.95 and XPLMGetDataf(self.alt_ref) > 1000): #SMOKIN'
 				self.mixtureDamage += 1
 			self.msg[1]="CHT: "+str(round(chts[0],2))+" dmg: "+str(round(self.chtDamage,2))
 		else: #Use a new way to calculate damage
