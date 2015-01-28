@@ -265,29 +265,30 @@ class PythonInterface:
 			general_fl=int(dist/10+2) #General rule for PC-12 cruise altitude
 			climb=1000
 			speed=200
-			gph=60
+			wgt=XPLMGetDataf(self.wgt_ref)*self.kglb
+			gph=50 if wgt<10000 else 60
 		elif self.acf_short=="B190":
 			ceiling=25
 			maxcabin=10000
 			general_fl=int(dist/10+4) #Faster climb rate at slower speed than PC-12
-			climb=2000
+			climb=2000 if alt_ind<8000 else 1300
 			speed=200
 			gph=110
 		elif self.acf_short=="CL30":
 			T=XPLMGetDataf(self.temp_ref) #deg C
 			delISA=self.getdelISA(alt_ind, T)
 			wgt=XPLMGetDataf(self.wgt_ref)*self.kglb
-			factor=1.25 if delISA > 15 or wgt > 35000 else 1.5 #Slower climb at higher temps/weights
+			factor=1.25 if delISA>15 or wgt>35000 else 1.5 #Slower climb at higher temps/weights
 			ceiling=45
 			general_fl=int(dist/10*factor) #Approximate rule
-			climb=3500
+			climb=3500 if alt_ind<8000 else 2500
 			speed=380
 			gph=330
 		elif self.acf_short=="B738":
 			T=XPLMGetDataf(self.temp_ref) #deg C
 			delISA=self.getdelISA(alt_ind, T)
 			wgt=XPLMGetDataf(self.wgt_ref)*self.kglb
-			factor=1.1 if delISA > 15 or wgt > 145000 else 1.25 #Slower climb at higher temps/weights
+			factor=1.0 if delISA > 15 or wgt > 145000 else 1.25 #Slower climb at higher temps/weights
 			ceiling=42
 			general_fl=int(dist/10*factor)
 			climb=2000
@@ -302,19 +303,19 @@ class PythonInterface:
 		elif self.acf_short=="DH8D":
 			ceiling=27
 			general_fl=int(dist/10+4) #Approximate rule
-			climb=1500
+			climb=1500 if alt_ind<8000 else 1000
 			speed=300
 			gph=250
 		elif self.acf_short=="CONI":
 			ceiling=24
 			general_fl=int(dist/10+2)
-			climb=2000
+			climb=2000 if alt_ind<8000 else 1000
 			speed=300
 			gph=800
 		elif self.acf_short=="DC3":
 			ceiling=23
 			general_fl=int(dist/10)
-			climb=1000
+			climb=1000 if alt_ind<6000 else 750
 			speed=180
 			gph=95
 		else:
