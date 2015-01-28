@@ -494,27 +494,27 @@ class PythonInterface:
 		acf_desc=str(acf_descb)
 		XPLMGetDatab(self.acf_icao_ref, acf_descb, 0, 40)
 		acf_icao=str(acf_descb)
-		if acf_desc[0:27]=="['Boeing 737-800 xversion 4" or acf_icao="B738":
+		if acf_desc[0:27]=="['Boeing 737-800 xversion 4" or acf_icao=="B738":
 			AC="B738"
 			self.flaps=(0.125,0.375,0.625,0.875,1.0) #1 5 15 30 40
-		elif acf_desc=="['Pilatus PC-12']" or acf_icao="PC12":
-			XPLMSetDataf(self.acf_EW_ref,5743.04)
+		elif acf_desc=="['Pilatus PC-12']" or acf_icao=="PC12":
+			XPLMSetDataf(self.acf_EW_ref,2605)
 			AC="PC12"
 			self.flaps=(0.3,0.7,1.0) #15 30 40
-		elif acf_desc[0:9]=="['BE1900D" or acf_icao="B190":
+		elif acf_desc[0:9]=="['BE1900D" or acf_icao=="B190":
 			AC="B190"
-		elif acf_desc=="['Bombardier Challenger 300']" or acf_icao="CL30":
+		elif acf_desc=="['Bombardier Challenger 300']" or acf_icao=="CL30":
 			AC="CL30"
-		elif acf_desc[0:21]=="['C208B Grand Caravan" or acf_icao="C208":
+		elif acf_desc[0:21]=="['C208B Grand Caravan" or acf_icao=="C208":
 			AC="C208"
-		elif acf_desc=="['DeHavilland Dash 8 Q400']" or acf_icao="DH8D":
+		elif acf_desc=="['DeHavilland Dash 8 Q400']" or acf_icao=="DH8D":
 			AC="DH8D"
 			self.flaps=(0.25,0.5,0.75,1.0) #FIX ME 5 10 15 35
-		elif acf_desc=="['L-1049G Constellation']" or acf_icao="CONI":
+		elif acf_desc=="['L-1049G Constellation']" or acf_icao=="CONI":
 			AC="CONI"
-		elif acf_desc=="['Douglas DC-3']" or acf_icao="DC3":
+		elif acf_desc=="['Douglas DC-3']" or acf_icao=="DC3":
 			AC="DC3"
-		elif acf_desc=="['Cessna Citation X']" or acf_icao="C750":
+		elif acf_desc=="['Cessna Citation X']" or acf_icao=="C750":
 			AC="C750"
 		elif acf_icao!="": #I guess we'll trust it
 			AC=acf_icao
