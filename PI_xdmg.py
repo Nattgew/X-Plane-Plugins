@@ -179,6 +179,7 @@ class PythonInterface:
 	def MixTape(self, m):
 		#print "XDMG = Setting mixture "+str(round(m,2))
 		XPLMSetDatavf(self.mix_ref, [m, m, m, m, m, m, m, m], 0, self.num_eng)
+		return 0 #Maybe?
 	
 	def CPtoggle(self):
 		print "XDMG = Running cutoff toggle function..."
@@ -188,6 +189,7 @@ class PythonInterface:
 			XPLMCommandOnce(cutoff_toggle_cmd)
 			# XPLMCommandBegin(cutoff_toggle_cmd)
 			# XPLMCommandEnd(cutoff_toggle_cmd)
+		return 0 #Maybe?
 
 	def gameLoopCallback(self, inElapsedSinceLastCall, elapsedSim, counter, refcon):
 		newdmg=1 #Whether to try new damage calculating method
@@ -209,7 +211,7 @@ class PythonInterface:
 		if (mixes[0] > 0.95 and altitude > 900):
 			self.MixTape(0.949)	
 			
-		#Flight end stuff
+		#FSE flight end stuff
 		if self.end_flight==5:
 			print "XDMG - Parking brake set, toggle cutoff protection, flaps up"
 			XPLMSetDataf(self.pbrake_ref, 1.0)
@@ -281,4 +283,7 @@ class PythonInterface:
 		self.msg[2]="Mix: "+str(round(mixes[0],2))+" dmg: "+str(round(self.mixtureDamage,2))
 		self.msg[3]="En: "+str(self.eng_type[0])+" Prop: "+str(self.prop_type[0])
 
-		return 1
+		if self.end_flight>0:
+			return 5
+		else:
+			return 1
