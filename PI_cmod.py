@@ -189,30 +189,18 @@ class PythonInterface:
 	
 	def CmdCPConnCallback(self, cmd, phase, refcon): #Cockpit view based on airplane
 		if(phase==0): #KeyDown event
-			#print "CMOD - switch to front view"
 			self.cmdif3D("sim/view/3d_cockpit_cmnd_look","sim/view/forward_with_panel")
-			#print "CMOD - finished switch to front view"
 		return 0
 	
 	def cmdif3D(self, cmd3D, cmd2D): #Run command depending on 3D cockpit
-		#print "CMOD - cmdif3D, getting AC info"
 		ac,has3D=self.getshortac(self.acf_desc_ref)
 		#print "CMOD - AC "+ac+" has3D = "+str(has3D)
-		if has3D==1:
-			#view 3D
-			#print "CMOD - getting 3D command"
+		if has3D==1: #view 3D
 			view_cmd=XPLMFindCommand(cmd3D)
-		else:
-			#view 2D
-			#print "CMOD - getting 2D command"
+		else: #view 2D
 			view_cmd=XPLMFindCommand(cmd2D)
 		if view_cmd is not None:
-			#print "XDMG = Found view command, running"
 			XPLMCommandOnce(view_cmd)
-			# if phase==0:
-				# XPLMCommandBegin(view_cmd)
-			# elif phase==2:
-				# XPLMCommandEnd(view_cmd)
 		else:
 			print "XDMG = Couldn't find either '"+cmd3D+"' or '"+cmd2D
 		return 0
