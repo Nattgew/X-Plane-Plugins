@@ -213,7 +213,8 @@ class PythonInterface:
 		if self.end_flight==5:
 			print "XDMG - Parking brake set, toggle cutoff protection, flaps up"
 			XPLMSetDataf(self.pbrake_ref, 1.0)
-			self.CPtoggle() #Toggle the cutoff protection on PC-12
+			if self.eng_type[0]==2 or self.eng_type[0]==8: #Turboprop
+				self.CPtoggle() #Toggle the cutoff protection on PC-12
 			XPLMSetDataf(self.flap_h_pos_ref, 0.0) #Retract flaps full
 			self.end_flight=4
 		elif self.end_flight==4:
