@@ -228,9 +228,10 @@ class PythonInterface:
 				self.MixTape(1.0)
 			self.end_flight=2
 		elif self.end_flight==2:
-			print "XDMG - Toggle cutoff protection"
-			self.CPtoggle()
-			self.end_flight==0
+			if self.eng_type[0]==2 or self.eng_type[0]==8: #Turboprop
+				print "XDMG - Toggle cutoff protection"
+				self.CPtoggle()
+			self.end_flight=0
 		
 		if newdmg==0: #Use standard FSE damage calcs
 			#Let's do some damage
