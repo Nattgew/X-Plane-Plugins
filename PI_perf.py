@@ -126,6 +126,7 @@ class PythonInterface:
 		self.mach_ref=XPLMFindDataRef("sim/flightmodel/misc/machno")
 		self.alt_ind_ref=XPLMFindDataRef("sim/flightmodel/misc/h_ind")
 		self.acf_EW_ref=XPLMFindDataRef("sim/aircraft/weight/acf_m_empty")
+		self.acf_MTOW_ref=XPLMFindDataRef("sim/aircraft/weight/acf_m_max")
 		self.acf_desc_ref=XPLMFindDataRef("sim/aircraft/view/acf_descrip")
 		self.acf_icao_ref=XPLMFindDataRef("sim/aircraft/view/acf_ICAO")
 		self.eng_type_ref=XPLMFindDataRef("sim/aircraft/prop/acf_en_type")
@@ -228,98 +229,94 @@ class PythonInterface:
 			hdginit=aphdg
 			if self.acf_short=="PC12":
 				climb=-1300 if alt_ind>22000 else -1200 if alt_ind>15000 else -1000
-				alt+=1000
 			elif self.acf_short=="B190":
 				climb=-1500
-				alt+=1500
 			elif self.acf_short=="CL30":
 				climb=-2000
-				alt+=2000
 			elif self.acf_short=="CONI":
 				climb=-1500
-				alt+=1500
+			elif self.acf_short=="C208":
+				climb=-1500
 			else:
 				climb=-1000
-				alt+=2000
+			alt+=self.agl
 		#Set autopilot values
 		XPLMSetDataf(self.ap_hdg_ref, hdginit)
 		XPLMSetDataf(self.ap_alt_ref, alt)
 		XPLMSetDataf(self.ap_vvi_ref, climb)
-		# if maxcabin>0: #Attempt to set cabin altitude
+		# if self.maxcabin>0: #Attempt to set cabin altitude
 			# if alt>10000:
 				# cabalt=alt/ceiling*3048 #Approximate rule for PC-12 cabin altitude
 			# if cabalt<dalt: #Pressurize to destination altitude
 				# cabalt=dalt
-			# if cabalt>maxcabin: #Max cabin altitude
-				# cabalt=maxcabin
+			# if cabalt>self.maxcabin: #Max cabin altitude
+				# cabalt=self.maxcabin
 			# print "AP Changing cabin altitude from "+str(int(round(XPLMGetDataf(self.cab_alt_ref))))+" to "+str(int(round(cabalt)))+"m"
 			# XPLMSetDataf(self.cab_alt_ref, cabalt)
 			# print "AP Cabin altitude now set to "+str(int(round(XPLMGetDataf(self.cab_alt_ref))))+"m"
 	
 	def getFL(self,dalt,alt_ind,aphdg):
 		dist=XPLMGetDataf(self.gps_dist_ref) #Distance to destination
-		maxcabin=0 #Default assume automatic
+		T=XPLMGetDataf(self.temp_ref) #deg C
+		delISA=self.getdelISA(alt_ind, T)
+		wgt=XPLMGetDataf(self.wgt_ref)*self.kglb
 		if self.acf_short=="PC12":
-			ceiling=30
-			maxcabin=10000
 			general_fl=int(dist/10+2) #General rule for PC-12 cruise altitude
-			climb=1000
+			if wgt>9800 and delISA>10 and general_fl>28:
+				general_fl=28
+			climb=1000 if alt_ind<10000 else 750
 			speed=200
-			wgt=XPLMGetDataf(self.wgt_ref)*self.kglb
-			gph=50 if wgt<10000 else 60
+			gph=50 if wgt<9750 else 60
 		elif self.acf_short=="B190":
-			ceiling=25
-			maxcabin=10000
 			general_fl=int(dist/10+4) #Faster climb rate at slower speed than PC-12
 			climb=2000 if alt_ind<8000 else 1300
 			speed=200
 			gph=110
 		elif self.acf_short=="CL30":
-			T=XPLMGetDataf(self.temp_ref) #deg C
-			delISA=self.getdelISA(alt_ind, T)
-			wgt=XPLMGetDataf(self.wgt_ref)*self.kglb
-			factor=1.25 if delISA>15 or wgt>35000 else 1.5 #Slower climb at higher temps/weights
-			ceiling=45
+			factor=1.25 if delISA>15 or wgt>35000 or dist<375 else 1.5 #Slower climb at higher temps/weights
 			general_fl=int(dist/10*factor) #Approximate rule
 			climb=3500 if alt_ind<8000 else 2500
-			speed=380
+			speed=380 if dist<450 else 420
 			gph=330
+		elif self.acf_short=="C208":
+			general_fl=int(dist/10)+2
+			if (wgt>8000 or delISA>10) and general_fl>15
+				general_fl=15
+			climb=750 if alt<10000 else 500
+			speed=150
+			gph=60
 		elif self.acf_short=="B738":
-			T=XPLMGetDataf(self.temp_ref) #deg C
-			delISA=self.getdelISA(alt_ind, T)
-			wgt=XPLMGetDataf(self.wgt_ref)*self.kglb
 			factor=1.0 if delISA > 15 or wgt > 145000 else 1.25 #Slower climb at higher temps/weights
-			ceiling=42
 			general_fl=int(dist/10*factor)
 			climb=2000
-			speed=380
+			speed=380 if dist<450 else 420
 			gph=900
+		elif self.acf_short=="FA7X":
+			general_fl=int(dist/10*1.5)
+			climb=3000
+			speed=420
+			gph=600
 		elif self.acf_short=="C750":
-			ceiling=51
 			general_fl=int(dist/10*1.5)
 			climb=4000
 			speed=420
 			gph=330
 		elif self.acf_short=="DH8D":
-			ceiling=27
 			general_fl=int(dist/10+4) #Approximate rule
 			climb=1500 if alt_ind<8000 else 1000
 			speed=300
 			gph=250
 		elif self.acf_short=="CONI":
-			ceiling=24
 			general_fl=int(dist/10+2)
 			climb=2000 if alt_ind<8000 else 1000
 			speed=300
 			gph=800
 		elif self.acf_short=="DC3":
-			ceiling=23
 			general_fl=int(dist/10)
 			climb=1000 if alt_ind<6000 else 750
 			speed=180
 			gph=95
 		else:
-			ceiling=30
 			general_fl=int(dist/10+2) #General rule for PC-12 cruise altitude
 			climb=1000
 			speed=0
@@ -332,13 +329,13 @@ class PythonInterface:
 		if aphdg<180: #NEodd
 			if general_fl%2==0:
 				general_fl-=1
-			if general_fl>ceiling:
-				general_fl=ceiling-1 if ceiling%2==0 else ceiling
+			if general_fl>self.ceiling:
+				general_fl=self.ceiling-1 if self.ceiling%2==0 else self.ceiling
 		else: #SWeven
 			if general_fl%2==1:
 				general_fl-=1
-			if general_fl>ceiling:
-				general_fl=ceiling-1 if ceiling%2==1 else ceiling
+			if general_fl>self.ceiling:
+				general_fl=self.ceiling-1 if self.ceiling%2==1 else self.ceiling
 		alt=float(general_fl*1000)
 		if alt<dalt+2000:
 			alt=dalt+2000
@@ -363,10 +360,7 @@ class PythonInterface:
 	
 	def toggleInfo(self): #Toggle whether any info is computed/shown
 		if self.started==0:
-			self.num_eng=XPLMGetDatai(self.num_eng_ref) #Find number of engines
 			self.acf_short=self.getacfshort() #Find name of aircraft
-			XPLMGetDatavi(self.eng_type_ref, self.eng_type, 0, self.num_eng) #Find type of engines
-			XPLMGetDatavi(self.prop_type_ref, self.prop_type, 0, self.num_eng)
 			#print str(self.acf_descb)
 			XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 0.25, 0)
 			self.started=1
@@ -488,40 +482,90 @@ class PythonInterface:
 				delay=60
 		
 		return delay
+
+	def setEW(self,AC,pyld): #Set aircraft EW to match FSE
+		MTOW=XPLMGetDataf(self.acf_MTOW_ref)
+		EW_old=XPLMGetDataf(self.acf_EW_ref)
+		EW=MTOW-pyld
+		print "PERF - setting "+AC+" EW from "+str(EW_old)+" to "+str(EW)
+		XPLMSetDataf(self.acf_EW_ref,EW)
 		
 	def getacfshort(self): #Return short name to ID A/C type
+		self.num_eng=XPLMGetDatai(self.num_eng_ref) #Find number of engines
+		XPLMGetDatavi(self.eng_type_ref, self.eng_type, 0, self.num_eng) #Find type of engines
+		XPLMGetDatavi(self.prop_type_ref, self.prop_type, 0, self.num_eng)
 		acf_descb=[]
 		XPLMGetDatab(self.acf_desc_ref, acf_descb, 0, 500)
 		acf_desc=str(acf_descb)
 		XPLMGetDatab(self.acf_icao_ref, acf_descb, 0, 40)
 		acf_icao=str(acf_descb)
+		self.flaps=(0,1)
+		self.maxcabin=0
+		self.agl=2000
 		if acf_desc[0:27]=="['Boeing 737-800 xversion 4" or acf_icao=="B738":
 			AC="B738"
 			self.flaps=(0.125,0.375,0.625,0.875,1.0) #1 5 15 30 40
+			self.ceiling=42
 		elif acf_desc=="['Pilatus PC-12']" or acf_icao=="PC12":
-			XPLMSetDataf(self.acf_EW_ref,2605)
+			#XPLMSetDataf(self.acf_EW_ref,2605)
 			AC="PC12"
+			self.setEW(AC,1895)
 			self.flaps=(0.3,0.7,1.0) #15 30 40
+			self.ceiling=30
+			self.maxcabin=10000
+			self.agl=1000
 		elif acf_desc[0:9]=="['BE1900D" or acf_icao=="B190":
 			AC="B190"
+			self.setEW(AC,2985)
+			self.ceiling=25
+			self.maxcabin=10000
+			self.agl=1500
 		elif acf_desc=="['Bombardier Challenger 300']" or acf_icao=="CL30":
 			AC="CL30"
+			self.setEW(AC,6849)
+			self.ceiling=45
 		elif acf_desc[0:21]=="['C208B Grand Caravan" or acf_icao=="C208":
 			AC="C208"
+			self.setEW(AC,1910)
+			self.ceiling=25
+			self.maxcabin=10000
+			self.agl=1000
 		elif acf_desc=="['DeHavilland Dash 8 Q400']" or acf_icao=="DH8D":
 			AC="DH8D"
+			self.setEW(AC,12071)
 			self.flaps=(0.25,0.5,0.75,1.0) #FIX ME 5 10 15 35
+			self.ceiling=27
+			self.agl=1500
 		elif acf_desc=="['L-1049G Constellation']" or acf_icao=="CONI":
 			AC="CONI"
+			self.setEW(AC,31421)
+			self.ceiling=24
+			self.agl=1500
 		elif acf_desc=="['Douglas DC-3']" or acf_icao=="DC3":
 			AC="DC3"
+			self.setEW(AC,4584)
+			self.ceiling=23
+			self.agl=1000
 		elif acf_desc=="['Cessna Citation X']" or acf_icao=="C750":
 			AC="C750"
-		elif acf_icao!="": #I guess we'll trust it
-			AC=acf_icao
+			self.setEW(AC,6714)
+			self.ceiling=51
+		elif acf_desc=="['Dassault Falcon 7X']" or acf_icao="FA7X":
+			AC="FA7X"
+			self.setEW(AC,16279)
+			self.ceiling=51
+		elif acf_desc="['Let L-410']" or acf_icao="L410":
+			AC="L410"
+			self.setEW(AC,2650)
+			self.ceiling=20
+			self.agl=1500
 		else:
-			AC=acf_desc
-			print str(acf_desc[0:8])
+			if acf_icao!="": #I guess we'll trust it
+				AC=acf_icao
+			else:
+				AC=acf_desc
+				print str(acf_desc[0:8])
+			self.ceiling=30
 		return AC
 	
 	def getPower(self): #Return power level, determine takeoff power
