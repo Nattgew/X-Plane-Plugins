@@ -10,6 +10,105 @@ import re
 import os
 import fileinput
 
+class getaircraft:
+	
+	def __init__(self):
+		acf_desc_ref=XPLMFindDataRef("sim/aircraft/view/acf_descrip")
+		acf_icao_ref=XPLMFindDataRef("sim/aircraft/view/acf_ICAO")
+		num_eng_ref=XPLMFindDataRef("sim/aircraft/engine/acf_num_engines")
+		eng_type_ref=XPLMFindDataRef("sim/aircraft/prop/acf_en_type")
+		prop_type_ref=XPLMFindDataRef("sim/aircraft/prop/acf_prop_type")
+		self.acf_EW_ref=XPLMFindDataRef("sim/aircraft/weight/acf_m_empty")
+		self.acf_MTOW_ref=XPLMFindDataRef("sim/aircraft/weight/acf_m_max")
+		
+		self.eng_type=[]
+		self.prop_type=[]
+		self.num_eng=XPLMGetDatai(self.num_eng_ref) #Find number of engines
+		XPLMGetDatavi(eng_type_ref, self.eng_type, 0, self.num_eng) #Find type of engines
+		XPLMGetDatavi(prop_type_ref, self.prop_type, 0, self.num_eng)
+		acf_descb=[]
+		XPLMGetDatab(acf_desc_ref, acf_descb, 0, 500)
+		desc=str(acf_descb)
+		XPLMGetDatab(acf_icao_ref, acf_descb, 0, 40)
+		acf_icao=str(acf_descb)
+		self.flaps=(0,1)
+		self.maxcabin=0
+		self.agl=2000
+		if desc[0:27]=="['Boeing 737-800 xversion 4" or acf_icao=="B738":
+			self.name="B738"
+			self.flaps=(0.125,0.375,0.625,0.875,1.0) #1 5 15 30 40
+			self.ceiling=42
+		elif desc=="['Pilatus PC-12']" or acf_icao=="PC12":
+			#XPLMSetDataf(self.acf_EW_ref,2605)
+			self.name="PC12"
+			self.setEW(self.name,1895)
+			self.flaps=(0.3,0.7,1.0) #15 30 40
+			self.ceiling=30
+			self.maxcabin=10000
+			self.agl=1000
+		elif desc[0:9]=="['BE1900D" or desc[0:19]=="['B1900 for X-plane" or acf_icao=="B190":
+			self.name="B190"
+			self.setEW(self.name,2985)
+			self.ceiling=25
+			self.maxcabin=10000
+			self.agl=1500
+		elif desc=="['Bombardier Challenger 300']" or acf_icao=="CL30":
+			self.name="CL30"
+			self.setEW(self.name,6849)
+			self.ceiling=45
+		elif desc[0:21]=="['C208B Grand Caravan" or acf_icao=="C208":
+			self.name="C208"
+			self.setEW(self.name,1910)
+			self.ceiling=25
+			self.maxcabin=10000
+			self.agl=1000
+		elif desc=="['DeHavilland Dash 8 Q400']" or acf_icao=="DH8D":
+			self.name="DH8D"
+			self.setEW(self.name,12071)
+			self.flaps=(0.25,0.5,0.75,1.0) #FIX ME 5 10 15 35
+			self.ceiling=27
+			self.agl=1500
+		elif desc=="['L-1049G Constellation']" or acf_icao=="CONI":
+			self.name="CONI"
+			self.setEW(self.name,31421)
+			self.ceiling=24
+			self.agl=1500
+		elif desc=="['Douglas DC-3']" or acf_icao=="DC3":
+			self.name="DC3"
+			self.setEW(self.name,4584)
+			self.ceiling=23
+			self.agl=1000
+		elif desc=="['Cessna Citation X']" or acf_icao=="C750":
+			self.name="C750"
+			self.setEW(self.name,6714)
+			self.ceiling=51
+		elif desc=="['Dassault Falcon 7X']" or acf_icao=="FA7X":
+			self.name="FA7X"
+			self.setEW(self.name,16279)
+			self.ceiling=51
+		elif desc=="['Let L-410']" or acf_icao=="L410":
+			self.name="L410"
+			self.setEW(self.name,2650)
+			self.ceiling=20
+			self.agl=1500
+		else:
+			if acf_icao!="": #I guess we'll trust it
+				self.name=acf_icao
+			else: #You're flying a what?
+				self.name=desc
+				print str(desc[0:8])
+			self.ceiling=30
+	
+	def setEW(self,AC,pyld): #Set aircraft EW to match FSE
+		MTOW=XPLMGetDataf(self.acf_MTOW_ref)
+		EW_now=XPLMGetDataf(self.acf_EW_ref)
+		EW=MTOW-pyld
+		if EW < EW_now:
+			print "PERF - Setting "+AC+" EW from "+str(EW_now)+" to "+str(EW)
+			XPLMSetDataf(self.acf_EW_ref,EW)
+		else:
+			print "PERF - Unchanged "+AC+" EW "+str(EW_now)+" is lower than FSE "+str(EW)
+
 class PythonInterface:
 
 	def CtoF(self, C): #Not used, but could be used to display the temps in F
@@ -94,6 +193,7 @@ class PythonInterface:
 		self.Desc="Calculates the current performance info based on POH"
 		self.VERSION="1.0"
 		
+		#Constants
 		self.P_SL=29.92126 # std SL press 1013.25 hPa ISA or 29.92126 inHg US
 		self.T_SL=288.15 # ISA std SL air temp in K
 		self.gamma_l=0.0019812 # lapse rate K/ft
@@ -125,13 +225,6 @@ class PythonInterface:
 		self.f_norm_ref=XPLMFindDataRef("sim/flightmodel/forces/fnrml_gear")
 		self.mach_ref=XPLMFindDataRef("sim/flightmodel/misc/machno")
 		self.alt_ind_ref=XPLMFindDataRef("sim/flightmodel/misc/h_ind")
-		self.acf_EW_ref=XPLMFindDataRef("sim/aircraft/weight/acf_m_empty")
-		self.acf_MTOW_ref=XPLMFindDataRef("sim/aircraft/weight/acf_m_max")
-		self.acf_desc_ref=XPLMFindDataRef("sim/aircraft/view/acf_descrip")
-		self.acf_icao_ref=XPLMFindDataRef("sim/aircraft/view/acf_ICAO")
-		self.eng_type_ref=XPLMFindDataRef("sim/aircraft/prop/acf_en_type")
-		self.prop_type_ref=XPLMFindDataRef("sim/aircraft/prop/acf_prop_type")
-		self.num_eng_ref=XPLMFindDataRef("sim/aircraft/engine/acf_num_engines")
 		self.geardep_ref=XPLMFindDataRef("sim/aircraft/parts/acf_gear_deploy")
 		self.wgt_ref=XPLMFindDataRef("sim/flightmodel/weight/m_total")
 		self.flap_h_pos_ref=XPLMFindDataRef("sim/cockpit2/controls/flap_ratio") # handle position
@@ -153,22 +246,11 @@ class PythonInterface:
 		self.cab_max_ref=XPLMFindDataRef("sim/cockpit/pressure/max_allowable_altitude")
 		self.flighttime_ref=XPLMFindDataRef("sim/time/total_flight_time_sec")
 		
-		self.started=0
-		self.Dstarted=0
-		self.msg=[""]*5
 		winPosX=20
 		winPosY=700
 		win_w=270
 		win_h=90
-		self.num_eng=0
-		self.TO_pwr=0
-		self.eng_type=[]
-		self.prop_type=[]
-		self.flaps=(0,1)
-		self.acf_short=""
-		self.current_dest=""
-		self.elevate_dest=0
-		self.flightTimerLast=-1
+		self.init_variables()
 		
 		self.gameLoopCB=self.gameLoopCallback
 		self.DrawWindowCB=self.DrawWindowCallback
@@ -189,6 +271,22 @@ class PythonInterface:
 		XPLMRegisterCommandHandler(self, self.CmdAPsetConn,  self.CmdAPsetConnCB, 0, 0)
 		
 		return self.Name, self.Sig, self.Desc
+	
+	def init_variables(self):
+		self.started=0
+		self.Dstarted=0
+		# self.msg=[""]*5
+		# self.num_eng=0
+		self.TO_pwr=0
+		# self.eng_type=[]
+		# self.prop_type=[]
+		# self.flaps=(0,1)
+		# self.acf_short=""
+		self.aircraft=[]
+		self.current_dest=""
+		self.elevate_dest=0
+		self.flightTimerLast=-1
+		pass
 
 	def MouseClickCallback(self, inWindowID, x, y, inMouse, inRefcon):
 		return 0
@@ -215,8 +313,8 @@ class PythonInterface:
 		return 0
 	
 	def APset(self): #Sets cruise altitude and heading based on destination, sets VS
-		if self.acf_short=="":
-			self.acf_short=self.getacfshort()
+		if self.aircraft==[]:
+			self.aircraft=getaircraft()
 		gear=XPLMGetDatai(self.gear_h_pos_ref) #Landing gear position
 		alt_ind=XPLMGetDataf(self.alt_ind_ref) #Indicated altitude
 		aphdg=XPLMGetDataf(self.gps_degm_ref) #Heading to destination
@@ -227,19 +325,19 @@ class PythonInterface:
 		else: #If gear up, set AP for descent to destination
 			alt=dalt
 			hdginit=aphdg
-			if self.acf_short=="PC12":
+			if self.aircraft.name=="PC12":
 				climb=-1300 if alt_ind>22000 else -1200 if alt_ind>15000 else -1000
-			elif self.acf_short=="B190":
+			elif self.aircraft.name=="B190":
 				climb=-1500
-			elif self.acf_short=="CL30":
+			elif self.aircraft.name=="CL30":
 				climb=-2000
-			elif self.acf_short=="CONI":
+			elif self.aircraft.name=="CONI":
 				climb=-1500
-			elif self.acf_short=="C208":
+			elif self.aircraft.name=="C208":
 				climb=-1500
 			else:
 				climb=-1000
-			alt+=self.agl
+			alt+=self.aircraft.agl
 		#Set autopilot values
 		XPLMSetDataf(self.ap_hdg_ref, hdginit)
 		XPLMSetDataf(self.ap_alt_ref, alt)
@@ -260,58 +358,58 @@ class PythonInterface:
 		T=XPLMGetDataf(self.temp_ref) #deg C
 		delISA=self.getdelISA(alt_ind, T)
 		wgt=XPLMGetDataf(self.wgt_ref)*self.kglb
-		if self.acf_short=="PC12":
+		if self.aircraft.name=="PC12":
 			general_fl=int(dist/10+2) #General rule for PC-12 cruise altitude
 			if wgt>9800 and delISA>10 and general_fl>28:
 				general_fl=28
 			climb=1000 if alt_ind<10000 else 750
 			speed=200
 			gph=50 if wgt<9750 else 60
-		elif self.acf_short=="B190":
+		elif self.aircraft.name=="B190":
 			general_fl=int(dist/10+4) #Faster climb rate at slower speed than PC-12
 			climb=2000 if alt_ind<8000 else 1300
 			speed=200
 			gph=110
-		elif self.acf_short=="CL30":
+		elif self.aircraft.name=="CL30":
 			factor=1.25 if delISA>15 or wgt>35000 or dist<375 else 1.5 #Slower climb at higher temps/weights
 			general_fl=int(dist/10*factor) #Approximate rule
 			climb=3500 if alt_ind<8000 else 2500
 			speed=380 if dist<450 else 420
 			gph=330
-		elif self.acf_short=="C208":
+		elif self.aircraft.name=="C208":
 			general_fl=int(dist/10)+2
 			if (wgt>8000 or delISA>10) and general_fl>15:
 				general_fl=15
 			climb=750 if alt<10000 else 500
 			speed=150
 			gph=60
-		elif self.acf_short=="B738":
+		elif self.aircraft.name=="B738":
 			factor=1.0 if delISA > 15 or wgt > 145000 else 1.25 #Slower climb at higher temps/weights
 			general_fl=int(dist/10*factor)
 			climb=2000
 			speed=380 if dist<450 else 420
 			gph=900
-		elif self.acf_short=="FA7X":
+		elif self.aircraft.name=="FA7X":
 			general_fl=int(dist/10*1.5)
 			climb=3000
 			speed=420
 			gph=600
-		elif self.acf_short=="C750":
+		elif self.aircraft.name=="C750":
 			general_fl=int(dist/10*1.5)
 			climb=4000
 			speed=420
 			gph=330
-		elif self.acf_short=="DH8D":
+		elif self.aircraft.name=="DH8D":
 			general_fl=int(dist/10+4) #Approximate rule
 			climb=1500 if alt_ind<8000 else 1000
 			speed=300
 			gph=250
-		elif self.acf_short=="CONI":
+		elif self.aircraft.name=="CONI":
 			general_fl=int(dist/10+2)
 			climb=2000 if alt_ind<8000 else 1000
 			speed=300
 			gph=800
-		elif self.acf_short=="DC3":
+		elif self.aircraft.name=="DC3":
 			general_fl=int(dist/10)
 			climb=1000 if alt_ind<6000 else 750
 			speed=180
@@ -329,13 +427,13 @@ class PythonInterface:
 		if aphdg<180: #NEodd
 			if general_fl%2==0:
 				general_fl-=1
-			if general_fl>self.ceiling:
-				general_fl=self.ceiling-1 if self.ceiling%2==0 else self.ceiling
+			if general_fl>self.aircraft.ceiling:
+				general_fl=self.aircraft.ceiling-1 if self.aircraft.ceiling%2==0 else self.aircraft.ceiling
 		else: #SWeven
 			if general_fl%2==1:
 				general_fl-=1
-			if general_fl>self.ceiling:
-				general_fl=self.ceiling-1 if self.ceiling%2==1 else self.ceiling
+			if general_fl>self.aircraft.ceiling:
+				general_fl=self.aircraft.ceiling-1 if self.aircraft.ceiling%2==1 else self.aircraft.ceiling
 		alt=float(general_fl*1000)
 		if alt<dalt+2000:
 			alt=dalt+2000
@@ -360,15 +458,13 @@ class PythonInterface:
 	
 	def toggleInfo(self): #Toggle whether any info is computed/shown
 		if self.started==0:
-			self.acf_short=self.getacfshort() #Find name of aircraft
-			#print str(self.acf_descb)
+			# self.aircraft.name=self.getacfshort() #Find name of aircraft
+			self.aircraft=getaircraft()
 			XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 0.25, 0)
 			self.started=1
 		else:
-			self.acf_descb=[]
-			self.eng_type=[]
 			XPLMUnregisterFlightLoopCallback(self, self.gameLoopCB, 0)
-			self.started=0
+			self.init_variables()
 	
 	def toggleDInfo(self): #Toggles descent mode
 		if self.Dstarted==0:
@@ -406,6 +502,15 @@ class PythonInterface:
 		pass
 
 	def XPluginReceiveMessage(self, inFromWho, inMessage, inParam):
+		
+	def XPluginReceiveMessage(self, inFromWho, inMessage, inParam):
+		if (inFromWho == XPLM_PLUGIN_XPLANE):
+			if (inMessage == XPLM_MSG_PLANE_LOADED):
+				if (inParam == XPLM_PLUGIN_XPLANE):
+					if self.Dstarted==1:
+						self.toggleDInfo() 
+					if self.started==1:
+						self.toggleInfo()
 		pass
 
 	def gameLoopCallback(self, inElapsedSinceLastCall, elapsedSim, counter, refcon):
@@ -424,49 +529,49 @@ class PythonInterface:
 		if gears[0]==1: #Landing or taking off
 			flaps=XPLMGetDataf(self.flap_h_pos_ref)
 			if XPLMGetDataf(self.f_norm_ref) != 0: #Weight on wheels
-				Vspeed=self.getV1(flaps, wgt, DenAlt, T, self.acf_short)
+				Vspeed=self.getV1(flaps, wgt, DenAlt, T, self.aircraft.name)
 				hwind=self.getHwind()
-				tod=self.getTOD(flaps, wgt, DenAlt, T, delISA, hwind, self.acf_short)
+				runway=self.getTOD(flaps, wgt, DenAlt, T, delISA, hwind, self.aircraft.name)
 			else:
-				Vspeed=self.getVref(flaps, wgt, DenAlt, T, self.acf_short)
+				Vspeed=self.getVref(flaps, wgt, DenAlt, T, self.aircraft.name)
 				dalt=self.get_dest_info()
 				hwind=self.getHwind()
 				SL=XPLMGetDataf(self.baro_act_ref)
-				tod=self.getLandingDist(wgt, dalt, delISA, SL, hwind, self.acf_short)
+				runway=self.getLDR(wgt, dalt, delISA, SL, hwind, self.aircraft.name)
 		else:
 			Vspeed=""
-			tod=""
+			runway=""
 		dIstr=str(int(round(delISA)))+" "+self.d+"C"
 		if delISA>0:
 			dIstr="+"+dIstr
 		dist=XPLMGetDataf(self.gps_dist_ref)
 		machstr="  M"+str(round(mach,2))
-		self.msg[0]=self.acf_short+"  DA: "+str(int(round(DenAlt)))+" ft  GW: "+str(int(round(wgt)))+" lb  "+str(int(round(dist)))+"nm"
+		self.msg[0]=self.aircraft.name+"  DA: "+str(int(round(DenAlt)))+" ft  GW: "+str(int(round(wgt)))+" lb  "+str(int(round(dist)))+"nm"
 		self.msg[1]="T: "+str(int(round(T)))+" "+self.d+"C  ISA +/-: "+dIstr+TOP_str+machstr
 		vvi=XPLMGetDataf(self.vvi_ref)
 		if self.Dstarted==0:
 			gs=XPLMGetDataf(self.gs_ref)*self.mkt
 			alt_ind=XPLMGetDataf(self.alt_ind_ref)
 			kias=XPLMGetDataf(self.ias_ref)
-			maxPwr=self.getMaxPwr(DenAlt, delISA, self.acf_short)
-			cruiseclb=self.getCC(DenAlt, alt, delISA, wgt, self.acf_short)
-			cruise=self.getCruise(DenAlt, wgt, alt_ind, delISA, self.acf_short)
-			maxcruise=self.getMaxCruise(DenAlt, wgt, alt, delISA, self.acf_short)
-			optFL=self.getOptFL(wgt, self.acf_short)
-			maxFL=self.getMaxFL(wgt, delISA, self.acf_short)
+			maxPwr=self.getMaxPwr(DenAlt, delISA, self.aircraft.name)
+			cruiseclb=self.getCC(DenAlt, alt, delISA, wgt, self.aircraft.name)
+			cruise=self.getCruise(DenAlt, wgt, alt_ind, delISA, self.aircraft.name)
+			maxcruise=self.getMaxCruise(DenAlt, wgt, alt, delISA, self.aircraft.name)
+			optFL=self.getOptFL(wgt, self.aircraft.name)
+			maxFL=self.getMaxFL(wgt, delISA, self.aircraft.name)
 			twospeed=str(int(round(kias)))+"/"+str(int(round(gs)))
 			#Assemble the messengers
 			self.msg[2]="Pwr: "+maxPwr+"  CC: "+cruiseclb+"  Thr: "+pwr
 			self.msg[3]="Crs: "+maxcruise+"  LR: "+cruise+"  AS: "+twospeed
-			self.msg[4]="FL: "+maxFL+"  FL: "+optFL+tod+Vspeed#+" Flaps: "+str(flaps)
+			self.msg[4]="FL: "+maxFL+"  FL: "+optFL+runway+Vspeed#+" Flaps: "+str(flaps)
 		else:
 			if dalt is None:
 				dalt=self.get_dest_info()
 			hwind=self.getHwind()
 			SL==XPLMGetDataf(self.baro_act_ref)
-			ldr=self.getLandingDist(wgt, dalt, delISA, SL, hwind, self.acf_short)
-			ddist=self.getDesc(dist, alt, dalt, DenAlt, delISA, self.acf_short)
-			dprof=self.getDpro(self.acf_short, alt)
+			ldr=self.getLDR(wgt, dalt, delISA, SL, hwind, self.aircraft.name)
+			ddist=self.getDesc(dist, alt, dalt, DenAlt, delISA, self.aircraft.name)
+			dprof=self.getDpro(self.aircraft.name, alt)
 			#Assemble the message
 			self.msg[2]="Descend at: "+ddist
 			self.msg[3]=dprof
@@ -483,97 +588,12 @@ class PythonInterface:
 		
 		return delay
 
-	def setEW(self,AC,pyld): #Set aircraft EW to match FSE
-		MTOW=XPLMGetDataf(self.acf_MTOW_ref)
-		EW_old=XPLMGetDataf(self.acf_EW_ref)
-		EW=MTOW-pyld
-		print "PERF - setting "+AC+" EW from "+str(EW_old)+" to "+str(EW)
-		XPLMSetDataf(self.acf_EW_ref,EW)
-		
-	def getacfshort(self): #Return short name to ID A/C type
-		self.num_eng=XPLMGetDatai(self.num_eng_ref) #Find number of engines
-		XPLMGetDatavi(self.eng_type_ref, self.eng_type, 0, self.num_eng) #Find type of engines
-		XPLMGetDatavi(self.prop_type_ref, self.prop_type, 0, self.num_eng)
-		acf_descb=[]
-		XPLMGetDatab(self.acf_desc_ref, acf_descb, 0, 500)
-		acf_desc=str(acf_descb)
-		XPLMGetDatab(self.acf_icao_ref, acf_descb, 0, 40)
-		acf_icao=str(acf_descb)
-		self.flaps=(0,1)
-		self.maxcabin=0
-		self.agl=2000
-		if acf_desc[0:27]=="['Boeing 737-800 xversion 4" or acf_icao=="B738":
-			AC="B738"
-			self.flaps=(0.125,0.375,0.625,0.875,1.0) #1 5 15 30 40
-			self.ceiling=42
-		elif acf_desc=="['Pilatus PC-12']" or acf_icao=="PC12":
-			#XPLMSetDataf(self.acf_EW_ref,2605)
-			AC="PC12"
-			self.setEW(AC,1895)
-			self.flaps=(0.3,0.7,1.0) #15 30 40
-			self.ceiling=30
-			self.maxcabin=10000
-			self.agl=1000
-		elif acf_desc[0:9]=="['BE1900D" or acf_desc[0:19]=="['B1900 for X-plane" or acf_icao=="B190":
-			AC="B190"
-			self.setEW(AC,2985)
-			self.ceiling=25
-			self.maxcabin=10000
-			self.agl=1500
-		elif acf_desc=="['Bombardier Challenger 300']" or acf_icao=="CL30":
-			AC="CL30"
-			self.setEW(AC,6849)
-			self.ceiling=45
-		elif acf_desc[0:21]=="['C208B Grand Caravan" or acf_icao=="C208":
-			AC="C208"
-			self.setEW(AC,1910)
-			self.ceiling=25
-			self.maxcabin=10000
-			self.agl=1000
-		elif acf_desc=="['DeHavilland Dash 8 Q400']" or acf_icao=="DH8D":
-			AC="DH8D"
-			self.setEW(AC,12071)
-			self.flaps=(0.25,0.5,0.75,1.0) #FIX ME 5 10 15 35
-			self.ceiling=27
-			self.agl=1500
-		elif acf_desc=="['L-1049G Constellation']" or acf_icao=="CONI":
-			AC="CONI"
-			self.setEW(AC,31421)
-			self.ceiling=24
-			self.agl=1500
-		elif acf_desc=="['Douglas DC-3']" or acf_icao=="DC3":
-			AC="DC3"
-			self.setEW(AC,4584)
-			self.ceiling=23
-			self.agl=1000
-		elif acf_desc=="['Cessna Citation X']" or acf_icao=="C750":
-			AC="C750"
-			self.setEW(AC,6714)
-			self.ceiling=51
-		elif acf_desc=="['Dassault Falcon 7X']" or acf_icao=="FA7X":
-			AC="FA7X"
-			self.setEW(AC,16279)
-			self.ceiling=51
-		elif acf_desc=="['Let L-410']" or acf_icao=="L410":
-			AC="L410"
-			self.setEW(AC,2650)
-			self.ceiling=20
-			self.agl=1500
-		else:
-			if acf_icao!="": #I guess we'll trust it
-				AC=acf_icao
-			else:
-				AC=acf_desc
-				print str(acf_desc[0:8])
-			self.ceiling=30
-		return AC
-	
 	def getPower(self): #Return power level, determine takeoff power
 		if self.eng_type[0]==2 or self.eng_type[0]==8: #Turboprop
 			TRQ=[]
 			XPLMGetDatavf(self.TRQ_ref, TRQ, 0, self.num_eng)
 			pwr=str(round(TRQ[0],1))+" Nm"
-			if self.acf_short=="B190":
+			if self.aircraft.name=="B190":
 				torque_ftlb1=self.Nlb*self.mft*TRQ[0]
 				torque_ftlb2=self.Nlb*self.mft*TRQ[1]
 				pwr=str(int(round(torque_ftlb1)))+"|"+str(int(round(torque_ftlb2)))+" ftlb"
@@ -582,7 +602,7 @@ class PythonInterface:
 				else:
 					self.TO_pwr=300
 					TOP_str=""
-			elif self.acf_short=="PC12":
+			elif self.aircraft.name=="PC12":
 				torque_psi=self.Npsi*TRQ[0]
 				pwr=str(round(torque_psi,1))+" psi"
 				if torque_psi>37.0: #Takeoff power
@@ -597,10 +617,10 @@ class PythonInterface:
 		elif self.eng_type[0]==4 or self.eng_type[0]==5: #Jet
 			N1=[]
 			XPLMGetDatavf(self.N1_ref, N1, 0, self.num_eng)
-			if self.acf_short=="B738":
+			if self.aircraft.name=="B738":
 				pwr=str(round(N1[0],1))+"|"+str(round(N1[1],1))+" %N1"
 				TOP_str=""
-			elif self.acf_short=="CL30":
+			elif self.aircraft.name=="CL30":
 				pwr=str(round(N1[0],1))+"|"+str(round(N1[1],1))+" %N1"
 				throt=XPLMGetDataf(self.throt_pos_ref)
 				if throt>0.93: #Takeoff power FIX ME
@@ -713,7 +733,7 @@ class PythonInterface:
 			ddist="N/A"
 		return ddist
 	
-	def getLandingDist(self, wgt, elev, delISA, SL, hwind, AC): #Get landing distance
+	def getLDR(self, wgt, elev, delISA, SL, hwind, AC): #Get landing distance
 		if AC=="PC12":
 			Tgd=-self.getdelISA(elev, -delISA) #Assume ISA difference is same at ground, find T
 			P=self.getPress(elev, SL)
@@ -869,7 +889,7 @@ class PythonInterface:
 				(109.0,116.0,122.0,128.0,133.0,139.0,144.0,148.0,153.0,157.0))		# flaps 40
 			flap_i=-1
 			for i in range(2,5): #Reference correct flap setting
-				if flaps == self.flaps[i]:
+				if flaps == self.aircraft.flaps[i]:
 					flap_i=i-2
 			if flap_i==-1:
 				Vref="LAND CONFIG"
@@ -899,7 +919,7 @@ class PythonInterface:
 				flap_i=0
 			else:
 				for i in range(5): #Reference correct flaps setting
-					if flaps == self.flaps[i]:
+					if flaps == self.aircraft.flaps[i]:
 						flap_i=i
 			if flap_i==-1:
 				V1=""
@@ -939,7 +959,7 @@ class PythonInterface:
 					(104.0,111.0,117.0,123.0,129.0,0,0,0,0,0))			# flaps 15
 			flap_i=-1
 			for i in range(3): #Reference correct flaps setting
-				if flaps == self.flaps[i]:
+				if flaps == self.aircraft.flaps[i]:
 					flap_i=i
 			if flap_i==-1:
 				V1=""
@@ -966,7 +986,7 @@ class PythonInterface:
 			#(59,63,67,71,74,76)) # flaps 30
 			flap_i=-1
 			for i in range(0,2):
-				if round(flaps,1) == self.flaps[i]:
+				if round(flaps,1) == self.aircraft.flaps[i]:
 					flap_i=i
 			if flap_i==-1:
 				V1="  V1: Check Flaps"
@@ -984,7 +1004,7 @@ class PythonInterface:
 				(100,100,100,100,100,100,100,100,101,102,104,105,107,108,109,111,112,113,114,116,117,118,119,120))	#15
 			flap_i=-1
 			for i in range(3): #Reference correct flaps setting
-				if flaps == self.flaps[i]:
+				if flaps == self.aircraft.flaps[i]:
 					flap_i=i 
 			if flap_i==-1:
 				V1=""
