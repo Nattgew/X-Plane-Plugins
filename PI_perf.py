@@ -280,7 +280,7 @@ class PythonInterface:
 			gph=330
 		elif self.acf_short=="C208":
 			general_fl=int(dist/10)+2
-			if (wgt>8000 or delISA>10) and general_fl>15
+			if (wgt>8000 or delISA>10) and general_fl>15:
 				general_fl=15
 			climb=750 if alt<10000 else 500
 			speed=150
@@ -514,7 +514,7 @@ class PythonInterface:
 			self.ceiling=30
 			self.maxcabin=10000
 			self.agl=1000
-		elif acf_desc[0:9]=="['BE1900D" or acf_icao=="B190":
+		elif acf_desc[0:9]=="['BE1900D" or acf_desc[0:19]=="['B1900 for X-plane" or acf_icao=="B190":
 			AC="B190"
 			self.setEW(AC,2985)
 			self.ceiling=25
@@ -550,11 +550,11 @@ class PythonInterface:
 			AC="C750"
 			self.setEW(AC,6714)
 			self.ceiling=51
-		elif acf_desc=="['Dassault Falcon 7X']" or acf_icao="FA7X":
+		elif acf_desc=="['Dassault Falcon 7X']" or acf_icao=="FA7X":
 			AC="FA7X"
 			self.setEW(AC,16279)
 			self.ceiling=51
-		elif acf_desc="['Let L-410']" or acf_icao="L410":
+		elif acf_desc=="['Let L-410']" or acf_icao=="L410":
 			AC="L410"
 			self.setEW(AC,2650)
 			self.ceiling=20
