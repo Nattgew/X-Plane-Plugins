@@ -278,7 +278,7 @@ class PythonInterface:
 		elif acf_desc=="['Pilatus PC-12']":
 			AC="PC12"
 			has3D=1
-		elif acf_desc[0:9]=="['BE1900D":
+		elif acf_desc[0:9]=="['BE1900D" or acf_desc[0:19]=="['B1900 for X-plane" :
 			AC="B190"
 			has3D=1
 		elif acf_desc=="['Bombardier Challenger 300']":
