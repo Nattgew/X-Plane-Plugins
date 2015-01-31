@@ -5,6 +5,7 @@ from XPLMGraphics import * #Draw things
 from XPLMDefs import * #Object definitions
 from XPLMUtilities import * #Commands
 from XPLMNavigation import * #Nav/FMS tools
+from XPLMPlugin import *
 import math
 import re
 import os
@@ -23,7 +24,7 @@ class getaircraft:
 		
 		self.eng_type=[]
 		self.prop_type=[]
-		self.num_eng=XPLMGetDatai(self.num_eng_ref) #Find number of engines
+		self.num_eng=XPLMGetDatai(num_eng_ref) #Find number of engines
 		XPLMGetDatavi(eng_type_ref, self.eng_type, 0, self.num_eng) #Find type of engines
 		XPLMGetDatavi(prop_type_ref, self.prop_type, 0, self.num_eng)
 		acf_descb=[]
@@ -296,25 +297,25 @@ class PythonInterface:
 
 	def CmdSHConnCallback(self, cmd, phase, refcon):
 		if(phase==0): #KeyDown event
-			print "XDMG = CMD perf info"
+			print "PERF = CMD perf info"
 			self.toggleInfo()
 		return 0
 
 	def CmdSDConnCallback(self, cmd, phase, refcon):
 		if(phase==0): #KeyDown event
-			print "XDMG = CMD desc info"
+			print "PERF = CMD desc info"
 			self.toggleDInfo()
 		return 0
 	
 	def CmdAPsetConnCallback(self, cmd, phase, refcon):
 		if(phase==0): #KeyDown event
-			print "XDMG = Set AP settings"
+			print "PERF = Set AP settings"
 			self.APset()
 		return 0
 	
 	def APset(self): #Sets cruise altitude and heading based on destination, sets VS
 		if self.aircraft==[]:
-			self.aircraft=getaircraft()
+			self.aircraft=getaircraft()	
 		gear=XPLMGetDatai(self.gear_h_pos_ref) #Landing gear position
 		alt_ind=XPLMGetDataf(self.alt_ind_ref) #Indicated altitude
 		aphdg=XPLMGetDataf(self.gps_degm_ref) #Heading to destination
@@ -501,8 +502,6 @@ class PythonInterface:
 	def XPluginDisable(self):
 		pass
 
-	def XPluginReceiveMessage(self, inFromWho, inMessage, inParam):
-		
 	def XPluginReceiveMessage(self, inFromWho, inMessage, inParam):
 		if (inFromWho == XPLM_PLUGIN_XPLANE):
 			if (inMessage == XPLM_MSG_PLANE_LOADED):
