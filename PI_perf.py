@@ -276,7 +276,7 @@ class PythonInterface:
 	def init_variables(self):
 		self.started=0
 		self.Dstarted=0
-		# self.msg=[""]*5
+		self.msg=[""]*5
 		# self.num_eng=0
 		self.TO_pwr=0
 		# self.eng_type=[]
@@ -588,9 +588,9 @@ class PythonInterface:
 		return delay
 
 	def getPower(self): #Return power level, determine takeoff power
-		if self.eng_type[0]==2 or self.eng_type[0]==8: #Turboprop
+		if self.aircraft.eng_type[0]==2 or self.aircraft.eng_type[0]==8: #Turboprop
 			TRQ=[]
-			XPLMGetDatavf(self.TRQ_ref, TRQ, 0, self.num_eng)
+			XPLMGetDatavf(self.TRQ_ref, TRQ, 0, self.aircraft.num_eng)
 			pwr=str(round(TRQ[0],1))+" Nm"
 			if self.aircraft.name=="B190":
 				torque_ftlb1=self.Nlb*self.mft*TRQ[0]
@@ -613,9 +613,9 @@ class PythonInterface:
 				torque_ftlb=self.Nlb*self.mft*TRQ[0]
 				pwr=str(round(torque_ftlb,1))+" ftlb"
 				TOP_str=""
-		elif self.eng_type[0]==4 or self.eng_type[0]==5: #Jet
+		elif self.aircraft.eng_type[0]==4 or self.aircraft.eng_type[0]==5: #Jet
 			N1=[]
-			XPLMGetDatavf(self.N1_ref, N1, 0, self.num_eng)
+			XPLMGetDatavf(self.N1_ref, N1, 0, self.aircraft.num_eng)
 			if self.aircraft.name=="B738":
 				pwr=str(round(N1[0],1))+"|"+str(round(N1[1],1))+" %N1"
 				TOP_str=""
@@ -633,12 +633,12 @@ class PythonInterface:
 		else: #Piston
 			if self.prop_type[0]==0: #Fixed pitch
 				RPM=[]
-				XPLMGetDatavf(self.RPM_ref, RPM, 0, self.num_eng)
+				XPLMGetDatavf(self.RPM_ref, RPM, 0, self.aircraft.num_eng)
 				pwr=str(int(round(RPM[0]*60/pi)))+" rpm"
 				TOP_str=""
 			else: #Variable pitch?
 				EGT=[]
-				XPLMGetDatavf(self.EGT_ref, EGT, 0, self.num_eng)
+				XPLMGetDatavf(self.EGT_ref, EGT, 0, self.aircraft.num_eng)
 				pwr=str(int(round(EGT[0])))+"C EGT"
 				TOP_str=""
 		
