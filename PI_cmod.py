@@ -1,6 +1,7 @@
 from XPLMDataAccess import *
 from XPLMDefs import *
 from XPLMUtilities import *
+from XPLMProcessing import * #Flight loops
 
 class PythonInterface:
 
@@ -22,8 +23,33 @@ class PythonInterface:
 		self.trim_ail_ref=XPLMFindDataRef("sim/flightmodel/controls/ail_trim") #float -1=left ... 1=right
 		self.trim_elv_ref=XPLMFindDataRef("sim/flightmodel/controls/elv_trim") #float -1=down ... 1=up
 		self.view_ref=XPLMFindDataRef("sim/graphics/view/view_type") #int see docs
+		self.sbrake_ref=XPLMFindDataRef("sim/cockpit2/controls/speedbrake_ratio
+		self.flap_ref=XPLMFindDataRef("sim/cockpit2/controls/flap_ratio
+		
+		#self._ref=XPLMFindDataRef("sim/joystick/
+		self.axis_assign_ref=XPLMFindDataRef("sim/joystick/joystick_axis_assignments")	# int[100] - prop=7
+		self.axis_values_ref=XPLMFindDataRef("sim/joystick/joystick_axis_values")
+		self.axis_min_ref=XPLMFindDataRef("sim/joystick/joystick_axis_minimum")
+		self.axis_max_ref=XPLMFindDataRef("sim/joystick/joystick_axis_maximum")
 		
 		self.cmdhold=0
+		self.propbrakes=0
+		self.assignments=[]
+		self.mins=[]
+		self.maxs=[]
+		self.propindex=-1
+
+		XPLMGetDatavi(self.axis_assign_ref, self.assignments, 0, 100)
+		XPLMGetDatavi(self.axis_min_ref, self.mins, 0, 100)
+		XPLMGetDatavi(self.axis_max_ref, self.maxs, 0, 100)
+		for i in range(0,100):
+			assignment=self.assignments[i]
+			if assignment==7: # 7 = prop
+				self.propindex=i
+				break
+		self.propmin=self.mins[i]
+		self.propmax=self.maxs[i]
+		self.proprange=self.propmax-self.propmin
 		
 		self.CmdSTConn = XPLMCreateCommand("cmod/toggle/speedbrake","Toggles speed brakes")
 		self.CmdSTConnCB = self.CmdSTConnCallback
@@ -88,6 +114,12 @@ class PythonInterface:
 		self.CmdCPConn = XPLMCreateCommand("cmod/custom/view_cockpit_cond","Cockpit front view based on airplane")
 		self.CmdCPConnCB = self.CmdCPConnCallback
 		XPLMRegisterCommandHandler(self, self.CmdCPConn, self.CmdCPConnCB, 0, 0)
+		
+		self.CmdMBConn = XPLMCreateCommand("cmod/custom/prop_speedbrakes","Use prop axis for speed brakes")
+		self.CmdMBConnCB = self.CmdMBConnCallback
+		XPLMRegisterCommandHandler(self, self.CmdMBConn, self.CmdMBConnCB, 0, 0)
+		
+		self.gameLoopCB=self.gameLoopCallback
 
 		return self.Name, self.Sig, self.Desc
 		
@@ -192,6 +224,16 @@ class PythonInterface:
 			self.cmdif3D("sim/view/3d_cockpit_cmnd_look","sim/view/forward_with_panel")
 		return 0
 	
+	def CmdMBConnCallback(self, cmd, phase, refcon): #propture for speed brakes
+		if(phase==0) and self.propindex>-1:
+			if self.propbrakes==0:
+				self.propbrakes=1
+				XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 0.1, 0)
+			else:
+				self.propbrakes=0
+				XPLMUnregisterFlightLoopCallback(self, self.gameLoopCB, 0)
+		return 0
+	
 	def cmdif3D(self, cmd3D, cmd2D): #Run command depending on 3D cockpit
 		ac,has3D=self.getshortac(self.acf_desc_ref)
 		#print "CMOD - AC "+ac+" has3D = "+str(has3D)
@@ -262,6 +304,17 @@ class PythonInterface:
 			#trim=XPLMGetDataf(trim_ref)
 			#XPLMSetDataf(trim_ref, trim+trim_del)
 	
+	def gameLoopCallback(self, inElapsedSinceLastCall, elapsedSim, counter, refcon):
+		#Get current conditions
+		vals=[]
+		XPLMGetDatavi(self.axis_values_ref, vals, self.propindex, 1)
+		propaxis=vals[0]
+		proper=(propaxis-self.propmin)/self.proprange
+		if proper<.001:
+			proper=-0.5
+		XPLMSetDataf(self.sbrake_ref,proper)
+		return 0.1
+	
 	def nextflaps(self,handle,flaps):
 		i=0
 		while handle<flaps[i]+0.001:
@@ -278,7 +331,7 @@ class PythonInterface:
 		elif acf_desc=="['Pilatus PC-12']":
 			AC="PC12"
 			has3D=1
-		elif acf_desc[0:9]=="['BE1900D" or acf_desc[0:19]=="['B1900 for X-plane" :
+		elif acf_desc[0:9]=="['BE1900D":
 			AC="B190"
 			has3D=1
 		elif acf_desc=="['Bombardier Challenger 300']":
@@ -308,6 +361,7 @@ class PythonInterface:
 		XPLMUnregisterCommandHandler(self, self.CmdVLConn, self.CmdVLConnCallback, 0, 0)
 		XPLMUnregisterCommandHandler(self, self.CmdVRConn, self.CmdVRConnCallback, 0, 0)
 		XPLMUnregisterCommandHandler(self, self.CmdCPConn, self.CmdCPConnCallback, 0, 0)
+		XPLMUnregisterCommandHandler(self, self.CmdMBConn, self.CmdMBConnCallback, 0, 0)
 		pass
 
 	def XPluginEnable(self):
