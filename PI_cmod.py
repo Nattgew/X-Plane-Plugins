@@ -23,8 +23,8 @@ class PythonInterface:
 		self.trim_ail_ref=XPLMFindDataRef("sim/flightmodel/controls/ail_trim") #float -1=left ... 1=right
 		self.trim_elv_ref=XPLMFindDataRef("sim/flightmodel/controls/elv_trim") #float -1=down ... 1=up
 		self.view_ref=XPLMFindDataRef("sim/graphics/view/view_type") #int see docs
-		self.sbrake_ref=XPLMFindDataRef("sim/cockpit2/controls/speedbrake_ratio
-		self.flap_ref=XPLMFindDataRef("sim/cockpit2/controls/flap_ratio
+		self.sbrake_ref=XPLMFindDataRef("sim/cockpit2/controls/speedbrake_ratio")
+		self.flap_ref=XPLMFindDataRef("sim/cockpit2/controls/flap_ratio")
 		
 		#self._ref=XPLMFindDataRef("sim/joystick/
 		self.axis_assign_ref=XPLMFindDataRef("sim/joystick/joystick_axis_assignments")	# int[100] - prop=7
@@ -42,14 +42,18 @@ class PythonInterface:
 		XPLMGetDatavi(self.axis_assign_ref, self.assignments, 0, 100)
 		XPLMGetDatavi(self.axis_min_ref, self.mins, 0, 100)
 		XPLMGetDatavi(self.axis_max_ref, self.maxs, 0, 100)
+		print "Read in axes length "+str(len(self.mins))
 		for i in range(0,100):
 			assignment=self.assignments[i]
+			print "Index "+str(i)+" | assigned "+str(assignment)
 			if assignment==7: # 7 = prop
 				self.propindex=i
 				break
-		self.propmin=self.mins[i]
-		self.propmax=self.maxs[i]
-		self.proprange=self.propmax-self.propmin
+		print "Ended up with index "+str(self.propindex)
+		if self.propindex>-1:
+			self.propmin=self.mins[self.propindex]
+			self.propmax=self.maxs[self.propindex]
+			self.proprange=self.propmax-self.propmin
 		
 		self.CmdSTConn = XPLMCreateCommand("cmod/toggle/speedbrake","Toggles speed brakes")
 		self.CmdSTConnCB = self.CmdSTConnCallback
@@ -228,6 +232,21 @@ class PythonInterface:
 		if(phase==0) and self.propindex>-1:
 			if self.propbrakes==0:
 				self.propbrakes=1
+				XPLMGetDatavi(self.axis_assign_ref, self.assignments, 0, 100)
+				XPLMGetDatavi(self.axis_min_ref, self.mins, 0, 100)
+				XPLMGetDatavi(self.axis_max_ref, self.maxs, 0, 100)
+				print "Read in axes length "+str(len(self.mins))
+				for i in range(0,100):
+					assignment=self.assignments[i]
+					print "Index "+str(i)+" | assigned "+str(assignment)
+					if assignment==7: # 7 = prop
+						self.propindex=i
+						break
+				print "Ended up with index "+str(self.propindex)
+				if self.propindex>-1:
+					self.propmin=self.mins[self.propindex]
+					self.propmax=self.maxs[self.propindex]
+					self.proprange=self.propmax-self.propmin
 				XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 0.1, 0)
 			else:
 				self.propbrakes=0
