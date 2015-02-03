@@ -39,22 +39,6 @@ class PythonInterface:
 		self.maxs=[]
 		self.propindex=-1
 
-		XPLMGetDatavi(self.axis_assign_ref, self.assignments, 0, 100)
-		XPLMGetDatavi(self.axis_min_ref, self.mins, 0, 100)
-		XPLMGetDatavi(self.axis_max_ref, self.maxs, 0, 100)
-		print "Read in axes length "+str(len(self.mins))
-		for i in range(0,100):
-			assignment=self.assignments[i]
-			print "Index "+str(i)+" | assigned "+str(assignment)
-			if assignment==7: # 7 = prop
-				self.propindex=i
-				break
-		print "Ended up with index "+str(self.propindex)
-		if self.propindex>-1:
-			self.propmin=self.mins[self.propindex]
-			self.propmax=self.maxs[self.propindex]
-			self.proprange=self.propmax-self.propmin
-		
 		self.CmdSTConn = XPLMCreateCommand("cmod/toggle/speedbrake","Toggles speed brakes")
 		self.CmdSTConnCB = self.CmdSTConnCallback
 		XPLMRegisterCommandHandler(self, self.CmdSTConn, self.CmdSTConnCB, 0, 0)
@@ -231,22 +215,16 @@ class PythonInterface:
 	def CmdMBConnCallback(self, cmd, phase, refcon): #propture for speed brakes
 		if(phase==0) and self.propindex>-1:
 			if self.propbrakes==0:
+				XPLMGetDatavi(self.axis_assign_ref, self.assignments, 6, 1)
+				XPLMGetDatavi(self.axis_min_ref, self.mins, 6, 1)
+				XPLMGetDatavi(self.axis_max_ref, self.maxs, 6, 1)
+				assignment=self.assignments[0]
+				print "Index 7 | assigned "+str(assignment)
+				self.rev=1 if assignment==7 else 0
 				self.propbrakes=1
-				XPLMGetDatavi(self.axis_assign_ref, self.assignments, 0, 100)
-				XPLMGetDatavi(self.axis_min_ref, self.mins, 0, 100)
-				XPLMGetDatavi(self.axis_max_ref, self.maxs, 0, 100)
-				print "Read in axes length "+str(len(self.mins))
-				for i in range(0,100):
-					assignment=self.assignments[i]
-					print "Index "+str(i)+" | assigned "+str(assignment)
-					if assignment==7: # 7 = prop
-						self.propindex=i
-						break
-				print "Ended up with index "+str(self.propindex)
-				if self.propindex>-1:
-					self.propmin=self.mins[self.propindex]
-					self.propmax=self.maxs[self.propindex]
-					self.proprange=self.propmax-self.propmin
+				self.propmin=self.mins[0]
+				self.propmax=self.maxs[0]
+				self.proprange=self.propmax-self.propmin
 				XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 0.1, 0)
 			else:
 				self.propbrakes=0
@@ -326,9 +304,11 @@ class PythonInterface:
 	def gameLoopCallback(self, inElapsedSinceLastCall, elapsedSim, counter, refcon):
 		#Get current conditions
 		vals=[]
-		XPLMGetDatavi(self.axis_values_ref, vals, self.propindex, 1)
+		XPLMGetDatavi(self.axis_values_ref, vals, 6, 1)
 		propaxis=vals[0]
 		proper=(propaxis-self.propmin)/self.proprange
+		if self.rev==1:
+			proper=1-proper
 		if proper<.001:
 			proper=-0.5
 		XPLMSetDataf(self.sbrake_ref,proper)
