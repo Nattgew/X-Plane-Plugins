@@ -37,7 +37,6 @@ class PythonInterface:
 		self.assignments=[]
 		self.mins=[]
 		self.maxs=[]
-		self.propindex=-1
 
 		self.CmdSTConn = XPLMCreateCommand("cmod/toggle/speedbrake","Toggles speed brakes")
 		self.CmdSTConnCB = self.CmdSTConnCallback
@@ -213,20 +212,28 @@ class PythonInterface:
 		return 0
 	
 	def CmdMBConnCallback(self, cmd, phase, refcon): #propture for speed brakes
-		if(phase==0) and self.propindex>-1:
+		if(phase==0):
+			print "CMOD - PROPBRAKE"
 			if self.propbrakes==0:
-				XPLMGetDatavi(self.axis_assign_ref, self.assignments, 6, 1)
-				XPLMGetDatavi(self.axis_min_ref, self.mins, 6, 1)
-				XPLMGetDatavi(self.axis_max_ref, self.maxs, 6, 1)
-				assignment=self.assignments[0]
+				print "CMOD - Starting propbrake"
+				mins=[]
+				maxs=[]
+				assignments=[]
+				XPLMGetDatavi(self.axis_assign_ref, assignments, 6, 1)
+				XPLMGetDatavf(self.axis_min_ref, mins, 6, 1)
+				XPLMGetDatavf(self.axis_max_ref, maxs, 6, 1)
+				assignment=assignments[0]
 				print "Index 7 | assigned "+str(assignment)
+				print "Assignments "+str(len(assignments))+" mins="+str(len(mins))+" maxs="+str(len(maxs))
 				self.rev=1 if assignment==7 else 0
 				self.propbrakes=1
-				self.propmin=self.mins[0]
-				self.propmax=self.maxs[0]
+				self.propmin=mins[0]
+				self.propmax=maxs[0]
 				self.proprange=self.propmax-self.propmin
+				print "CMOD - rev="+str(self.rev)+" min="+str(self.propmin)+" max="+str(self.propmax)+" range="+str(self.proprange)
 				XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 0.1, 0)
 			else:
+				print "CMOD - Stopping propbrake"
 				self.propbrakes=0
 				XPLMUnregisterFlightLoopCallback(self, self.gameLoopCB, 0)
 		return 0
@@ -304,13 +311,16 @@ class PythonInterface:
 	def gameLoopCallback(self, inElapsedSinceLastCall, elapsedSim, counter, refcon):
 		#Get current conditions
 		vals=[]
-		XPLMGetDatavi(self.axis_values_ref, vals, 6, 1)
+#		XPLMGetDatavf(self.axis_values_ref, vals, 6, 1)
+		XPLMGetDatavf(self.axis_values_ref, vals, 0, 10)
+		print '%.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f\n' % (vals[0],vals[1], vals[2], vals[3], vals[4], vals[5], vals[6], vals[7], vals[8], vals[9]) 
 		propaxis=vals[0]
 		proper=(propaxis-self.propmin)/self.proprange
 		if self.rev==1:
 			proper=1-proper
 		if proper<.001:
 			proper=-0.5
+		print "CMOD - speedbrake to "+str(proper)
 		XPLMSetDataf(self.sbrake_ref,proper)
 		return 0.1
 	
