@@ -422,8 +422,8 @@ class PythonInterface:
 			gph=0
 		if speed>0:
 			fuel=dist/speed*gph
-			print "AP fuel estimate: "+str(int(round(fuel)))+" gal"
-			XPLMSetDataf(self.ap_spd_ref, fuel) #Other plugin will show speed change, speed setting not important
+			XPLMSpeakString("AP fuel estimate: "+str(int(round(fuel)))+" gal")
+			#XPLMSetDataf(self.ap_spd_ref, fuel) #Other plugin will show speed change, speed setting not important
 		general_fl+=int(dalt/1000+alt_ind/1000)/2 #Account for departure/arrival altitudes
 		if aphdg<180: #NEodd
 			if general_fl%2==0:
