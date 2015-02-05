@@ -312,8 +312,13 @@ class PythonInterface:
 		#Get current conditions
 		vals=[]
 #		XPLMGetDatavf(self.axis_values_ref, vals, 6, 1)
-		XPLMGetDatavf(self.axis_values_ref, vals, 0, 10)
-		print '%.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f\n' % (vals[0],vals[1], vals[2], vals[3], vals[4], vals[5], vals[6], vals[7], vals[8], vals[9]) 
+		XPLMGetDatavf(self.axis_values_ref, vals, 0, 100)
+		for i in range(0,100):
+			print ' %.4f' (vals[i])
+			if i%25==0:
+				print '\n'
+		#print '%.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f\n' % (vals[0],vals[1], vals[2], vals[3], vals[4], vals[5], vals[6], vals[7], vals[8], vals[9]) 
+		print "------------------------------------------------------------------------------------"
 		propaxis=vals[0]
 		proper=(propaxis-self.propmin)/self.proprange
 		if self.rev==1:
@@ -322,7 +327,7 @@ class PythonInterface:
 			proper=-0.5
 		print "CMOD - speedbrake to "+str(proper)
 		XPLMSetDataf(self.sbrake_ref,proper)
-		return 0.1
+		return 0.5
 	
 	def nextflaps(self,handle,flaps):
 		i=0
