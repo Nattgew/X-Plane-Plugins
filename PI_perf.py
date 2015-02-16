@@ -1190,7 +1190,7 @@ class PythonInterface:
 			alt_i=DA/1000
 			wgt_ih, wgt_il = self.get_index(wgt_i, len(wgts))
 			alt_ih, alt_il = self.get_index(alt_i, len(dalts))
-			bc=self.interp2(spds[wgt_ih][alt_il], spds[wgt_il][alt_il], spds[wgt_ih][alt_ih], spds[wgt_il][alt_ih], wgts[wgt_ih], wgts[wgt_il], dalts[alts_ih], dalts[alts_il], wgt, DA)
+			bc=self.interp2(spds[wgt_ih][alt_il], spds[wgt_il][alt_il], spds[wgt_ih][alt_ih], spds[wgt_il][alt_ih], wgts[wgt_ih], wgts[wgt_il], dalts[alt_ih], dalts[alt_il], wgt, DA)
 			bestCruise=str(int(round(bc)))+" kias"
 		else:
 			bestCruise="N/A"
