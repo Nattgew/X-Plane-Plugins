@@ -31,6 +31,7 @@ class PythonInterface:
 		self.axis_values_ref=XPLMFindDataRef("sim/joystick/joystick_axis_values")
 		self.axis_min_ref=XPLMFindDataRef("sim/joystick/joystick_axis_minimum")
 		self.axis_max_ref=XPLMFindDataRef("sim/joystick/joystick_axis_maximum")
+		self.axis_rev_ref=XPLMFindDataRef("sim/joystick/joystick_axis_reverse")
 		
 		self.cmdhold=0
 		self.propbrakes=0
@@ -105,6 +106,14 @@ class PythonInterface:
 		self.CmdMBConn = XPLMCreateCommand("cmod/custom/prop_speedbrakes","Use prop axis for speed brakes")
 		self.CmdMBConnCB = self.CmdMBConnCallback
 		XPLMRegisterCommandHandler(self, self.CmdMBConn, self.CmdMBConnCB, 0, 0)
+		
+		self.Cmd2BConn = XPLMCreateCommand("cmod/custom/prop_eng2","Use prop axis for eng 2")
+		self.Cmd2BConnCB = self.Cmd2BConnCallback
+		XPLMRegisterCommandHandler(self, self.Cmd2BConn, self.Cmd2BConnCB, 0, 0)
+		
+		self.CmdMCConn = XPLMCreateCommand("cmod/custom/engine_mach_cutoff","AC Conditional - mach hold or cutoff protection")
+		self.CmdMCConnCB = self.CmdMCConnCallback
+		XPLMRegisterCommandHandler(self, self.CmdMCConn, self.CmdMCConnCB, 0, 0)
 		
 		self.gameLoopCB=self.gameLoopCallback
 
@@ -211,36 +220,77 @@ class PythonInterface:
 			self.cmdif3D("sim/view/3d_cockpit_cmnd_look","sim/view/forward_with_panel")
 		return 0
 	
-	def CmdMBConnCallback(self, cmd, phase, refcon): #propture for speed brakes
+	def CmdMBConnCallback(self, cmd, phase, refcon): #prop axis for speed brakes
 		if(phase==0):
 			print "CMOD - PROPBRAKE"
 			if self.propbrakes==0:
 				print "CMOD - Starting propbrake"
+				self.propindex=-1
 				mins=[]
 				maxs=[]
 				assignments=[]
-				XPLMGetDatavi(self.axis_assign_ref, assignments, 6, 1)
-				XPLMGetDatavf(self.axis_min_ref, mins, 6, 1)
-				XPLMGetDatavf(self.axis_max_ref, maxs, 6, 1)
+				revs=[]
+				XPLMGetDatavi(self.axis_assign_ref, assignments, 100, 1)
+				XPLMGetDatavf(self.axis_min_ref, mins, 100, 1)
+				XPLMGetDatavf(self.axis_max_ref, maxs, 100, 1)
+				XPLMGetDatavf(self.axis_rev_ref, revs, 100, 1)
 				assignment=assignments[0]
-				print "Index 7 | assigned "+str(assignment)
+				for i in range(0,100):
+					if assignments[i]==7: #Guess?
+						self.propindex=i
+						break
+				print "Index 7 | assigned "+str(self.propindex)
 				print "Assignments "+str(len(assignments))+" mins="+str(len(mins))+" maxs="+str(len(maxs))
-				self.rev=1 if assignment==7 else 0
-				self.propbrakes=1
-				self.propmin=mins[0]
-				self.propmax=maxs[0]
-				self.proprange=self.propmax-self.propmin
-				print "CMOD - rev="+str(self.rev)+" min="+str(self.propmin)+" max="+str(self.propmax)+" range="+str(self.proprange)
-				XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 0.1, 0)
+				if self.propindex>-1:
+					self.rev=1 if revs[self.propindex]==1 else 0
+					self.propbrakes=1
+					self.propmin=mins[0]
+					self.propmax=maxs[0]
+					self.proprange=self.propmax-self.propmin
+					print "CMOD - rev="+str(self.rev)+" min="+str(self.propmin)+" max="+str(self.propmax)+" range="+str(self.proprange)
+					XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 0.1, 0)
 			else:
 				print "CMOD - Stopping propbrake"
 				self.propbrakes=0
 				XPLMUnregisterFlightLoopCallback(self, self.gameLoopCB, 0)
 		return 0
 	
+	def CmdMCConnCallback(self, cmd, phase, refcon): #Mach/cutoff protect vased on AC
+		if(phase==0):
+			ac,has3D=self.getshortac(self.acf_desc_ref)
+			if ac=="CL30":
+				cmdref="cl30/engine/mach_hold" #FIX ME
+			elif ac=="PC12":
+				cmdref="pc12/engine/cutoff_protection_toggle"
+			else:
+				cmdref="sim/ice/anti_ice_toggle"
+			got_cmd=XPLMFindCommand(cmdref)
+			if got_cmd is not None:
+				print "CMOD - Running switch command"
+				XPLMCommandOnce(got_cmd)
+	
+	def Cmd2BConnCallback(self, cmd, phase, refcon): #Prop axis controls engine 2
+		if(phase==0):
+			self.propindex=-1
+			vals=[]
+			assignments=[]
+			XPLMGetDatavf(self.axis_values_ref, vals, 0, 100)
+			XPLMGetDatavi(self.axis_assign_ref, assignments, 0, 100)
+			for i in range(0,100):
+				if assignments[i]==7: #Guess?
+					self.propindex=i
+					break
+			if self.propindex>-1:
+				ac,has3D=self.getshortac(self.acf_desc_ref)
+				if ac=="CL30":
+					assignments[self.propindex]=12 #FIX ME eng2 throttle
+				else:
+					assignments[self.propindex]=7 #FIX ME prop control
+				XPLMSetDatavi(self.axis_assign_ref, assignments, 0, 100)
+	
 	def cmdif3D(self, cmd3D, cmd2D): #Run command depending on 3D cockpit
 		ac,has3D=self.getshortac(self.acf_desc_ref)
-		#print "CMOD - AC "+ac+" has3D = "+str(has3D)
+		print "CMOD - AC "+ac+" has3D = "+str(has3D)
 		if has3D==1: #view 3D
 			view_cmd=XPLMFindCommand(cmd3D)
 		else: #view 2D
@@ -319,7 +369,7 @@ class PythonInterface:
 				print '\n'
 		#print '%.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f\n' % (vals[0],vals[1], vals[2], vals[3], vals[4], vals[5], vals[6], vals[7], vals[8], vals[9]) 
 		print "------------------------------------------------------------------------------------"
-		propaxis=vals[0]
+		propaxis=vals[self.propindex]
 		proper=(propaxis-self.propmin)/self.proprange
 		if self.rev==1:
 			proper=1-proper
@@ -376,6 +426,8 @@ class PythonInterface:
 		XPLMUnregisterCommandHandler(self, self.CmdVRConn, self.CmdVRConnCB, 0, 0)
 		XPLMUnregisterCommandHandler(self, self.CmdCPConn, self.CmdCPConnCB, 0, 0)
 		XPLMUnregisterCommandHandler(self, self.CmdMBConn, self.CmdMBConnCB, 0, 0)
+		XPLMUnregisterCommandHandler(self, self.Cmd2BConn, self.CmdMBConnCB, 0, 0)
+		XPLMUnregisterCommandHandler(self, self.CmdMCConn, self.CmdMCConnCB, 0, 0)
 		pass
 
 	def XPluginEnable(self):
