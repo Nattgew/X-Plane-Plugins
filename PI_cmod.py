@@ -370,12 +370,12 @@ class PythonInterface:
 		XPLMUnregisterCommandHandler(self, self.CmdRCConn, self.CmdRCConnCB, 0, 0)
 		XPLMUnregisterCommandHandler(self, self.CmdUCConn, self.CmdUCConnCB, 0, 0)
 		XPLMUnregisterCommandHandler(self, self.CmdDCConn, self.CmdDCConnCB, 0, 0)
-		XPLMUnregisterCommandHandler(self, self.CmdVDConn, self.CmdVDConnCallback, 0, 0)
-		XPLMUnregisterCommandHandler(self, self.CmdVUConn, self.CmdVUConnCallback, 0, 0)
-		XPLMUnregisterCommandHandler(self, self.CmdVLConn, self.CmdVLConnCallback, 0, 0)
-		XPLMUnregisterCommandHandler(self, self.CmdVRConn, self.CmdVRConnCallback, 0, 0)
-		XPLMUnregisterCommandHandler(self, self.CmdCPConn, self.CmdCPConnCallback, 0, 0)
-		XPLMUnregisterCommandHandler(self, self.CmdMBConn, self.CmdMBConnCallback, 0, 0)
+		XPLMUnregisterCommandHandler(self, self.CmdVDConn, self.CmdVDConnCB, 0, 0)
+		XPLMUnregisterCommandHandler(self, self.CmdVUConn, self.CmdVUConnCB, 0, 0)
+		XPLMUnregisterCommandHandler(self, self.CmdVLConn, self.CmdVLConnCB, 0, 0)
+		XPLMUnregisterCommandHandler(self, self.CmdVRConn, self.CmdVRConnCB, 0, 0)
+		XPLMUnregisterCommandHandler(self, self.CmdCPConn, self.CmdCPConnCB, 0, 0)
+		XPLMUnregisterCommandHandler(self, self.CmdMBConn, self.CmdMBConnCB, 0, 0)
 		pass
 
 	def XPluginEnable(self):
