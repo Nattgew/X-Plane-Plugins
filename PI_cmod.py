@@ -217,7 +217,7 @@ class PythonInterface:
 	
 	def CmdCPConnCallback(self, cmd, phase, refcon): #Cockpit view based on airplane
 		if(phase==0): #KeyDown event
-			self.cmdif3D("sim/view/3d_cockpit_cmnd_look","sim/view/forward_with_panel")
+			self.cmdif3D("sim/view/forward_with_panel","sim/view/3d_cockpit_cmnd_look")
 		return 0
 	
 	def CmdMBConnCallback(self, cmd, phase, refcon): #prop axis for speed brakes
@@ -230,17 +230,18 @@ class PythonInterface:
 				maxs=[]
 				assignments=[]
 				revs=[]
-				XPLMGetDatavi(self.axis_assign_ref, assignments, 100, 1)
-				XPLMGetDatavf(self.axis_min_ref, mins, 100, 1)
-				XPLMGetDatavf(self.axis_max_ref, maxs, 100, 1)
-				XPLMGetDatavf(self.axis_rev_ref, revs, 100, 1)
+				XPLMGetDatavi(self.axis_assign_ref, assignments, 0, 100)
+				XPLMGetDatavf(self.axis_min_ref, mins, 0, 100)
+				XPLMGetDatavf(self.axis_max_ref, maxs, 0, 100)
+				XPLMGetDatavi(self.axis_rev_ref, revs, 0, 100)
 				assignment=assignments[0]
 				for i in range(0,100):
 					if assignments[i]==7: #Guess?
 						self.propindex=i
 						break
+				self.propindex=12
 				print "Index 7 | assigned "+str(self.propindex)
-				print "Assignments "+str(len(assignments))+" mins="+str(len(mins))+" maxs="+str(len(maxs))
+				print "Assignments "+str(len(assignments))+" mins="+str(len(mins))+" maxs="+str(len(maxs))+" revs="+str(len(revs))
 				if self.propindex>-1:
 					self.rev=1 if revs[self.propindex]==1 else 0
 					self.propbrakes=1
@@ -288,12 +289,13 @@ class PythonInterface:
 					assignments[self.propindex]=7 #FIX ME prop control
 				XPLMSetDatavi(self.axis_assign_ref, assignments, 0, 100)
 	
-	def cmdif3D(self, cmd3D, cmd2D): #Run command depending on 3D cockpit
+	def cmdif3D(self, cmd2D, cmd3D): #Run command depending on 3D cockpit
 		ac,has3D=self.getshortac(self.acf_desc_ref)
 		print "CMOD - AC "+ac+" has3D = "+str(has3D)
 		if has3D==1: #view 3D
 			view_cmd=XPLMFindCommand(cmd3D)
 		else: #view 2D
+			print "CMOD - finding command "+cmd2D
 			view_cmd=XPLMFindCommand(cmd2D)
 		if view_cmd is not None:
 			XPLMCommandOnce(view_cmd)
@@ -364,16 +366,18 @@ class PythonInterface:
 #		XPLMGetDatavf(self.axis_values_ref, vals, 6, 1)
 		XPLMGetDatavf(self.axis_values_ref, vals, 0, 100)
 		for i in range(0,100):
-			print ' %.4f' (vals[i])
+			print ' %.2f'%(vals[i]),
 			if i%25==0:
 				print '\n'
 		#print '%.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f\n' % (vals[0],vals[1], vals[2], vals[3], vals[4], vals[5], vals[6], vals[7], vals[8], vals[9]) 
-		print "------------------------------------------------------------------------------------"
+		print '\n------------------------------------------------------------------------------------'
+		self.propindex=12
 		propaxis=vals[self.propindex]
 		proper=(propaxis-self.propmin)/self.proprange
+		print "CMOD - val="+str(propaxis)+" normalized="+str(proper)
 		if self.rev==1:
 			proper=1-proper
-		if proper<.001:
+		if proper<.0001:
 			proper=-0.5
 		print "CMOD - speedbrake to "+str(proper)
 		XPLMSetDataf(self.sbrake_ref,proper)
@@ -426,7 +430,7 @@ class PythonInterface:
 		XPLMUnregisterCommandHandler(self, self.CmdVRConn, self.CmdVRConnCB, 0, 0)
 		XPLMUnregisterCommandHandler(self, self.CmdCPConn, self.CmdCPConnCB, 0, 0)
 		XPLMUnregisterCommandHandler(self, self.CmdMBConn, self.CmdMBConnCB, 0, 0)
-		XPLMUnregisterCommandHandler(self, self.Cmd2BConn, self.CmdMBConnCB, 0, 0)
+		XPLMUnregisterCommandHandler(self, self.Cmd2BConn, self.Cmd2BConnCB, 0, 0)
 		XPLMUnregisterCommandHandler(self, self.CmdMCConn, self.CmdMCConnCB, 0, 0)
 		pass
 
