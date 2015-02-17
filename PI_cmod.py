@@ -236,9 +236,11 @@ class PythonInterface:
 				XPLMGetDatavi(self.axis_rev_ref, revs, 0, 100)
 				assignment=assignments[0]
 				for i in range(0,100):
+					print '%i '%(assignments[i]),
 					if assignments[i]==7: #Guess?
 						self.propindex=i
 						break
+				print '\n'
 				self.propindex=12
 				print "Index 7 | assigned "+str(self.propindex)
 				print "Assignments "+str(len(assignments))+" mins="+str(len(mins))+" maxs="+str(len(maxs))+" revs="+str(len(revs))
@@ -283,7 +285,7 @@ class PythonInterface:
 					break
 			if self.propindex>-1:
 				ac,has3D=self.getshortac(self.acf_desc_ref)
-				if ac=="CL30":
+				if ac=="CL30" or ac=="B738":
 					assignments[self.propindex]=12 #FIX ME eng2 throttle
 				else:
 					assignments[self.propindex]=7 #FIX ME prop control
@@ -295,12 +297,11 @@ class PythonInterface:
 		if has3D==1: #view 3D
 			view_cmd=XPLMFindCommand(cmd3D)
 		else: #view 2D
-			print "CMOD - finding command "+cmd2D
 			view_cmd=XPLMFindCommand(cmd2D)
 		if view_cmd is not None:
 			XPLMCommandOnce(view_cmd)
 		else:
-			print "XDMG = Couldn't find either '"+cmd3D+"' or '"+cmd2D
+			print "XDMG = Couldn't find on of '"+cmd3D+"' or '"+cmd2D
 		return 0
 	
 		# self.view_ref
@@ -365,13 +366,17 @@ class PythonInterface:
 		vals=[]
 #		XPLMGetDatavf(self.axis_values_ref, vals, 6, 1)
 		XPLMGetDatavf(self.axis_values_ref, vals, 0, 100)
-		for i in range(0,100):
-			print ' %.2f'%(vals[i]),
-			if i%25==0:
-				print '\n'
+		for i in range(0,25):
+			print ' %i:%.2f'%(i,vals[i]),
+			#if i%25==0:
+				#print '\n'
 		#print '%.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f\n' % (vals[0],vals[1], vals[2], vals[3], vals[4], vals[5], vals[6], vals[7], vals[8], vals[9]) 
-		print '\n------------------------------------------------------------------------------------'
+		#print '\n------------------------------------------------------------------------------------'
+		print '\n'
 		self.propindex=12
+		print "11="+str(vals[11])
+		print "12="+str(vals[12])
+		print "13="+str(vals[13])
 		propaxis=vals[self.propindex]
 		proper=(propaxis-self.propmin)/self.proprange
 		print "CMOD - val="+str(propaxis)+" normalized="+str(proper)
@@ -381,7 +386,7 @@ class PythonInterface:
 			proper=-0.5
 		print "CMOD - speedbrake to "+str(proper)
 		XPLMSetDataf(self.sbrake_ref,proper)
-		return 0.5
+		return 1.0
 	
 	def nextflaps(self,handle,flaps):
 		i=0
