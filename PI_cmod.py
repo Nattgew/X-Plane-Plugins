@@ -241,11 +241,11 @@ class PythonInterface:
 						self.propindex=i
 						break
 				print '\n'
-				self.propindex=12
+				self.propindex=13
 				print "Index 7 | assigned "+str(self.propindex)
 				print "Assignments "+str(len(assignments))+" mins="+str(len(mins))+" maxs="+str(len(maxs))+" revs="+str(len(revs))
 				if self.propindex>-1:
-					self.rev=1 if revs[self.propindex]==1 else 0
+					self.rev=0 if revs[self.propindex]==1 else 1
 					self.propbrakes=1
 					self.propmin=mins[0]
 					self.propmax=maxs[0]
@@ -366,17 +366,14 @@ class PythonInterface:
 		vals=[]
 #		XPLMGetDatavf(self.axis_values_ref, vals, 6, 1)
 		XPLMGetDatavf(self.axis_values_ref, vals, 0, 100)
-		for i in range(0,25):
-			print ' %i:%.2f'%(i,vals[i]),
+#		for i in range(0,25):
+#			print ' %i:%.2f'%(i,vals[i]),
 			#if i%25==0:
 				#print '\n'
 		#print '%.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f\n' % (vals[0],vals[1], vals[2], vals[3], vals[4], vals[5], vals[6], vals[7], vals[8], vals[9]) 
 		#print '\n------------------------------------------------------------------------------------'
 		print '\n'
-		self.propindex=12
-		print "11="+str(vals[11])
-		print "12="+str(vals[12])
-		print "13="+str(vals[13])
+		self.propindex=13
 		propaxis=vals[self.propindex]
 		proper=(propaxis-self.propmin)/self.proprange
 		print "CMOD - val="+str(propaxis)+" normalized="+str(proper)
