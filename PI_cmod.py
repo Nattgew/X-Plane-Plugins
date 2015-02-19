@@ -323,8 +323,8 @@ class PythonInterface:
 	def cmdif3D(self, cmd2D, cmd3D): #Run command depending on 3D cockpit
 		ac,has3D=self.getshortac(self.acf_desc_ref)
 		view=XPLMGetDatai(self.view_ref)
-		print "CMOD - AC "+ac+" has3D = "+str(has3D)" view="+str(view)
-		if has3D==1: #view 3D
+		print "CMOD - AC "+ac+" has3D = "+str(has3D)+" view="+str(view)
+		if has3D==1 and view!=1017: #view 3D
 			view_cmd=XPLMFindCommand(cmd3D)
 		else: #view 2D
 			view_cmd=XPLMFindCommand(cmd2D)
@@ -349,15 +349,15 @@ class PythonInterface:
 		# 1012 Right and up
 		# 1014 Airport Beacon Tower
 		# 1015 On Runway
-		# 1017 Chase
+		# 1017 Chase - MY OUTSIDE VIEW
 		# 1018 Follow
 		# 1019 Follow with Panel
 		# 1020 Spot
 		# 1021 Spot Moving
-		# 1023 Full screen with HUD
+		# 1023 Full screen with HUD - THIS IS THE HUD
 		# 1024 Full screen no HUD
 		# 1025 Straight Down+
-		# 1026 3D Cockpit+
+		# 1026 3D Cockpit+ - YES ITS THE 3D COCKPIT
 	
 	def CondSet(self, apset_ref, trim_ref, ap_del, trim_del, phase): #Set AP ref+del if AP on, else set trim ref+del
 		ap=XPLMGetDatai(self.ap_ref)
