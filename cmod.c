@@ -29,7 +29,7 @@ struct gotAC getshortac(XPLMDataRef desc_ref);
 PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
 {
 
-	strcpy(outName, "Controller Mods in C);
+	strcpy(outName, "Controller Mods in C");
 	strcpy(outSig, "natt.python.cmodc");
 	strcpy(outDesc, "Command modifications for using controllers, hacked into C");
 	
