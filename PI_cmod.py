@@ -324,7 +324,7 @@ class PythonInterface:
 		ac,has3D=self.getshortac(self.acf_desc_ref)
 		view=XPLMGetDatai(self.view_ref)
 		print "CMOD - AC "+ac+" has3D = "+str(has3D)+" view="+str(view)
-		if has3D==1 and view!=1017: #view 3D
+		if has3D==1 and view!=1017 and view!=1018: #view 3D
 			view_cmd=XPLMFindCommand(cmd3D)
 		else: #view 2D
 			view_cmd=XPLMFindCommand(cmd2D)
@@ -413,15 +413,15 @@ class PythonInterface:
 		XPLMSetDataf(self.sbrake_ref,proper)
 		return 0.5
 	
-	def nextflaps(self,handle,flaps):
-		i=0
-		while handle<flaps[i]+0.001:
-			i+=1
-		XPLMSetDataf(self.flap_h_pos_ref, flaps[i])
+	# def nextflaps(self,handle,flaps):
+		# i=0
+		# while handle<flaps[i]+0.001:
+			# i+=1
+		# XPLMSetDataf(self.flap_h_pos_ref, flaps[i])
 	
 	def getshortac(self,acf_desc_ref):
 		acf_descb=[]
-		XPLMGetDatab(acf_desc_ref, acf_descb, 0, 500)
+		XPLMGetDatab(acf_desc_ref, acf_descb, 0, 260)
 		acf_desc=str(acf_descb)
 		if acf_desc[0:27]=="['Boeing 737-800 xversion 4":
 			AC="B738"
@@ -463,6 +463,8 @@ class PythonInterface:
 		XPLMUnregisterCommandHandler(self, self.Cmd2BConn, self.Cmd2BConnCB, 0, 0)
 		XPLMUnregisterCommandHandler(self, self.CmdMCConn, self.CmdMCConnCB, 0, 0)
 		XPLMUnregisterCommandHandler(self, self.CmdMSConn, self.CmdMSConnCB, 0, 0)
+		if self.propbrakes==1:
+			self.CmdMBConnCallback(None, 0, None)
 		pass
 
 	def XPluginEnable(self):
