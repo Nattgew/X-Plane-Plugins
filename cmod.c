@@ -1,9 +1,9 @@
 #include <string.h>
 #include <stdio.h>
-#include "XPLMUtilities.h"
-#include "XPLMDefs.h"
-#include "XPLMDataAccess.h"
-#include "XPLMProcessing.h"
+#include "SDK/CHeaders/XPLM/XPLMUtilities.h"
+#include "SDK/CHeaders/XPLM/XPLMDefs.h"
+#include "SDK/CHeaders/XPLM/XPLMDataAccess.h"
+#include "SDK/CHeaders/XPLM/XPLMProcessing.h"
 
 static float gameLoopCallback(float inElapsedSinceLastCall,
 				float inElapsedTimeSinceLastFlightLoop, int inCounter,	
@@ -18,9 +18,12 @@ static int propeng=0;
 static int assignments[100];
 static float mins[100];
 static float maxs[100];
+static float proprange, propmin;
+static int rev;
+static int propindex=-1
 
 struct gotAC {
-	char ac[5];
+	char AC[5];
 	int has3D;
 };
 
@@ -323,7 +326,6 @@ int CmdMBConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //p
 	if (phase==xplm_CommandBegin) {
 		if (propbrakes==0) {
 			XPLMSpeakString("Starting propbrake");
-			int propindex=-1;
 			float mins[100], maxs[100];
 			int assignments[100], revs[100];
 			XPLMGetDatavi(axis_assign_ref, assignments, 0, 100);
@@ -341,14 +343,13 @@ int CmdMBConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //p
 			propindex=13; //At long last
 			//print "Index 13 | assignment "+str(assignments[propindex]);
 			if (propindex>-1) {
-				int rev;
 				if (revs[propindex]==1) { //Evidently we DO want the reverse of this axis
 					rev=0;
 				} else {
 					rev=1;
 				}
 				propbrakes=1;
-				float propmin, propmax, proprange;
+				float propmax;
 				propmin=mins[0];
 				propmax=maxs[0];
 				proprange=propmax-propmin;
@@ -369,10 +370,10 @@ int CmdMCConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //M
 		char * ac, cmdref;
 		int has3D;
 		XPLMCommandRef got_cmd;
-		ac,has3D=getshortac(acf_desc_ref);
-		if (ac=="CL30") {
+		thisAC=getshortac(acf_desc_ref);
+		if (thisAC.ac=="CL30") {
 			cmdref="cl30/engine/mach_hold"; //FIX ME
-		} else if (ac=="PC12") {
+		} else if (thisAC.ac=="PC12") {
 			cmdref="pc12/engine/cutoff_protection_toggle";
 		} else {
 			cmdref="sim/ice/anti_ice_toggle";
@@ -412,12 +413,12 @@ int Cmd2BConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //P
 
 void cmdif3D(char * cmd2D, char * cmd3D) { //Run command depending on 3D cockpit
 	char * ac;
-	int has3D view;
+	int has3D, view;
 	XPLMCommandRef view_cmd;
-	ac,has3D=getshortac(acf_desc_ref);
+	thisAC=getshortac(acf_desc_ref);
 	view=XPLMGetDatai(view_ref);
 	//print "CMOD - AC "+ac+" has3D = "+str(has3D)+" view="+str(view)
-	if (has3D==1 && view!=1017 && view!=1018) { //view 3D
+	if (thisAC.has3D==1 && view!=1017 && view!=1018) { //view 3D
 		view_cmd=XPLMFindCommand(cmd3D);
 	} else { //view 2D
 		view_cmd=XPLMFindCommand(cmd2D);
@@ -446,6 +447,7 @@ void CondSet(XPLMDataRef apset_ref, XPLMDataRef trim_ref, float ap_del, float tr
 		} else if (phase==2)
 			cmdhold=0;
 	} else if (ap!=2) {
+		XPLMCommandRef trim_cmd;
 		if (trim_ref==trim_elv_ref) {
 			if (trim_del>0) {
 				trim_cmd=XPLMFindCommand("sim/flight_controls/pitch_trim_up");
