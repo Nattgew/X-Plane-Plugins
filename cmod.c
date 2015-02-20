@@ -5,6 +5,8 @@
 #include "SDK/CHeaders/XPLM/XPLMDataAccess.h"
 #include "SDK/CHeaders/XPLM/XPLMProcessing.h"
 
+#define XPLM200 1
+
 static float gameLoopCallback(float inElapsedSinceLastCall,
 				float inElapsedTimeSinceLastFlightLoop, int inCounter,	
 				void *inRefcon);
@@ -27,7 +29,7 @@ struct gotAC {
 	int has3D;
 };
 
-struct gotAC getshortac(XPLMDataRef desc_ref);
+//struct gotAC getshortac(XPLMDataRef desc_ref);
 
 PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
 {
@@ -165,7 +167,7 @@ PLUGIN_API void XPluginReceiveMessage(XPLMPluginID inFromWho,
 }
 
 int CmdSTConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //Toggle speedbrakes
-	if (phase==xplm_CommandBegin) { //KeyDown event
+	if (phase==0) { //KeyDown event
 		float position;
 		position=XPLMGetDataf(speed_brake_ref);
 		if (position<1) { //armed, stowed, or not fully deployed
@@ -178,7 +180,7 @@ int CmdSTConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //T
 }
 
 int CmdLTConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //Toggle landing gear and lights together
-	if (phase==xplm_CommandBegin) { //KeyDown event
+	if (phase==0) { //KeyDown event
 		int gear, light;
 		gear=XPLMGetDatai(gearhand_ref);
 		light=XPLMGetDatai(landing_lights_ref);
@@ -195,7 +197,7 @@ int CmdLTConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //T
 }
 
 int CmdFTConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //Flaps +1, retract if fully deployed
-	if (phase==xplm_CommandBegin) { //KeyDown event
+	if (phase==0) { //KeyDown event
 		float handle;
 		handle=XPLMGetDataf(flap_h_pos_ref);
 		if (handle==1) { //Fully deployed
@@ -226,7 +228,7 @@ int CmdFTConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //F
 }
 
 int CmdVSupConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //AP vertical speed +100 fpm
-	if (phase==xplm_CommandBegin) { //KeyDown event
+	if (phase==0) { //KeyDown event
 		float vvi;
 		vvi=XPLMGetDataf(ap_vvi_ref);
 		XPLMSetDataf(ap_vvi_ref, vvi+100);
@@ -235,7 +237,7 @@ int CmdVSupConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { /
 }
 
 int CmdVSdnConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //AP vertical speed -100 fpm
-	if (phase==xplm_CommandBegin) { //KeyDown event
+	if (phase==0) { //KeyDown event
 		float vvi;
 		vvi=XPLMGetDataf(ap_vvi_ref);
 		XPLMSetDataf(ap_vvi_ref, vvi-100);
@@ -244,59 +246,59 @@ int CmdVSdnConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { /
 }
 
 int CmdLCConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //Left hdg or aileron trim
-	//if (phase==xplm_CommandBegin) { //KeyDown event
+	//if (phase==0) { //KeyDown event
 	CondSet(ap_hdg_ref, trim_ail_ref, -1, -0.01, phase);
 	return 0;
 }
 
 int CmdRCConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //Right hdg or aileron trim
-	//if (phase==xplm_CommandBegin) { //KeyDown event
+	//if (phase==0) { //KeyDown event
 	CondSet(ap_hdg_ref, trim_ail_ref, 1, 0.01, phase);
 	return 0;
 }
 
 int CmdDCConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //Down vert speed or elev trim
-	//if (phase==xplm_CommandBegin) { //KeyDown event
+	//if (phase==0) { //KeyDown event
 	CondSet(ap_vvi_ref, trim_elv_ref, -100, -0.01, phase);
 	return 0;
 }
 
 int CmdUCConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //Up vert speed or elev trim
-	//if (phase==xplm_CommandBegin) { //KeyDown event
+	//if (phase==0) { //KeyDown event
 	CondSet(ap_vvi_ref, trim_elv_ref, 100, 0.01, phase);
 	return 0;
 }
 
 int CmdVDConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //Cockpit view down based on airplane
-	//if (phase==xplm_CommandBegin) { //KeyDown event
+	//if (phase==0) { //KeyDown event
 	cmdif3D("sim/general/down_fast","sim/view/pan_down_fast");
 	return 0;
 }
 int CmdVUConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //Cockpit view up based on airplane
-	//if (phase==xplm_CommandBegin) { //KeyDown event
+	//if (phase==0) { //KeyDown event
 	cmdif3D("sim/general/up_fast","sim/view/pan_up_fast");
 	return 0;
 }
 int CmdVLConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //Cockpit view left based on airplane
-	//if (phase==xplm_CommandBegin) { //KeyDown event
+	//if (phase==0) { //KeyDown event
 	cmdif3D("sim/general/left_fast","sim/view/pan_left_fast");
 	return 0;
 }
 int CmdVRConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //Cockpit view right based on airplane
-	//if (phase==xplm_CommandBegin) { //KeyDown event
+	//if (phase==0) { //KeyDown event
 	cmdif3D("sim/general/right_fast","sim/view/pan_right_fast");
 	return 0;
 }
 
 int CmdCPConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //Cockpit view based on airplane
-	if (phase==xplm_CommandBegin) { //KeyDown event
+	if (phase==0) { //KeyDown event
 		cmdif3D("sim/view/forward_with_panel","sim/view/3d_cockpit_cmnd_look");
 	}
 	return 0;
 }
 
 int CmdMSConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //Toggle master/slave status
-	if (phase==xplm_CommandBegin) { //KeyDown event
+	if (phase==0) { //KeyDown event
 		//print "Settings for network:"
 		int ips[20], tracks[20];
 		int isev=0;
@@ -323,7 +325,7 @@ int CmdMSConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //T
 }
 
 int CmdMBConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //prop axis for speed brakes
-	if (phase==xplm_CommandBegin) {
+	if (phase==0) {
 		if (propbrakes==0) {
 			XPLMSpeakString("Starting propbrake");
 			float mins[100], maxs[100];
@@ -366,14 +368,15 @@ int CmdMBConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //p
 }
 
 int CmdMCConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //Mach/cutoff protect vased on AC
-	if (phase==xplm_CommandBegin) {
+	if (phase==0) {
 		char * ac, cmdref;
 		int has3D;
+		struct gotAC thisAC;
 		XPLMCommandRef got_cmd;
 		thisAC=getshortac(acf_desc_ref);
-		if (thisAC.ac=="CL30") {
+		if (strcmp(&thisAC.AC,"CL30")==0) {
 			cmdref="cl30/engine/mach_hold"; //FIX ME
-		} else if (thisAC.ac=="PC12") {
+		} else if (strcmp(&thisAC.AC,"PC12")==0) {
 			cmdref="pc12/engine/cutoff_protection_toggle";
 		} else {
 			cmdref="sim/ice/anti_ice_toggle";
@@ -384,10 +387,11 @@ int CmdMCConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //M
 			XPLMCommandOnce(got_cmd);
 		}
 	}
+	return 0;
 }
 
 int Cmd2BConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //Prop axis controls engine 2
-	if (phase==xplm_CommandBegin) {
+	if (phase==0) {
 		int assignments[100];
 		XPLMGetDatavi(axis_assign_ref, assignments, 0, 100);
 		if (propeng==1) {
@@ -409,11 +413,13 @@ int Cmd2BConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //P
 		}
 		XPLMSetDatavi(axis_assign_ref, assignments, 0, 100);
 	}
+	return 0;
 }
 
-void cmdif3D(char * cmd2D, char * cmd3D) { //Run command depending on 3D cockpit
+void cmdif3D(char *cmd2D, char *cmd3D) { //Run command depending on 3D cockpit
 	char * ac;
-	int has3D, view;
+	int view;
+	struct gotAC thisAC;
 	XPLMCommandRef view_cmd;
 	thisAC=getshortac(acf_desc_ref);
 	view=XPLMGetDatai(view_ref);
@@ -505,21 +511,24 @@ static float gameLoopCallback(float elapsedSinceLastCall, float inElapsedSim, in
 struct gotAC getshortac(XPLMDataRef desc_ref) {
 	struct gotAC thisAC;
 	char acf_descb[261];
+	char buffer[17];
 	XPLMGetDatab(desc_ref, acf_descb, 0, 260);
 	//acf_desc=str(acf_descb)
-	if (acf_descb[0:27]=="['Boeing 737-800 xversion 4") {
+	strncpy(buffer, acf_descb, 16);
+	buffer[16]='\0';
+	if (strcmp(&buffer, "['Boeing 737-800")==0) {
 		strncpy("B738",thisAC.AC,4);
 		thisAC.has3D=1;
-	} else if (strcmp(&acf_descb[0], "['Pilatus PC-12']")==0) {
+	} else if (strcmp(&acf_descb, "['Pilatus PC-12']")==0) {
 		strncpy("PC12",thisAC.AC,4);
 		thisAC.has3D=1;
-	} else if (acf_descb[0:9]=="['BE1900D" || acf_descb[0:19]=="['B1900 for X-plane") {
+	} else if (strcmp(&buffer, "['B1900 for X-pl") {
 		strncpy("B190",thisAC.AC,4);
 		thisAC.has3D=1;
-	} else if (strcmp(&acf_descb[0], "['Bombardier Challenger 300']")==0) {
+	} else if (strcmp(&acf_descb, "['Bombardier Challenger 300']")==0) {
 		strncpy("CL30",thisAC.AC,4);
 		thisAC.has3D=1;
-	} else if (acf_descb[0:21]=="['C208B Grand Caravan") {
+	} else if (strcmp(&buffer, "['C208B Grand Ca") {
 		strncpy("C208",thisAC.AC,4);
 		thisAC.has3D=1;
 	} else {
@@ -527,5 +536,6 @@ struct gotAC getshortac(XPLMDataRef desc_ref) {
 		thisAC.has3D=0;
 		//print str(acf_descb);
 	}
+	thisAC.AC[4]='\0';
 	return thisAC;
 }
