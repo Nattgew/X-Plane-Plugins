@@ -2,6 +2,7 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "SDK/CHeaders/XPLM/XPLMUtilities.h"
 #include "SDK/CHeaders/XPLM/XPLMDefs.h"
 #include "SDK/CHeaders/XPLM/XPLMDataAccess.h"
@@ -437,14 +438,29 @@ int Cmd2BConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //P
 }
 
 void cmdif3D(char *cmd2D, char *cmd3D) { //Run command depending on 3D cockpit
+	//XPLMDebugString("Running cmdif3D\n");
 	char * ac;
-	int view;
+	int view, chgview;
 	struct gotAC thisAC;
 	XPLMCommandRef view_cmd;
 	thisAC=getshortac(acf_desc_ref);
 	view=XPLMGetDatai(view_ref);
-	//print "CMOD - AC "+ac+" has3D = "+str(has3D)+" view="+str(view)
-	if (thisAC.has3D==1 && view!=1017 && view!=1018) { //view 3D
+	//XPLMDebugString("Here's that suspicios SO code...\n");
+	char *buf;
+	size_t sz;
+	sz = snprintf(NULL,0,"CMOD - AC %s has3D=%i view=%i\n",thisAC.AC,thisAC.has3D,view);
+	//XPLMDebugString("Running malloc for buf\n");
+	buf = (char *)malloc(sz+1);
+	//XPLMDebugString("Writing to buf\n");
+	snprintf(buf,sz+1,"CMOD - AC %s has3D=%i view=%i\n",thisAC.AC,thisAC.has3D,view);
+	//XPLMDebugString("Sending debug string buf\n");
+	//XPLMDebugString(buf);
+	if (strcmp("sim/view/forward_with_panel",cmd2D)==0) {
+		chgview=1;
+	} else {
+		chgview=0;
+	}
+	if (thisAC.has3D==1 && ((view!=1017 && view!=1018) || (chgview==1))) { //view 3D
 		view_cmd=XPLMFindCommand(cmd3D);
 	} else { //view 2D
 		view_cmd=XPLMFindCommand(cmd2D);
@@ -529,33 +545,50 @@ static float gameLoopCallback(float elapsedSinceLastCall, float inElapsedSim, in
 	// XPLMSetDataf(flap_h_pos_ref, flaps[i])
 
 struct gotAC getshortac(XPLMDataRef desc_ref) {
+	//XPLMDebugString("Creating the gotAC struct\n");
 	struct gotAC thisAC;
 	char acf_descb[261];
-	char buffer[17];
+	char buffer[14];
 	XPLMGetDatab(desc_ref, acf_descb, 0, 260);
 	//acf_desc=str(acf_descb)
-	strncpy(buffer, acf_descb, 16);
-	buffer[16]='\0';
-	if (strcmp(buffer, "['Boeing 737-800")==0) {
-		strncpy("B738",thisAC.AC,4);
+	strncpy(buffer, acf_descb, 13);
+	buffer[13]='\0';
+	//XPLMDebugString(buffer);
+	//XPLMDebugString("\n");
+	if (strcmp(buffer, "Boeing 737-80")==0) {
+		strncpy(thisAC.AC,"B738",4);
 		thisAC.has3D=1;
-	} else if (strcmp(acf_descb, "['Pilatus PC-12']")==0) {
-		strncpy("PC12",thisAC.AC,4);
+	} else if (strcmp(buffer, "Pilatus PC-12")==0) {
+		strncpy(thisAC.AC,"PC12",4);
 		thisAC.has3D=1;
-	} else if (strcmp(buffer, "['B1900 for X-pl")==0) {
-		strncpy("B190",thisAC.AC,4);
+	} else if (strcmp(buffer, "B1900 for X-p")==0) {
+		strncpy(thisAC.AC,"B190",4);
 		thisAC.has3D=1;
-	} else if (strcmp(acf_descb, "['Bombardier Challenger 300']")==0) {
-		strncpy("CL30",thisAC.AC,4);
+	} else if (strcmp(buffer, "Bombardier Ch")==0) {
+		//XPLMDebugString("A challenger appears\n");
+		strncpy(thisAC.AC,"CL30",4);
 		thisAC.has3D=1;
-	} else if (strcmp(buffer, "['C208B Grand Ca")==0) {
-		strncpy("C208",thisAC.AC,4);
+		//XPLMDebugString("Set the struct fields\n");
+	} else if (strcmp(buffer, "C208B Grand C")==0) {
+		strncpy(thisAC.AC,"C208",4);
 		thisAC.has3D=1;
 	} else {
+		//XPLMDebugString("No match found\n");
 		strncpy(acf_descb,thisAC.AC,4);
 		thisAC.has3D=0;
-		//print str(acf_descb);
+		char *buf;
+		size_t sz;
+		sz = snprintf(NULL,0,"CMOD - not recognizing AC: %c\n",acf_descb);
+		buf = (char *)malloc(sz+1);
+		snprintf(buf,sz+1,"CMOD - not recognizing AC: %c\n",acf_descb);
+		//XPLMDebugString(buf);
+		char *buf2;
+		sz = snprintf(NULL,0,"CMOD - used buffer: %c\n",buffer);
+		buf2 = (char *)malloc(sz+1);
+		snprintf(buf2,sz+1,"CMOD - used buffer: %c\n",buffer);
+		//XPLMDebugString(buf);
 	}
 	thisAC.AC[4]='\0';
+	//XPLMDebugString("Terminated the AC like a boss, returning the struct\n");
 	return thisAC;
 }
