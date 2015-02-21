@@ -1,0 +1,2 @@
+gcc -fPIC -DLIN=1 -shared -rdynamic -nodefaultlibs -undefined_warning cmod.c -o cmod.xpl
+gcc -m32 -fPIC -DLIN=1 -shared -rdynamic -nodefaultlibs -undefined_warning cmod.c -o cmod32.xpl
