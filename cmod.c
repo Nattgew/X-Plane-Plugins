@@ -1,3 +1,5 @@
+#define XPLM200 1
+
 #include <string.h>
 #include <stdio.h>
 #include "SDK/CHeaders/XPLM/XPLMUtilities.h"
@@ -5,13 +7,28 @@
 #include "SDK/CHeaders/XPLM/XPLMDataAccess.h"
 #include "SDK/CHeaders/XPLM/XPLMProcessing.h"
 
-#define XPLM200 1
-
 static float gameLoopCallback(float inElapsedSinceLastCall,
 				float inElapsedTimeSinceLastFlightLoop, int inCounter,	
 				void *inRefcon);
 static XPLMCommandRef CmdSTConn, CmdLTConn, CmdFTConn, CmdVSupConn, CmdVSdnConn, CmdLCConn, CmdRCConn, CmdUCConn, CmdDCConn, CmdVDConn, CmdVUConn, CmdVLConn, CmdVRConn, CmdCPConn, CmdMBConn, Cmd2BConn, CmdMCConn, CmdMSConn;
-static XPLMCommandCallback_f CmdSTConnCB, CmdLTConnCB, CmdFTConnCB, CmdVSupConnCB, CmdVSdnConnCB, CmdLCConnCB, CmdRCConnCB, CmdUCConnCB, CmdDCConnCB, CmdVDConnCB, CmdVUConnCB, CmdVLConnCB, CmdVRConnCB, CmdCPConnCB, CmdMBConnCB, Cmd2BConnCB, CmdMCConnCB, CmdMSConnCB;
+int CmdSTConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
+int CmdLTConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
+int CmdFTConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
+int CmdVSupConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
+int CmdVSdnConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
+int CmdLCConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
+int CmdRCConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
+int CmdUCConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
+int CmdDCConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
+int CmdVDConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
+int CmdVUConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
+int CmdVLConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
+int CmdVRConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
+int CmdCPConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
+int CmdMBConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
+int Cmd2BConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
+int CmdMCConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
+int CmdMSConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
 //int MyCommandHandler(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
 static XPLMDataRef acf_desc_ref, speed_brake_ref, landing_lights_ref, geardep_ref, gearhand_ref, flap_h_pos_ref, ap_vvi_ref, ap_hdg_ref, ap_ref, trim_ail_ref, trim_elv_ref, view_ref, sbrake_ref, flap_ref, axis_assign_ref, axis_values_ref, axis_min_ref, axis_max_ref, axis_rev_ref, ev_ip_ref, is_ev_ref, trackv_ref;
 static int cmdhold=0;
@@ -21,15 +38,18 @@ static int assignments[100];
 static float mins[100];
 static float maxs[100];
 static float proprange, propmin;
-static int rev;
-static int propindex=-1
+static int rev, i;
+static int propindex=-1;
 
 struct gotAC {
 	char AC[5];
 	int has3D;
 };
 
-//struct gotAC getshortac(XPLMDataRef desc_ref);
+void cmdif3D(char *cmd2D, char *cmd3D);
+void CondSet(XPLMDataRef apset_ref, XPLMDataRef trim_ref, float ap_del, float trim_del, int phase);
+
+struct gotAC getshortac(XPLMDataRef desc_ref);
 
 PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
 {
@@ -374,14 +394,14 @@ int CmdMCConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //M
 		struct gotAC thisAC;
 		XPLMCommandRef got_cmd;
 		thisAC=getshortac(acf_desc_ref);
-		if (strcmp(&thisAC.AC,"CL30")==0) {
-			cmdref="cl30/engine/mach_hold"; //FIX ME
-		} else if (strcmp(&thisAC.AC,"PC12")==0) {
-			cmdref="pc12/engine/cutoff_protection_toggle";
+		if (strcmp(thisAC.AC,"CL30")==0) {
+			strcpy("cl30/engine/mach_hold",&cmdref); //FIX ME
+		} else if (strcmp(thisAC.AC,"PC12")==0) {
+			strcpy("pc12/engine/cutoff_protection_toggle",&cmdref);
 		} else {
-			cmdref="sim/ice/anti_ice_toggle";
+			strcpy("sim/ice/anti_ice_toggle",&cmdref);
 		}
-		got_cmd=XPLMFindCommand(cmdref);
+		got_cmd=XPLMFindCommand(&cmdref);
 		if (got_cmd) {
 			//print "CMOD - Running switch command"
 			XPLMCommandOnce(got_cmd);
@@ -516,19 +536,19 @@ struct gotAC getshortac(XPLMDataRef desc_ref) {
 	//acf_desc=str(acf_descb)
 	strncpy(buffer, acf_descb, 16);
 	buffer[16]='\0';
-	if (strcmp(&buffer, "['Boeing 737-800")==0) {
+	if (strcmp(buffer, "['Boeing 737-800")==0) {
 		strncpy("B738",thisAC.AC,4);
 		thisAC.has3D=1;
-	} else if (strcmp(&acf_descb, "['Pilatus PC-12']")==0) {
+	} else if (strcmp(acf_descb, "['Pilatus PC-12']")==0) {
 		strncpy("PC12",thisAC.AC,4);
 		thisAC.has3D=1;
-	} else if (strcmp(&buffer, "['B1900 for X-pl") {
+	} else if (strcmp(buffer, "['B1900 for X-pl")==0) {
 		strncpy("B190",thisAC.AC,4);
 		thisAC.has3D=1;
-	} else if (strcmp(&acf_descb, "['Bombardier Challenger 300']")==0) {
+	} else if (strcmp(acf_descb, "['Bombardier Challenger 300']")==0) {
 		strncpy("CL30",thisAC.AC,4);
 		thisAC.has3D=1;
-	} else if (strcmp(&buffer, "['C208B Grand Ca") {
+	} else if (strcmp(buffer, "['C208B Grand Ca")==0) {
 		strncpy("C208",thisAC.AC,4);
 		thisAC.has3D=1;
 	} else {
