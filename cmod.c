@@ -390,19 +390,19 @@ int CmdMBConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //p
 
 int CmdMCConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //Mach/cutoff protect vased on AC
 	if (phase==0) {
-		char * ac, cmdref;
+		char *ac, *cmdref;
 		int has3D;
 		struct gotAC thisAC;
 		XPLMCommandRef got_cmd;
 		thisAC=getshortac(acf_desc_ref);
 		if (strcmp(thisAC.AC,"CL30")==0) {
-			strcpy("cl30/engine/mach_hold",&cmdref); //FIX ME
+			strcpy(cmdref,"cl30/engine/mach_hold"); //FIX ME
 		} else if (strcmp(thisAC.AC,"PC12")==0) {
-			strcpy("pc12/engine/cutoff_protection_toggle",&cmdref);
+			strcpy(cmdref,"pc12/engine/cutoff_protection_toggle");
 		} else {
-			strcpy("sim/ice/anti_ice_toggle",&cmdref);
+			strcpy(cmdref,"sim/ice/anti_ice_toggle");
 		}
-		got_cmd=XPLMFindCommand(&cmdref);
+		got_cmd=XPLMFindCommand(cmdref);
 		if (got_cmd) {
 			//print "CMOD - Running switch command"
 			XPLMCommandOnce(got_cmd);
