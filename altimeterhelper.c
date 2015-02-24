@@ -7,14 +7,13 @@
 #include "SDK/CHeaders/XPLM/XPLMGraphics.h"
 #include "SDK/CHeaders/XPLM/XPLMDataAccess.h"
 #include "SDK/CHeaders/XPLM/XPLMProcessing.h"
+#include "SDK/CHeaders/XPLM/XPLMDefs.h"
 
 #include <GL/glew.h>
 
 static float gameLoopCallback(float inElapsedSinceLastCall,
 				float inElapsedTimeSinceLastFlightLoop, int inCounter,	
 				void *inRefcon);
-
-static void	MyHotKeyCallback(void *	inRefcon);
 
 #define WINDOW_WIDTH 200
 #define WINDOW_HEIGHT 35
@@ -37,13 +36,16 @@ static int windowCloseRequest = 0;
 static int stdpress=0; //Whether standard pressure is set
 static int trans_alt=18000;
 static float tol[3];
-tol = [17.009, 0.0058579, -0.000000012525]; //Parameters for altimeter tolerance
+tol = {17.009, 0.0058579, -0.000000012525}; //Parameters for altimeter tolerance
 
 char getSign(float val);
 float getAlt(float SL, float AM);
 void setBaro(float bar_new);
 void showBaro(float bar_new);
 int CmdSHConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
+void drawWindowCallback(XPLMWindowID inWindowID, void *inRefcon);
+static int mouseCallback(XPLMWindowID inWindowID, int x, int y,	XPLMMouseStatus inMouse, void *inRefcon);
+static void keyboardCallback(XPLMWindowID inWindowID, char inKey, XPLMKeyFlags inFlags,	char inVirtualKey, void *inRefcon, int losingFocus);
 
 char getSign(float val) { //Puts a plus sign in front of positive values
 	char sign;
@@ -77,7 +79,7 @@ void setBaro(float bar_new) { //Set the barometer
 	remainingShowTime=showTime;
 }
 
-void showBaro(bar_new) { //Show the barometer setting
+void showBaro(float bar_new) { //Show the barometer setting
 	char *buf;
 	size_t sz;
 	sz=snprintf(NULL,0,"Altimeter  %.2f",bar_new);
@@ -200,7 +202,7 @@ static float gameLoopCallback(float inElapsedSinceLastCall,
 	float alt = XPLMGetDataf(alt_ind_ref), vvi = XPLMGetDataf(vvi_ref);
 	float alt_act=XPLMGetDataf(alt_act_ref)*FEET, bar=XPLMGetDataf(baro_set_ref);
 	float bar_am=XPLMGetDataf(baro_am_ref), bar_act=XPLMGetDataf(baro_act_ref);
-	float alt_err, tolerance;
+	float alt_err, tolerance, baro_hund, lastbar_hund;
 	
 	if ( 0 < remainingShowTime)
 		remainingShowTime -= inElapsedSinceLastCall;
@@ -218,7 +220,7 @@ static float gameLoopCallback(float inElapsedSinceLastCall,
 	alt_err=getAlt(bar-bar_act,0);
 	alt_err=(alt-alt_act);
 	tolerance=tol[2]*alt*alt+tol[1]*alt+tol[0]; //Determine altimeter error tolerance
-	if (fabs(alt_err)>tolerance and stdpress==0) {
+	if (fabs(alt_err)>tolerance && stdpress==0) {
 		char *buf;
 		size_t sz;
 		sz = snprintf(NULL,0,"Altimeter off by %c%.0f feet!",getSign(alt_err),alt_err);
@@ -231,7 +233,7 @@ static float gameLoopCallback(float inElapsedSinceLastCall,
 	lastbar_hund=last_bar*100;
 	baro_hund >= 0 ? (long)(baro_hund+0.5) : (long)(baro_hund-0.5);
 	lastbar_hund >= 0 ? (long)(lastbar_hund+0.5) : (long)(lastbar_hund-0.5);
-	if (abs(baro_hund-lastbar_hund)>0) {
+	if (abs(baro_hund-lastbar_hund)>0)
 		showBaro(bar);
 	
 	last_bar = bar;
