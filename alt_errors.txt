@@ -1,0 +1,74 @@
+altimeterhelper.c:27:8: error: unknown type name ‘XPLMCommandRef’
+ static XPLMCommandRef CmdSHConn;
+        ^
+altimeterhelper.c:40:1: warning: data definition has no type or storage class
+ tol = [17.009, 0.0058579, -0.000000012525]; //Parameters for altimeter tolerance
+ ^
+altimeterhelper.c:40:1: error: conflicting types for ‘tol’
+altimeterhelper.c:39:14: note: previous declaration of ‘tol’ was here
+ static float tol[3];
+              ^
+altimeterhelper.c:40:7: error: expected expression before ‘[’ token
+ tol = [17.009, 0.0058579, -0.000000012525]; //Parameters for altimeter tolerance
+       ^
+altimeterhelper.c:46:17: error: unknown type name ‘XPLMCommandRef’
+ int CmdSHConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
+                 ^
+altimeterhelper.c:46:43: error: unknown type name ‘XPLMCommandPhase’
+ int CmdSHConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
+                                           ^
+altimeterhelper.c: In function ‘showBaro’:
+altimeterhelper.c:80:6: error: argument ‘bar_new’ doesn’t match prototype
+ void showBaro(bar_new) { //Show the barometer setting
+      ^
+altimeterhelper.c:45:6: error: prototype declaration
+ void showBaro(float bar_new);
+      ^
+altimeterhelper.c: In function ‘XPluginStart’:
+altimeterhelper.c:106:97: error: ‘drawWindowCallback’ undeclared (first use in this function)
+  gWindow=XPLMCreateWindow(winPosX, winPosY, winPosX + WINDOW_WIDTH, winPosY - WINDOW_HEIGHT, 1, drawWindowCallback, keyboardCallback, mouseCallback, 0);
+                                                                                                 ^
+altimeterhelper.c:106:97: note: each undeclared identifier is reported only once for each function it appears in
+altimeterhelper.c:106:117: error: ‘keyboardCallback’ undeclared (first use in this function)
+  gWindow=XPLMCreateWindow(winPosX, winPosY, winPosX + WINDOW_WIDTH, winPosY - WINDOW_HEIGHT, 1, drawWindowCallback, keyboardCallback, mouseCallback, 0);
+                                                                                                                     ^
+altimeterhelper.c:106:135: error: ‘mouseCallback’ undeclared (first use in this function)
+  gWindow=XPLMCreateWindow(winPosX, winPosY, winPosX + WINDOW_WIDTH, winPosY - WINDOW_HEIGHT, 1, drawWindowCallback, keyboardCallback, mouseCallback, 0);
+                                                                                                                                       ^
+altimeterhelper.c:109:40: error: ‘CmdSHConnCB’ undeclared (first use in this function)
+  XPLMRegisterCommandHandler(CmdSHConn, CmdSHConnCB, 0, (void *) 0);
+                                        ^
+altimeterhelper.c: In function ‘XPluginStop’:
+altimeterhelper.c:118:42: error: ‘CmdSHConnCB’ undeclared (first use in this function)
+  XPLMUnregisterCommandHandler(CmdSHConn, CmdSHConnCB, 0, 0);
+                                          ^
+altimeterhelper.c: At top level:
+altimeterhelper.c:137:17: error: unknown type name ‘XPLMCommandRef’
+ int CmdSHConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) {
+                 ^
+altimeterhelper.c:137:37: error: unknown type name ‘XPLMCommandPhase’
+ int CmdSHConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) {
+                                     ^
+altimeterhelper.c: In function ‘gameLoopCallback’:
+altimeterhelper.c:220:15: error: subscripted value is neither array nor pointer nor vector
+  tolerance=tol[2]*alt*alt+tol[1]*alt+tol[0]; //Determine altimeter error tolerance
+               ^
+altimeterhelper.c:220:30: error: subscripted value is neither array nor pointer nor vector
+  tolerance=tol[2]*alt*alt+tol[1]*alt+tol[0]; //Determine altimeter error tolerance
+                              ^
+altimeterhelper.c:220:41: error: subscripted value is neither array nor pointer nor vector
+  tolerance=tol[2]*alt*alt+tol[1]*alt+tol[0]; //Determine altimeter error tolerance
+                                         ^
+altimeterhelper.c:221:30: error: expected ‘)’ before ‘and’
+  if (fabs(alt_err)>tolerance and stdpress==0) {
+                              ^
+altimeterhelper.c:230:2: error: ‘baro_hund’ undeclared (first use in this function)
+  baro_hund=bar*100;
+  ^
+altimeterhelper.c:231:2: error: ‘lastbar_hund’ undeclared (first use in this function)
+  lastbar_hund=last_bar*100;
+  ^
+altimeterhelper.c:241:1: error: expected declaration or statement at end of input
+ }
+ ^
+
