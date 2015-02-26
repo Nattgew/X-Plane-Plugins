@@ -438,6 +438,12 @@ class PythonInterface:
 		elif acf_desc[0:21]=="['C208B Grand Caravan":
 			AC="C208"
 			has3D=1
+		elif acf_desc[0:7]=="['C-27J":
+			AC="C27J"
+			has3D=1
+		elif acf_desc[0:7]=="['Il-14":
+			AC="IL14"
+			has3D=1
 		else:
 			AC=acf_desc
 			has3D=0
