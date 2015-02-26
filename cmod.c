@@ -545,6 +545,12 @@ struct gotAC getshortac(XPLMDataRef desc_ref) {
 	} else if (strcmp(buffer, "C208B Grand C")==0) {
 		strncpy(thisAC.AC,"C208",4);
 		thisAC.has3D=1;
+	} else if (strcmp(buffer, "C-27J Spartan")==0) {
+		strncpy(thisAC.AC,"C27J",4);
+		thisAC.has3D=1;
+	} else if (strcmp(buffer, "Il-14 FIX ME ")==0) {
+		strncpy(thisAC.AC,"IL14",4);
+		thisAC.has3D=1;
 	} else {
 		strncpy(acf_descb,thisAC.AC,4);
 		thisAC.has3D=0;
