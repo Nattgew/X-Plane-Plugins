@@ -31,7 +31,7 @@ int Cmd2BConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRef
 int CmdMCConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
 int CmdMSConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
 //int MyCommandHandler(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
-static XPLMDataRef acf_desc_ref, speed_brake_ref, landing_lights_ref, geardep_ref, gearhand_ref, flap_h_pos_ref, ap_vvi_ref, ap_hdg_ref, ap_ref, trim_ail_ref, trim_elv_ref, view_ref, sbrake_ref, flap_ref, axis_assign_ref, axis_values_ref, axis_min_ref, axis_max_ref, axis_rev_ref, ev_ip_ref, is_ev_ref, trackv_ref;
+static XPLMDataRef acf_desc_ref, acf_icao_ref, speed_brake_ref, landing_lights_ref, geardep_ref, gearhand_ref, flap_h_pos_ref, ap_vvi_ref, ap_hdg_ref, ap_ref, trim_ail_ref, trim_elv_ref, view_ref, sbrake_ref, flap_ref, axis_assign_ref, axis_values_ref, axis_min_ref, axis_max_ref, axis_rev_ref, ev_ip_ref, is_ev_ref, trackv_ref;
 static int cmdhold=0;
 static int propbrakes=0;
 static int propeng=0;
@@ -50,7 +50,7 @@ struct gotAC {
 void cmdif3D(char *cmd2D, char *cmd3D);
 void CondSet(XPLMDataRef apset_ref, XPLMDataRef trim_ref, float ap_del, float trim_del, int phase);
 
-struct gotAC getshortac(XPLMDataRef desc_ref);
+struct gotAC getshortac(XPLMDataRef desc_ref, XPLMDataRef icao_ref);
 
 PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
 {
@@ -60,6 +60,7 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
 	strcpy(outDesc, "Command modifications for using controllers, hacked into C");
 	
 	acf_desc_ref=XPLMFindDataRef("sim/aircraft/view/acf_descrip"); //string array
+	acf_icao_ref=XPLMFindDataRef("sim/aircraft/view/acf_ICAO"); //string array
 	speed_brake_ref=XPLMFindDataRef("sim/flightmodel/controls/sbrkrqst"); //float -0.5=armed 0=off 1=max
 	landing_lights_ref=XPLMFindDataRef("sim/cockpit/electrical/landing_lights_on"); //int
 	geardep_ref=XPLMFindDataRef("sim/aircraft/parts/acf_gear_deploy"); //float array
@@ -230,7 +231,7 @@ int CmdFTConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //F
 				//print "XDMG = Found command, flaps down"
 				XPLMCommandOnce(flap_down_cmd);
 			}
-		// ac=getshortac(acf_desc_ref)
+		// ac=getshortac(acf_desc_ref, acf_icao_ref)
 		// handle=XPLMGetDataf(flap_h_pos_ref)
 		// if handle==1: //Fully deployed
 			// XPLMSetDataf(flap_h_pos_ref, 0.0) //Retract full
@@ -390,9 +391,9 @@ int CmdMCConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //M
 		int has3D;
 		struct gotAC thisAC;
 		XPLMCommandRef got_cmd;
-		thisAC=getshortac(acf_desc_ref);
+		thisAC=getshortac(acf_desc_ref, acf_icao_ref);
 		if (strcmp(thisAC.AC,"CL30")==0) {
-			strcpy(cmdref,"cl30/engine/mach_hold"); //FIX ME
+			strcpy(cmdref,"cl300/mach_hold"); //FIX ME
 		} else if (strcmp(thisAC.AC,"PC12")==0) {
 			strcpy(cmdref,"pc12/engine/cutoff_protection_toggle");
 		} else {
@@ -438,7 +439,7 @@ void cmdif3D(char *cmd2D, char *cmd3D) { //Run command depending on 3D cockpit
 	int view, chgview;
 	struct gotAC thisAC;
 	XPLMCommandRef view_cmd;
-	thisAC=getshortac(acf_desc_ref);
+	thisAC=getshortac(acf_desc_ref, acf_icao_ref);
 	view=XPLMGetDatai(view_ref);
 	char *buf;
 	size_t sz;
@@ -523,32 +524,35 @@ static float gameLoopCallback(float elapsedSinceLastCall, float inElapsedSim, in
 		// i+=1
 	// XPLMSetDataf(flap_h_pos_ref, flaps[i])
 
-struct gotAC getshortac(XPLMDataRef desc_ref) {
+struct gotAC getshortac(XPLMDataRef desc_ref, XPLMDataRef icao_ref) {
 	struct gotAC thisAC;
-	char acf_descb[261];
-	char buffer[14];
+	char acf_descb[261], acf_icaob[41];
+	char buffer[14], ibuffer[5];
 	XPLMGetDatab(desc_ref, acf_descb, 0, 260);
+	XPLMGetDatab(icao_ref, acf_icaob, 0, 40);
 	strncpy(buffer, acf_descb, 13);
 	buffer[13]='\0';
+	strncpy(ibuffer, acf_icaob, 4);
+	ibuffer[5]='\0';
 	if (strcmp(buffer, "Boeing 737-80")==0) {
 		strncpy(thisAC.AC,"B738",4);
 		thisAC.has3D=1;
-	} else if (strcmp(buffer, "Pilatus PC-12")==0) {
+	} else if (strcmp(buffer, "Pilatus PC-12")==0 || strcmp(ibuffer, "PC12")==0) {
 		strncpy(thisAC.AC,"PC12",4);
 		thisAC.has3D=1;
-	} else if (strcmp(buffer, "B1900 for X-p")==0) {
+	} else if (strcmp(buffer, "B1900 for X-p")==0 || strcmp(ibuffer, "BE19")==0) {
 		strncpy(thisAC.AC,"B190",4);
 		thisAC.has3D=1;
-	} else if (strcmp(buffer, "Bombardier Ch")==0) {
+	} else if (strcmp(buffer, "Bombardier Ch")==0 || strcmp(ibuffer, "CL30")==0) {
 		strncpy(thisAC.AC,"CL30",4);
 		thisAC.has3D=1;
-	} else if (strcmp(buffer, "C208B Grand C")==0) {
+	} else if (strcmp(buffer, "C208B Grand C")==0 || strcmp(ibuffer, "C208")==0) {
 		strncpy(thisAC.AC,"C208",4);
 		thisAC.has3D=1;
-	} else if (strcmp(buffer, "C-27J Spartan")==0) {
+	} else if (strcmp(buffer, "C-27J Spartan")==0 || strcmp(ibuffer, "C27J")==0) {
 		strncpy(thisAC.AC,"C27J",4);
 		thisAC.has3D=1;
-	} else if (strcmp(buffer, "Il-14 FIX ME ")==0) {
+	} else if (strcmp(buffer, "Ilushin IL-14")==0 || strcmp(ibuffer, "IL14")==0) {
 		strncpy(thisAC.AC,"IL14",4);
 		thisAC.has3D=1;
 	} else {
