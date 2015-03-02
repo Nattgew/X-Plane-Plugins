@@ -92,6 +92,11 @@ class getaircraft:
 			self.setEW(self.name,2650)
 			self.ceiling=20
 			self.agl=1500
+		elif desc[0:15]=="['Ilushin IL-14" or acf_icao=="IL14":
+			self.name="IL14"
+			self.setEW(self.name,12500)
+			self.ceiling=24
+			self.agl=1500
 		else:
 			if acf_icao!="": #I guess we'll trust it
 				self.name=acf_icao
@@ -126,7 +131,7 @@ class PythonInterface:
 			flo=0
 			fhi=1
 		return (fhi, flo)
-		
+	
 	def get_topwr(self, init): #Iterate countdown timer for takeoff power
 		flightTimer=XPLMGetDataf(self.flighttime_ref)
 		if self.TO_pwr==init or self.flightTimerLast==-1: #Haven't started counting yet
@@ -375,7 +380,12 @@ class PythonInterface:
 			factor=1.25 if delISA>15 or wgt>35000 or dist<375 else 1.5 #Slower climb at higher temps/weights
 			general_fl=int(dist/10*factor) #Approximate rule
 			climb=3500 if alt_ind<8000 else 2500
-			speed=380 if dist<450 else 420
+			if dist<200:
+				speed=300
+			elif dist<350:
+				speed=350
+			else:
+				speed=400
 			gph=330
 		elif self.aircraft.name=="C208":
 			general_fl=int(dist/10)+2
@@ -411,10 +421,15 @@ class PythonInterface:
 			speed=300
 			gph=800
 		elif self.aircraft.name=="DC3":
-			general_fl=int(dist/10)
+			general_fl=int(dist/5)
 			climb=1000 if alt_ind<6000 else 750
 			speed=180
 			gph=95
+		elif self.aircraft.name=="IL14":
+			general_fl=int(dist/5)
+			climb=1000 if alt_ind<6000 else 750
+			speed=180
+			gph=75
 		else:
 			general_fl=int(dist/10+2) #General rule for PC-12 cruise altitude
 			climb=1000
@@ -927,6 +942,11 @@ class PythonInterface:
 				wgt_ih, wgt_il = self.get_index(wgt_i, len(wgts))
 				vr=self.interp(ias[flap_i][wgt_ih], ias[flap_i][wgt_il], wgts[wgt_ih], wgts[wgt_il], wgt)
 				Vref="  Vref: "+str(int(round(vr)))+" kias"
+		elif AC=="IL14":
+			wgts=(27558,38581)
+			vapps=(73,76)
+			vapp=self.interp(vapps[1], vapps[0], wgts[1], wgts[0], wgt)
+			Vref="  Vref: "+str(int(round(vapp)))+" kias"
 		else:
 			Vref=""
 		return Vref
@@ -1012,6 +1032,11 @@ class PythonInterface:
 				wgt_ih, wgt_il = self.get_index(wgt_i, len(wgts))
 				vr=self.interp(ias[flap_i][wgt_ih], ias[flap_i][wgt_il], wgts[wgt_ih], wgts[wgt_il], wgt)
 				V1="  V1: "+str(int(round(vr)))+" kias"
+		elif AC="IL14":
+			wgts=(27558,38581)
+			ias=(78,81)
+			vr=self.interp(ias[1], ias[0], wgts[1], wgts[0], wgt)\
+			V1="  V1: "+str(int(round(vr)))+" kias"
 		else:
 			V1=""
 		return V1
@@ -1049,6 +1074,8 @@ class PythonInterface:
 			wgt_ih, wgt_il = self.get_index(wgt_i, len(wgts))
 			cc=self.interp(ias[wgt_ih], ias[wgt_il], wgts[wgt_ih], wgts[wgt_il], wgt)
 			bestCC=str(int(round(cc)))+" kias"
+		elif AC=="IL14":
+			bestCC="119 kias 2400/1050"
 		else:
 			bestCC="N/A"
 		return bestCC
@@ -1192,12 +1219,17 @@ class PythonInterface:
 			alt_ih, alt_il = self.get_index(alt_i, len(dalts))
 			bc=self.interp2(spds[wgt_ih][alt_il], spds[wgt_il][alt_il], spds[wgt_ih][alt_ih], spds[wgt_il][alt_ih], wgts[wgt_ih], wgts[wgt_il], dalts[alt_ih], dalts[alt_il], wgt, DA)
 			bestCruise=str(int(round(bc)))+" kias"
+		elif AC="IL14":
+			bestCruise="135-184 kias"
 		else:
 			bestCruise="N/A"
 		return bestCruise
 	
 	def getMaxCruise(self, DA, wgt, alt, delISA, AC): #Get max cruise speed
-		maxCruise="N/A"
+		if AC=="IL14":
+			maxCruise="208 kias"
+		else:
+			maxCruise="N/A"
 		return maxCruise
 	
 	def getMaxPwr(self, DA, delISA, AC): #Get max power setting
@@ -1221,6 +1253,8 @@ class PythonInterface:
 			maxtrq=self.interp2(trqs[alt_ih][dis_il], trqs[alt_il][dis_il], trqs[alt_ih][dis_ih], trqs[alt_il][dis_ih], alts[alt_ih], alts[alt_il], dis[dis_ih], dis[dis_il], DA, delISA)
 			
 			maxpwr=str(round(maxtrq,1))+" psi"
+		elif AC=="IL14":
+			maxpwr="2600 RPM 1250 MP"
 		else:
 			maxpwr="N/A"
 		return maxpwr
