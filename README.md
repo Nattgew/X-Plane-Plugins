@@ -37,7 +37,9 @@ Aircraft currently available:
 In work:
 
 <ul><li>B1900D</li>
-<li>CL300</li></ul>
+<li>CL300</li>
+<li>Il-14</li>
+<li>DH8D</li></ul>
 
 There is also an autopilot setting function. When a destination is displayed in the FMS, this function will set cruise altitude and initial heading (if gear down) or descent altitude and heading (if gear up) based on the distance, elevation, and direction of the destination. These values are specifically tuned if the aircraft type is recognized.
 
@@ -56,11 +58,14 @@ Conditionals:
 <ul><li>Aileron trim or heading adjust (depending on AP engaged)</li>
 <li>Elevator trim or vertical speed adjust (depending on AP engaged)</li>
 <li>Look left/right/up/down (depending on 3D or 2D cockpit)</li>
-<li>Front view (depending on 2D or 3D cockpit)</li></ul>
+<li>Front view (depending on 2D or 3D cockpit)</li>
+<li>Mach hold or cutoff protection (depending on CL300 or PC12 loaded)</ul>
 
 Simple:
 
-<ul><li>AP vertical speed +100 and -100 fpm</li></ul>
+<ul><li>AP vertical speed +100 and -100 fpm</li>
+<li>Use prop axis for speed brakes</li>
+<li>Use prop axis for Eng 2 throttle</li></ul>
 
 XFSE Damage (PI_xdmg.py)
 ======
