@@ -393,7 +393,7 @@ int CmdMCConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //M
 		XPLMCommandRef got_cmd;
 		thisAC=getshortac(acf_desc_ref, acf_icao_ref);
 		if (strcmp(thisAC.AC,"CL30")==0) {
-			strcpy(cmdref,"cl300/mach_hold"); //FIX ME
+			strcpy(cmdref,"cl300/mach_hold");
 		} else if (strcmp(thisAC.AC,"PC12")==0) {
 			strcpy(cmdref,"pc12/engine/cutoff_protection_toggle");
 		} else {
