@@ -646,7 +646,7 @@ class PythonInterface:
 				pwr=str(round(N1[0],1))+" %N1"
 				TOP_str=""
 		else: #Piston
-			if self.prop_type[0]==0: #Fixed pitch
+			if self.aircraft.prop_type[0]==0: #Fixed pitch
 				RPM=[]
 				XPLMGetDatavf(self.RPM_ref, RPM, 0, self.aircraft.num_eng)
 				pwr=str(int(round(RPM[0]*60/pi)))+" rpm"
