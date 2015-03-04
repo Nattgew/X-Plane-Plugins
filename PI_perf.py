@@ -1032,10 +1032,10 @@ class PythonInterface:
 				wgt_ih, wgt_il = self.get_index(wgt_i, len(wgts))
 				vr=self.interp(ias[flap_i][wgt_ih], ias[flap_i][wgt_il], wgts[wgt_ih], wgts[wgt_il], wgt)
 				V1="  V1: "+str(int(round(vr)))+" kias"
-		elif AC="IL14":
+		elif AC=="IL14":
 			wgts=(27558,38581)
 			ias=(78,81)
-			vr=self.interp(ias[1], ias[0], wgts[1], wgts[0], wgt)\
+			vr=self.interp(ias[1], ias[0], wgts[1], wgts[0], wgt)
 			V1="  V1: "+str(int(round(vr)))+" kias"
 		else:
 			V1=""
@@ -1219,7 +1219,7 @@ class PythonInterface:
 			alt_ih, alt_il = self.get_index(alt_i, len(dalts))
 			bc=self.interp2(spds[wgt_ih][alt_il], spds[wgt_il][alt_il], spds[wgt_ih][alt_ih], spds[wgt_il][alt_ih], wgts[wgt_ih], wgts[wgt_il], dalts[alt_ih], dalts[alt_il], wgt, DA)
 			bestCruise=str(int(round(bc)))+" kias"
-		elif AC="IL14":
+		elif AC=="IL14":
 			bestCruise="135-184 kias"
 		else:
 			bestCruise="N/A"
