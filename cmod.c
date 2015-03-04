@@ -11,7 +11,7 @@
 static float gameLoopCallback(float inElapsedSinceLastCall,
 				float inElapsedTimeSinceLastFlightLoop, int inCounter,	
 				void *inRefcon);
-static XPLMCommandRef CmdSTConn, CmdLTConn, CmdFTConn, CmdVSupConn, CmdVSdnConn, CmdLCConn, CmdRCConn, CmdUCConn, CmdDCConn, CmdVDConn, CmdVUConn, CmdVLConn, CmdVRConn, CmdCPConn, CmdMBConn, Cmd2BConn, CmdMCConn, CmdMSConn;
+static XPLMCommandRef CmdSTConn, CmdLTConn, CmdFTConn, CmdVSupConn, CmdVSdnConn, CmdLCConn, CmdRCConn, CmdUCConn, CmdDCConn, CmdVDConn, CmdVUConn, CmdVLConn, CmdVRConn, CmdCPConn, CmdMBConn, Cmd2BConn, CmdMCConn, CmdMSConn, CmdEOConn, CmdECConn, CmdAMConn;
 int CmdSTConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
 int CmdLTConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
 int CmdFTConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
@@ -30,8 +30,11 @@ int CmdMBConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRef
 int Cmd2BConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
 int CmdMCConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
 int CmdMSConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
+int CmdEOConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
+int CmdECConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
+int CmdAMConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
 //int MyCommandHandler(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
-static XPLMDataRef acf_desc_ref, acf_icao_ref, speed_brake_ref, landing_lights_ref, geardep_ref, gearhand_ref, flap_h_pos_ref, ap_vvi_ref, ap_hdg_ref, ap_ref, trim_ail_ref, trim_elv_ref, view_ref, sbrake_ref, flap_ref, axis_assign_ref, axis_values_ref, axis_min_ref, axis_max_ref, axis_rev_ref, ev_ip_ref, is_ev_ref, trackv_ref;
+static XPLMDataRef acf_desc_ref, acf_icao_ref, speed_brake_ref, landing_lights_ref, geardep_ref, gearhand_ref, flap_h_pos_ref, ap_vvi_ref, ap_hdg_ref, ap_ref, trim_ail_ref, trim_elv_ref, view_ref, sbrake_ref, flap_ref, axis_assign_ref, axis_values_ref, axis_min_ref, axis_max_ref, axis_rev_ref, ev_ip_ref, is_ev_ref, trackv_ref, cowl_ref, mach_ref;
 static int cmdhold=0;
 static int propbrakes=0;
 static int propeng=0;
@@ -69,6 +72,8 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
 	ap_vvi_ref=XPLMFindDataRef("sim/cockpit/autopilot/vertical_velocity"); //float fpm
 	ap_hdg_ref=XPLMFindDataRef("sim/cockpit/autopilot/heading_mag"); //float degm
 	ap_ref=XPLMFindDataRef("sim/cockpit/autopilot/autopilot_mode"); //int 0=off 1=FD 2=ON
+	mach_ref=XPLMFindDataRef("sim/cockpit/autopilot/airspeed_is_mach"); //int boolean
+	ap_state_ref=XPLMFindDataRef("sim/cockpit/autopilot/autopilot_state"); //int flags
 	trim_ail_ref=XPLMFindDataRef("sim/flightmodel/controls/ail_trim"); //float -1=left ... 1=right
 	trim_elv_ref=XPLMFindDataRef("sim/flightmodel/controls/elv_trim"); //float -1=down ... 1=up
 	view_ref=XPLMFindDataRef("sim/graphics/view/view_type"); //int see docs
@@ -84,6 +89,7 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
 	ev_ip_ref=XPLMFindDataRef("sim/network/dataout/external_visual_ip"); //int[20]
 	is_ev_ref=XPLMFindDataRef("sim/network/dataout/is_external_visual"); //int
 	trackv_ref=XPLMFindDataRef("sim/network/dataout/track_external_visual"); //int[20]
+	cowl_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_cowl"); //float[8]  0 = closed, 1 = open
 	
 	CmdSTConn = XPLMCreateCommand("cmod/toggle/speedbrake","Toggles speed brakes");
 	XPLMRegisterCommandHandler(CmdSTConn, CmdSTConnCB, 0, (void *) 0);
@@ -144,6 +150,15 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
 	
 	CmdMSConn = XPLMCreateCommand("cmod/toggle/externvisual","Toggle computer role as master or slave");
 	XPLMRegisterCommandHandler(CmdMSConn, CmdMSConnCB, 0, (void *) 0);
+	
+	CmdECConn = XPLMCreateCommand("cmod/custom/engine_cowl_close","Close engine cowl by small amount");
+	XPLMRegisterCommandHandler(CmdECConn, CmdECConnCB, 0, (void *) 0);
+	
+	CmdEOConn = XPLMCreateCommand("cmod/custom/engine_cowl_open","Open engine cowl by small amount");
+	XPLMRegisterCommandHandler(CmdEOConn, CmdEOConnCB, 0, (void *) 0);
+	
+	CmdAMConn = XPLMCreateCommand("cmod/toggle/airspeed_is_mach","Toggle autopilot airspeed knots/mach");
+	XPLMRegisterCommandHandler(CmdAMConn, CmdAMConnCB, 0, (void *) 0);
 
 	printf("CMOD - plugin loaded\n");	
 
@@ -170,6 +185,9 @@ PLUGIN_API void	XPluginStop(void)
 	XPLMUnregisterCommandHandler(Cmd2BConn, Cmd2BConnCB, 0, 0);
 	XPLMUnregisterCommandHandler(CmdMCConn, CmdMCConnCB, 0, 0);
 	XPLMUnregisterCommandHandler(CmdMSConn, CmdMSConnCB, 0, 0);
+	XPLMUnregisterCommandHandler(CmdECConn, CmdECConnCB, 0, 0);
+	XPLMUnregisterCommandHandler(CmdEOConn, CmdEOConnCB, 0, 0);
+	XPLMUnregisterCommandHandler(CmdAMConn, CmdAMConnCB, 0, 0);
 	if (propbrakes==1)
 			CmdMBConnCB(NULL, 0, NULL);
 }
@@ -268,46 +286,38 @@ int CmdVSdnConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { /
 }
 
 int CmdLCConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //Left hdg or aileron trim
-	//if (phase==0) { //KeyDown event
 	CondSet(ap_hdg_ref, trim_ail_ref, -1, -0.01, phase);
 	return 0;
 }
 
 int CmdRCConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //Right hdg or aileron trim
-	//if (phase==0) { //KeyDown event
 	CondSet(ap_hdg_ref, trim_ail_ref, 1, 0.01, phase);
 	return 0;
 }
 
 int CmdDCConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //Down vert speed or elev trim
-	//if (phase==0) { //KeyDown event
 	CondSet(ap_vvi_ref, trim_elv_ref, -100, -0.01, phase);
 	return 0;
 }
 
 int CmdUCConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //Up vert speed or elev trim
-	//if (phase==0) { //KeyDown event
 	CondSet(ap_vvi_ref, trim_elv_ref, 100, 0.01, phase);
 	return 0;
 }
 
 int CmdVDConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //Cockpit view down based on airplane
-	//if (phase==0) { //KeyDown event
 	cmdif3D("sim/general/down_fast","sim/view/pan_down_fast");
 	return 0;
 }
 int CmdVUConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //Cockpit view up based on airplane
-	//if (phase==0) { //KeyDown event
 	cmdif3D("sim/general/up_fast","sim/view/pan_up_fast");
 	return 0;
 }
 int CmdVLConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //Cockpit view left based on airplane
-	//if (phase==0) { //KeyDown event
 	cmdif3D("sim/general/left_fast","sim/view/pan_left_fast");
 	return 0;
 }
 int CmdVRConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //Cockpit view right based on airplane
-	//if (phase==0) { //KeyDown event
 	cmdif3D("sim/general/right_fast","sim/view/pan_right_fast");
 	return 0;
 }
@@ -408,6 +418,56 @@ int CmdMCConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //M
 	return 0;
 }
 
+int CmdECConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //cowl flaps control
+	holdincrement(cowl_ref, 0.1, 8, phase);
+	return 0;
+}
+
+int CmdEOConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //cowl flaps control
+	holdincrement(cowl_ref, -0.1, 8, phase);
+	return 0;
+}
+
+int CmdAMConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //autopilot speed knots/mach
+	if (phase==0) {
+		int ismach=XPLMGetDatai(mach_ref);
+		if (ismach==0) {
+			XPLMSetDatai(mach_ref,1);
+		} else {
+			XPLMSetDatai(mach_ref,0);
+		}
+	}
+	return 0;
+}
+
+void holdincrement(XPLMDataRef dataref, float del, int num, XPLMCommandPhase phase) {
+	if (phase==0) {
+		increment(dataref, del, num);
+	} else if (phase==1) {
+		if (cmdhold>10 && cmdhold%3==0) {
+			inrement(dataref, del, num);
+		}
+		cmdhold+=1;
+	} else if (phase==2)
+		cmdhold=0;
+}
+
+void increment(XPLMDataRef dataref, float del, int num) {
+	if (num>1) {
+		float datarray[num];
+		int i;
+		XPLMGetDatavf(dataref, datarray, 0, num);
+		for (i=0; i<num; i++) {
+			datarray[i]=datarray[i]+del;
+		}
+		XPLMSetDatavf(dataref, datarray, 0, num);
+	} else {
+		float data;
+		data=XPLMGetDatavf(dataref);
+		XPLMSetDataf(dataref, data+del);
+	}
+}
+
 int Cmd2BConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //Prop axis controls engine 2
 	if (phase==0) {
 		int assignments[100];
@@ -463,22 +523,11 @@ void cmdif3D(char *cmd2D, char *cmd3D) { //Run command depending on 3D cockpit
 	}
 }
 
-void CondSet(XPLMDataRef apset_ref, XPLMDataRef trim_ref, float ap_del, float trim_del, int phase) {//Set AP ref+del if AP on, else set trim ref+del
+void CondSet(XPLMDataRef apset_ref, XPLMDataRef trim_ref, float ap_del, float trim_del, int phase) { //Set AP ref+del if AP on, else set trim ref+del
 	int ap;
 	ap=XPLMGetDatai(ap_ref);
 	if (ap==2) {
-		float apset;
-		if (phase==0) {
-			apset=XPLMGetDataf(apset_ref);
-			XPLMSetDataf(apset_ref, apset+ap_del);
-		} else if (phase==1) {
-			if (cmdhold>10 && cmdhold%5==0) {
-				apset=XPLMGetDataf(apset_ref);
-				XPLMSetDataf(apset_ref, apset+ap_del);
-			}
-			cmdhold+=1;
-		} else if (phase==2)
-			cmdhold=0;
+		holdincrement(apset_ref, ap_del, 1, phase);
 	} else if (ap!=2) {
 		XPLMCommandRef trim_cmd;
 		if (trim_ref==trim_elv_ref) {
@@ -523,6 +572,11 @@ static float gameLoopCallback(float elapsedSinceLastCall, float inElapsedSim, in
 	// while handle<flaps[i]+0.001:
 		// i+=1
 	// XPLMSetDataf(flap_h_pos_ref, flaps[i])
+	
+// sim/autopilot/level_change
+// sim/autopilot/heading
+// sim/autopilot/FMS
+// http://www.xsquawkbox.net/xpsdk/mediawiki/sim%252Fcockpit%252Fautopilot%252Fautopilot_state
 
 struct gotAC getshortac(XPLMDataRef desc_ref, XPLMDataRef icao_ref) {
 	struct gotAC thisAC;
@@ -534,7 +588,7 @@ struct gotAC getshortac(XPLMDataRef desc_ref, XPLMDataRef icao_ref) {
 	buffer[13]='\0';
 	strncpy(ibuffer, acf_icaob, 4);
 	ibuffer[5]='\0';
-	if (strcmp(buffer, "Boeing 737-80")==0) {
+	if (strcmp(buffer, "Boeing 737-80")==0 || strcmp(ibuffer, "B738")==0) {
 		strncpy(thisAC.AC,"B738",4);
 		thisAC.has3D=1;
 	} else if (strcmp(buffer, "Pilatus PC-12")==0 || strcmp(ibuffer, "PC12")==0) {
@@ -554,6 +608,18 @@ struct gotAC getshortac(XPLMDataRef desc_ref, XPLMDataRef icao_ref) {
 		thisAC.has3D=1;
 	} else if (strcmp(buffer, "Ilushin IL-14")==0 || strcmp(ibuffer, "IL14")==0) {
 		strncpy(thisAC.AC,"IL14",4);
+		thisAC.has3D=1;
+	} else if (strcmp(buffer, "Dassault Falc")==0 || strcmp(ibuffer, "FA7X")==0) { //FIX ME
+		strncpy(thisAC.AC,"FA7X",4);
+		thisAC.has3D=1;
+	} else if (strcmp(buffer, "Antonov An-2")==0 || strcmp(ibuffer, "AN2")==0) { //FIX ME
+		strncpy(thisAC.AC,"AN-2",4);
+		thisAC.has3D=1;
+	} else if (strcmp(buffer, "Beechcraft Ki")==0 || strcmp(ibuffer, "C90B")==0) { //FIX ME
+		strncpy(thisAC.AC,"C90B",4);
+		thisAC.has3D=1;
+	} else if (strcmp(buffer, "Boeing 747-40")==0 || strcmp(ibuffer, "B744")==0) { //FIX ME
+		strncpy(thisAC.AC,"B744",4);
 		thisAC.has3D=1;
 	} else {
 		strncpy(acf_descb,thisAC.AC,4);
