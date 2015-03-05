@@ -521,7 +521,7 @@ void cmdif3D(char *cmd2D, char *cmd3D) { //Run command depending on 3D cockpit
 	if (view_cmd) {
 		XPLMCommandOnce(view_cmd);
 	} else {
-		printf ("XDMG = Couldn't find one of '%c' or '%c'\n",cmd2D,cmd3D);
+		printf ("XDMG = Couldn't find one of '%s' or '%s'\n",cmd2D,cmd3D);
 	}
 }
 
