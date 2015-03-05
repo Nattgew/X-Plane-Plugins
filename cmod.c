@@ -34,7 +34,7 @@ int CmdEOConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRef
 int CmdECConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
 int CmdAMConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
 //int MyCommandHandler(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
-static XPLMDataRef acf_desc_ref, acf_icao_ref, speed_brake_ref, landing_lights_ref, geardep_ref, gearhand_ref, flap_h_pos_ref, ap_vvi_ref, ap_hdg_ref, ap_ref, trim_ail_ref, trim_elv_ref, view_ref, sbrake_ref, flap_ref, axis_assign_ref, axis_values_ref, axis_min_ref, axis_max_ref, axis_rev_ref, ev_ip_ref, is_ev_ref, trackv_ref, cowl_ref, mach_ref;
+static XPLMDataRef acf_desc_ref, acf_icao_ref, speed_brake_ref, landing_lights_ref, geardep_ref, gearhand_ref, flap_h_pos_ref, ap_vvi_ref, ap_hdg_ref, ap_ref, trim_ail_ref, trim_elv_ref, view_ref, sbrake_ref, flap_ref, axis_assign_ref, axis_values_ref, axis_min_ref, axis_max_ref, axis_rev_ref, ev_ip_ref, is_ev_ref, trackv_ref, cowl_ref, mach_ref, ap_state_ref;
 static int cmdhold=0;
 static int propbrakes=0;
 static int propeng=0;
@@ -52,6 +52,8 @@ struct gotAC {
 
 void cmdif3D(char *cmd2D, char *cmd3D);
 void CondSet(XPLMDataRef apset_ref, XPLMDataRef trim_ref, float ap_del, float trim_del, int phase);
+void holdincrement(XPLMDataRef dataref, float del, int num, XPLMCommandPhase phase);
+void increment(XPLMDataRef dataref, float del, int num);
 
 struct gotAC getshortac(XPLMDataRef desc_ref, XPLMDataRef icao_ref);
 
@@ -463,7 +465,7 @@ void increment(XPLMDataRef dataref, float del, int num) {
 		XPLMSetDatavf(dataref, datarray, 0, num);
 	} else {
 		float data;
-		data=XPLMGetDatavf(dataref);
+		data=XPLMGetDataf(dataref);
 		XPLMSetDataf(dataref, data+del);
 	}
 }
