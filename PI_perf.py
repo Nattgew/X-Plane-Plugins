@@ -735,9 +735,7 @@ class PythonInterface:
 			ddist_nm=self.interp2(dnms[isa_ih][alt_il], dnms[isa_il][alt_il], dnms[isa_ih][alt_ih], dnms[isa_il][alt_ih], isas[isa_ih], isas[isa_il], alts[alt_ih], alts[alt_il], delISA, DA) #Interpolate table to find value\
 			ddist=str(int(round(ddist_nm)))+"nm"
 		elif AC=="DH8D":
-			alts=tuple(range(2000,24001,2000))
-			alts.append(25000)
-			alts.append(27000)
+			alts=tuple(range(2000,24001,2000),25000,27000)
 			dnms=(4,7,12,18,23,28,34,40,62,85,105,125,132,155)
 			alt_i=(alt-2000)/2000 if alt<24000 else (alt-24000)/1000+11 if alt<25000 else (alt-25000)/1000+12
 			alt_ih, alt_il = self.get_index(alt_i, len(alts))
@@ -921,8 +919,7 @@ class PythonInterface:
 			#print 'Vref %.0f %.0f %.0f %.0f %.0f = %.0f' % (vapps[wgt_ih], vapps[wgt_il], GW[wgt_ih], GW[wgt_il], wgt, vapp)
 			Vref="  Vref: "+str(int(round(vapp)))+" kias"
 		elif AC=="DH8D":
-			wgts=tuple(range(39600,63801,1100))
-			wgts.append(64500)
+			wgts=tuple(range(39600,63801,1100),64500)
 			ias=((124,127,128,129,131,133,134,135,137,139,140,142,143,145,146,147,149,150,152,153,155,155,157,158),	#0 deg
 				(114,115,117,118,120,122,124,125,126,127,129,130,132,133,134,136,137,138,139,141,142,143,145,145),	#5
 				(108,108,109,110,112,113,115,116,117,118,120,121,122,124,125,126,127,129,130,131,132,134,136,136),	#10
@@ -1016,8 +1013,7 @@ class PythonInterface:
 				vr=self.interp(vrs[flap_i][wgt_ih], vrs[flap_i][wgt_il], GW[wgt_ih], GW[wgt_il], wgt)
 				V1="  V1: "+str(int(round(vr)))+" kias"
 		elif AC=="DH8D":
-			wgts=tuple(range(39600,63801,1100))
-			wgts.append(64500)
+			wgts=tuple(range(39600,63801,1100),64500)
 			ias=((108,108,108,108,108,108,109,111,113,114,116,117,119,120,122,123,125,126,128,129,131,132,134,134),	#5 deg
 				(104,104,104,104,104,104,104,104,104,106,107,109,110,112,113,114,116,117,119,120,121,123,124,125),	#10
 				(100,100,100,100,100,100,100,100,101,102,104,105,107,108,109,111,112,113,114,116,117,118,119,120))	#15
@@ -1067,8 +1063,7 @@ class PythonInterface:
 			cc=self.interp2(ias[dis_ih][alt_il], ias[dis_il][alt_il], ias[dis_ih][alt_ih], ias[dis_il][alt_ih], dis[dis_ih], dis[dis_il], alts[alt_ih], alts[alt_il], delISA, alt)
 			bestCC=str(int(round(cc)))+" kias"
 		elif AC=="DH8D":
-			wgts=tuple(range(39600,63801,1100))
-			wgts.append(64500)
+			wgts=tuple(range(39600,63801,1100),64500)
 			ias=(130,130,130,130,131,133,134,135,137,139,140,141,143,144,146,147,148,150,151,153,154,155,157,158)
 			wgt_i=(wgt-39600)/1100 if wgt<63800 else (wgt-63800)/700
 			wgt_ih, wgt_il = self.get_index(wgt_i, len(wgts))
