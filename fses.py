@@ -5,27 +5,61 @@ import os
 import re
 import fileinput
 import csv
+import locale
+import time
+
+file='/mnt/data/XPLANE10/XSDK/mykey.txt'
+with open(file, 'r') as f:
+	mykey = f.readline()
+mykey=mykey.strip()
+chain=[]
+checked=""
+requests=[]
+totalto=0
+totalfrom=0
+
+def fserequest(rqst,tagname):
+	now=int(time.time())
+	total=len(requests)
+	if total>10:
+		sinceten=now-requests[total-11]
+		if sinceten<60:
+			towait=66-sinceten
+			print("Last 10 requests too fast, sleeping "+str(towait)+" secs.")
+			time.sleep(towait)
+	requests.append(now)
+	data = urllib.request.urlopen('http://server.fseconomy.net/data?userkey='+mykey+'&format=xml&'+rqst)
+	print("Parsing data...")
+	xmldoc = minidom.parse(data)
+	error = xmldoc.getElementsByTagName('Error')
+	if error!=[]:
+		print("Received error: "+error[0].firstChild.nodeValue)
+		tags=[]
+	else:
+		tags = xmldoc.getElementsByTagName(tagname)
+	return tags
 
 def acforsale():
 	# Aircraft name, ICAO code, max price, max hours
-	goodones=(("Pilatus PC-12","PC12",800000,50),
+	goodones=(("Pilatus PC-12","PC12",750000,100),
 			("Beechcraft 1900D","BE19",1150000,50),
-			("Bombardier Challenger 300","CL30",850000,50),
-			("Ilyushin Il-14","IL14",1410000,50),
-			("Alenia C-27J Spartan","C27J",3500000,200),
-			("Alenia C-27J Spartan (IRIS)","C27J",3500000,200),
+			("Bombardier Challenger 300","CL30",875000,100),
+			("Ilyushin Il-14","IL14",1450000,50),
+			("Alenia C-27J Spartan","C27J",3600000,200),
+			("Alenia C-27J Spartan (IRIS)","C27J",3600000,200),
 			("Lockheed C-130 (Generic)","C130",4500000,500),
 			("Lockheed C-130 (Capt Sim)","C130",4500000,500),
 			("Bombardier Dash-8 Q400","DH8D",8000000,500),
-			("Dassault Falcon 7X","FA7X",1500000,10000),
+			("Dassault Falcon 7X","FA7X",1800000,10000),
 			("Fairchild C123","C123",5000000,10000),
 			("Douglas C117D","C117",5000000,10000),
 			("Cessna Citation X","C750",1200000,10000))
 	print("Sending request for sales listing...")
-	data = urllib.request.urlopen('http://server.fseconomy.net/data?userkey='+mykey+'&format=xml&query=aircraft&search=forsale')
-	print("Parsing data...")
-	xmldoc = minidom.parse(data)
-	airplanes = xmldoc.getElementsByTagName("Aircraft")
+	#data = urllib.request.urlopen('http://server.fseconomy.net/data?userkey='+mykey+'&format=xml&query=aircraft&search=forsale')
+	#print("Parsing data...")
+	#xmldoc = minidom.parse(data)
+	#airplanes = xmldoc.getElementsByTagName("Aircraft")
+	airplanes = fserequest('query=aircraft&search=forsale','Aircraft')
 	for airplane in airplanes:
 		actype = airplane.getElementsByTagName("MakeModel")[0].firstChild.nodeValue
 		aframetime = airplane.getElementsByTagName("AirframeTime")[0].firstChild.nodeValue
@@ -35,17 +69,34 @@ def acforsale():
 			if actype==option[0] and hours<option[3] and price<option[2]:
 				loc = airplane.getElementsByTagName("Location")[0].firstChild.nodeValue
 				locname = airplane.getElementsByTagName("LocationName")[0].firstChild.nodeValue
-				dist=distbwt("SPJJ",loc,loc_dict)
+				dist=distbwt("SPJJ",loc)
 				print(option[1]+" | "+aframetime+" | $"+locale.format("%d", price, grouping=True)+" | "+loc+" | "+str(dist)+" | "+locname)
+
+def dudewheresmyairplane():
+	planes={}
+	print("Sending request for aircraft list...")
+	#data = urllib.request.urlopen('http://server.fseconomy.net/data?userkey='+mykey+'&format=xml&query=aircraft&search=key&readaccesskey='+mykey).read()
+	#print("Parsing response...")
+	#xmldoc = minidom.parseString(data.decode('utf-8'))
+	#airplanes = xmldoc.getElementsByTagName("Aircraft")
+	airplanes = fserequest('query=aircraft&search=key&readaccesskey='+mykey,'Aircraft')
+	for plane in airplanes:
+		loc = plane.getElementsByTagName("Location")[0].firstChild.nodeValue
+		reg = plane.getElementsByTagName("Registration")[0].firstChild.nodeValue
+		eng = plane.getElementsByTagName("EngineTime")[0].firstChild.nodeValue
+		chk = plane.getElementsByTagName("TimeLast100hr")[0].firstChild.nodeValue
+		planes[reg]=(loc,eng,chk)
+	return planes
 
 def jobsfrom(apts,price,pax):
 	#High paying jobs from airports
 	jobs=[]
 	print("Sending request for jobs from "+apts+"...")
-	data = urllib.request.urlopen('http://server.fseconomy.net/data?userkey='+mykey+'&format=xml&query=icao&search=jobsfrom&icaos='+apts).read()
-	print("Parsing response...")
-	xmldoc = minidom.parse(data)
-	assignments = xmldoc.getElementsByTagName("Assignment")
+	#data = urllib.request.urlopen('http://server.fseconomy.net/data?userkey='+mykey+'&format=xml&query=icao&search=jobsfrom&icaos='+apts).read()
+	#print("Parsing response...")
+	#xmldoc = minidom.parseString(data.decode('utf-8'))
+	#assignments = xmldoc.getElementsByTagName("Assignment")
+	assignments = fserequest('query=icao&search=jobsfrom&icaos='+apts,'Assignment')
 	for assignment in assignments:
 		pay = float(assignment.getElementsByTagName("Pay")[0].firstChild.nodeValue)
 		if pay>price:
@@ -55,22 +106,25 @@ def jobsfrom(apts,price,pax):
 			amt = assignment.getElementsByTagName("Amount")[0].firstChild.nodeValue
 			typ = assignment.getElementsByTagName("UnitType")[0].firstChild.nodeValue
 			exp = assignment.getElementsByTagName("Expires")[0].firstChild.nodeValue
-			if not(int(amt)<pax+1 and typ=="passengers"):
-				jobs.append((loc,arr,amt,typ,pay))
+			if not(int(amt)>pax and typ=="passengers"):
+				jobs.append((loc,arr,amt,typ,pay,exp))
 				# if dep==loc:
 					# print(amt+" "+typ+" "+dep+"-"+arr+" $"+str(int(pay))+" "+exp)
 				# else:
 					# print(amt+" "+typ+" @"+dep+"-"+arr+" $"+str(int(pay))+" "+exp)
+		global totalfrom
+		totalfrom+=1
 	return jobs
 
 def jobsto(apts,price,pax):
 	#High paying jobs to airports
 	jobs=[]
 	print("Sending request for jobs to "+apts+"...")
-	data = urllib.request.urlopen('http://server.fseconomy.net/data?userkey='+mykey+'&format=xml&query=icao&search=jobsto&icaos='+apts).read()
-	print("Parsing response...")
-	xmldoc = minidom.parse(data)
-	assignments = xmldoc.getElementsByTagName("Assignment")
+	#data = urllib.request.urlopen('http://server.fseconomy.net/data?userkey='+mykey+'&format=xml&query=icao&search=jobsto&icaos='+apts).read()
+	#print("Parsing response...")
+	#xmldoc = minidom.parseString(data.decode('utf-8'))
+	#assignments = xmldoc.getElementsByTagName("Assignment")
+	assignments = fserequest('query=icao&search=jobsto&icaos='+apts,'Assignment')
 	for assignment in assignments:
 		pay = float(assignment.getElementsByTagName("Pay")[0].firstChild.nodeValue)
 		if pay>price:
@@ -80,17 +134,19 @@ def jobsto(apts,price,pax):
 			amt = assignment.getElementsByTagName("Amount")[0].firstChild.nodeValue
 			typ = assignment.getElementsByTagName("UnitType")[0].firstChild.nodeValue
 			exp = assignment.getElementsByTagName("Expires")[0].firstChild.nodeValue
-			if not(int(amt)<pax+1 and typ=="passengers"):
+			if not(int(amt)>pax and typ=="passengers"):
 				jobs.append((loc,arr,amt,typ,pay,exp))
 				#if dep==loc:
 				#	print (amt+" "+typ+" "+dep+"-"+arr+" $"+str(int(pay))+" "+exp)
 				#else:
 				#	print (amt+" "+typ+" @"+loc+"-"+arr+" $"+str(int(pay))+" "+exp)
+		global totalto
+		totalto+=1
 	return jobs
 
 def printjobs(jobs):
 	for job in jobs:
-		print(job[2]+" "+job[3]+" "+job[0]+"-"+job[1]+" $"+str(int(job[4]))+" "+job[5])
+		print(job[2]+" "+job[3]+" "+job[0]+"-"+job[1]+" $"+str(int(job[4]))+" "+str(distbwt(job[0],job[1]))+" "+job[5])
 
 def haverdist(lat1,lon1,lat2,lon2):
 	#http://www.movable-type.co.uk/scripts/latlong.html
@@ -126,14 +182,14 @@ def inithdg(lat1,lon1,lat2,lon2):
 	return brng
 
 def dirbwt(icaofrom,icaoto):
-	lat1,lon1=loc_dict['icaofrom']
-	lat2,lon2=loc_dict['icaoto']
+	lat1,lon1=loc_dict[icaofrom]
+	lat2,lon2=loc_dict[icaoto]
 	hdg=inithdg(lat1,lon1,lat2,lon2)
 	return hdg
 
 def distbwt(icaofrom,icaoto):
-	lat1,lon1=loc_dict['icaofrom']
-	lat2,lon2=loc_dict['icaoto']
+	lat1,lon1=loc_dict[icaofrom]
+	lat2,lon2=loc_dict[icaoto]
 	dist=cosinedist(lat1,lon1,lat2,lon2)
 	return dist
 
@@ -160,115 +216,122 @@ def get_dest_info(icao): #Get info about destination
 	fileinput.close()
 	return (lat, lon)
 
-def build_locations(): #return dictionary of airport locations
+def build_xplane_locations(): #return dictionary of airport locations
 	loc_dict = {}
 	in_ap=0
 	dir1='/mnt/data/XPLANE10/X-Plane10/Custom Scenery/zzzz_FSE_Airports/Earth nav data/apt.dat'
 	dir2='/mnt/data/XPLANE10/X-Plane10/Resources/default scenery/default apt dat/Earth nav data/apt.dat'
 	for line in fileinput.input([dir1,dir2]): # I am forever indebted to Padraic Cunningham for this code
 		params=line.split()
-		header=int(params[0])
-		if in_ap==1:
-			if header==100:
-				lat=float(params[9])
-				lon=float(params[10])
-				loc_dict[icao]=(lat,lon)
-			in_ap=0
-		if header==1 or header==16 or header==17:
-			icao=params[4]
-			in_ap=1
+		try:
+			header=params[0]
+			if in_ap=="1":
+				if header==100:
+					lat=float(params[9])
+					lon=float(params[10])
+					loc_dict[icao]=(lat,lon)
+				in_ap=0
+			if header=="1" or header=="16" or header=="17":
+				icao=params[4]
+				in_ap=1
+		except (KeyError,IndexError) as e:
+			pass
 	return loc_dict
 
 def build_csv(): #return dictionary of airport locations, using FSE csv file
 	loc_dict = {}
 	file='/mnt/data/XPLANE10/XSDK/icaodata.csv'
 	with open(file, 'r') as f:
+		has_header = csv.Sniffer().has_header(f.read(1024))
+		f.seek(0)  # rewind
 		reader = csv.reader(f)
+		if has_header:
+			next(reader)  # skip header row
 		for row in reader:
-			loc_dict[row[0]]=(row[1],row[2])
+			loc_dict[row[0]]=(float(row[1]),float(row[2]))
 	return loc_dict
 
 def walkthewalk(icaofrom,icaoto,chain):
-	dir=dirbwt(icaoto,icaofrom)
-	min_dir=chgdir(dir,-60)
-	max_dir=chgdir(dir,60)
-	jobs=jobsto(icaoto,5000,8) #(loc,amt,typ,pay)
-	print("Searching jobs from "+icaofrom+" to "+icaoto+"...")
-	for job in jobs:
-		if job[0]==icaofrom:
-			chain.append(job)
+	global checked
+	if not icaoto in checked:
+		checked=checked+"-"+icaoto
+		#print("Basic direction from "+icaoto[0:4]+" to "+icaofrom)
+		hdg=dirbwt(icaoto[0:4],icaofrom)
+		min_hdg=chgdir(hdg,-80)
+		max_hdg=chgdir(hdg,80)
+		jobs=jobsto(icaoto,4000,8) #(loc,arr,amt,typ,pay,exp)
+		print("Searching job chain from "+icaofrom+" to "+icaoto+", hdg "+str(int(round(min_hdg)))+"-"+str(int(round(max_hdg)))+"...")
+		for job in jobs:
+			if job[0]==icaofrom:
+				chain.append(job)
+				return chain
+			else:
+				hdg=dirbwt(job[1],job[0])
+				#print("JOB:"+job[2]+" "+job[3]+" "+job[0]+"-"+job[1]+" "+str(hdg)+" $"+str(int(job[4]))+" "+str(distbwt(job[0],job[1]))+"Nm "+job[5])
+				if (hdg<max_hdg and (hdg>min_hdg or min_hdg>max_hdg) or hdg>min_hdg and (hdg<max_hdg or min_hdg>max_hdg)):
+					chain.append(job)
+					walkthewalk(icaofrom,job[0],chain)
+		if len(icaoto)>4:
 			return chain
 		else:
-			dir=dirbwt(icaoto,job[0])
-			if (dir<max_dir and (dir>min_dir or min_dir>max_dir) or dir>min_dir and (dir<max_dir or min_dir>max_dir)):
-				chain.append(job)
-				return walkthewalk(icaofrom,job[0],chain)
-	return chain
+			near=nearby(icaoto,50)
+			if len(near)>0:
+				walkthewalk(icaofrom,near,chain)
+			else:
+				return chain
 
-def chgdir(dir,delt):
-	dir+=delt
-	if dir>360:
-		dir-=360
-	elif dir<0:
-		dir+=360
-	return dir
+def chgdir(hdg,delt):
+	hdg+=delt
+	if hdg>360:
+		hdg-=360
+	elif hdg<0:
+		hdg+=360
+	return hdg
 
 def nearby(icao,rad):
-	for apt, coords in loc_dict.items():
-		dist=cosinedist(loc_dict[apt][0],loc_dict[apt][1],coords[0],coords[1])
-		if dist<rad:
-			print(apt+" "+str(dist))
+	#print("Looking for airports near "+icao)
+	near=""
+	clat,clon=loc_dict[icao]
+	for apt,coords in loc_dict.items():
+		if apt!=icao:
+			#print("Dist from "+str(clat)+" "+str(clon)+" to "+str(coords[0])+" "+str(coords[1]))
+			dist=cosinedist(clat,clon,coords[0],coords[1])
+			if dist<rad:
+				if near=="":
+					near=apt
+				else:					
+					near=near+"-"+apt
+	#print(near)
+	return near
 
-def dudewheresmyairplane():
-	planes={}
-	print("Sending request for aircraft list...")
-	data = urllib.request.urlopen('http://server.fseconomy.net/data?userkey='+mykey+'&format=xml&query=aircraft&search=key&readaccesskey='+mykey).read()
-	print("Parsing response...")
-	xmldoc = minidom.parse(data)
-	airplanes = xmldoc.getElementsByTagName("Aircraft")
-	for plane in airplanes:
-		loc = assignment.getElementsByTagName("Location")[0].firstChild.nodeValue
-		reg = assignment.getElementsByTagName("Registration")[0].firstChild.nodeValue
-		planes[reg]=loc
-	return planes
+def bigjobs(apts):
+	total=0
+	for airport in apts:
+		area=nearby(airport,50)
+		jobs=jobsfrom(area,30000,8)
+		printjobs(jobs)
+		total+=len(jobs)
+	print("Found "+str(total)+" jobs at those airports:")
+	
 
-mykey = "CHANGEME"
-file='/mnt/data/XPLANE10/XSDK/mykey.txt'
-with open(file, 'r') as f:
-	mykey = f.readline()
-print("Building coordinate dictionary...")
-loc_dict=build_locations()
-print("Building alternate dictionary from csv...")
-loc_dict2=build_csv()
-print("Looking up the old way...")
-latt,lonn=get_dest_info("KORD")
-print("Looking up the new way...")
-lat,lon=loc_dict['KORD']
-print("KORD returns "+str(latt)+" "+str(lonn))
-print("KORD returns "+str(lat)+" "+str(lon))
-print("Looking up the old way...")
-latt,lonn=get_dest_info("KSEA")
-print("Looking up the new way...")
-lat2,lon2=loc_dict['KSEA']
-print("KSEA returns "+str(latt)+" "+str(lonn))
-print("KSEA returns "+str(lat2)+" "+str(lon2))
+print("Building airport location dictionary from csv...")
+loc_dict=build_csv()
 
-#hdist=haverdist("KORD","KSEA")
-#cdist=cosinedist("KORD","KSEA")
-#hdg=inithdg("KORD","KSEA")
-#print("Haverdist: "+str(int(round(hdist)))+"  Cdist: "+str(int(round(cdist)))+"  Hdg: "+str(int(round(hdg))))
+acforsale()
 
-chain=[]
-walkthewalk("KAIA","SEGU",chain)
+#walkthewalk("MMCY","MPTO",chain)
+#printjobs(chain)
 
-nearby("KSEA",30)
+bigjobs(("KEGI","KPBF","KMLC","TS08","XS44","MMMA","KPWG","KCZT","MMCY"))
 
 #Airports to watch
-apts="SPIM-SPJJ-SEGU-SEQU-SPZO-SPQU-SPJN-SPGM-SPOL-SETA-SPEO-SKBO-SKGB-SKCL-MPTO-MPHO"
-jobs=jobsfrom(apts,10000,32)
-printjobs(jobs)
+#apts="SPIM-SPJJ-SEGU-SEQU-SPZO-SPQU-SPJN-SPGM-SPOL-SETA-SPEO-SKBO-SKGB-SKCL-MPTO-MPHO"
+#jobs=jobsfrom(apts,30000,32)
+#printjobs(jobs)
 
-locations=dudewheresmyairplane()
-for plane,icao in locations.items():
-	print(plane)
-	nearby(icao,250)
+#locations=dudewheresmyairplane()
+#for plane,info in locations.items():
+#	print(plane+" at "+info[0]+"  tot: "+info[1]+"  since: "+info[2])
+
+print("Made "+str(len(requests))+" requests in "+str(requests[len(requests)-1]-requests[0])+" secs.")
+print("Considered "+str(totalto)+" jobs to and "+str(totalfrom)+" jobs from airports.")
