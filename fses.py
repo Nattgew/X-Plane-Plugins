@@ -13,12 +13,15 @@ with open(file, 'r') as f:
 	mykey = f.readline()
 mykey=mykey.strip()
 chain=[]
-checked=""
+checked=[]
+checked.append("")
+checked.append("")
 requests=[]
 totalto=0
 totalfrom=0
 
 def fserequest(rqst,tagname):
+	global requests
 	now=int(time.time())
 	total=len(requests)
 	if total>10:
@@ -41,24 +44,30 @@ def fserequest(rqst,tagname):
 
 def acforsale():
 	# Aircraft name, ICAO code, max price, max hours
-	goodones=(("Pilatus PC-12","PC12",750000,100),
-			("Beechcraft 1900D","BE19",1150000,50),
-			("Bombardier Challenger 300","CL30",875000,100),
-			("Ilyushin Il-14","IL14",1450000,50),
-			("Alenia C-27J Spartan","C27J",3600000,200),
-			("Alenia C-27J Spartan (IRIS)","C27J",3600000,200),
-			("Lockheed C-130 (Generic)","C130",4500000,500),
-			("Lockheed C-130 (Capt Sim)","C130",4500000,500),
-			("Bombardier Dash-8 Q400","DH8D",8000000,500),
-			("Dassault Falcon 7X","FA7X",1800000,10000),
-			("Fairchild C123","C123",5000000,10000),
-			("Douglas C117D","C117",5000000,10000),
-			("Cessna Citation X","C750",1200000,10000))
+	goodones=[]
+	file='/mnt/data/XPLANE10/XSDK/criteria.csv'
+	with open(file, 'r') as f:
+		has_header = csv.Sniffer().has_header(f.read(1024))
+		f.seek(0)  # rewind
+		reader = csv.reader(f)
+		if has_header:
+			next(reader)  # skip header row
+		for row in reader:
+			goodones.append(row[0],row[1],int(row[2]),int(row[3]))
+	# goodones=(("Pilatus PC-12","PC12",750000,100),
+			# ("Beechcraft 1900D","BE19",1150000,50),
+			# ("Bombardier Challenger 300","CL30",875000,100),
+			# ("Ilyushin Il-14","IL14",1450000,50),
+			# ("Alenia C-27J Spartan","C27J",3600000,200),
+			# ("Alenia C-27J Spartan (IRIS)","C27J",3600000,200),
+			# ("Lockheed C-130 (Generic)","C130",4500000,500),
+			# ("Lockheed C-130 (Capt Sim)","C130",4500000,500),
+			# ("Bombardier Dash-8 Q400","DH8D",8000000,500),
+			# ("Dassault Falcon 7X","FA7X",1800000,10000),
+			# ("Fairchild C123","C123",5000000,10000),
+			# ("Douglas C117D","C117",5000000,10000),
+			# ("Cessna Citation X","C750",1200000,10000))
 	print("Sending request for sales listing...")
-	#data = urllib.request.urlopen('http://server.fseconomy.net/data?userkey='+mykey+'&format=xml&query=aircraft&search=forsale')
-	#print("Parsing data...")
-	#xmldoc = minidom.parse(data)
-	#airplanes = xmldoc.getElementsByTagName("Aircraft")
 	airplanes = fserequest('query=aircraft&search=forsale','Aircraft')
 	for airplane in airplanes:
 		actype = airplane.getElementsByTagName("MakeModel")[0].firstChild.nodeValue
@@ -71,47 +80,61 @@ def acforsale():
 				locname = airplane.getElementsByTagName("LocationName")[0].firstChild.nodeValue
 				dist=distbwt("SPJJ",loc)
 				print(option[1]+" | "+aframetime+" | $"+locale.format("%d", price, grouping=True)+" | "+loc+" | "+str(dist)+" | "+locname)
+				break
 
 def dudewheresmyairplane():
-	planes={}
+	#planes={}
 	print("Sending request for aircraft list...")
-	#data = urllib.request.urlopen('http://server.fseconomy.net/data?userkey='+mykey+'&format=xml&query=aircraft&search=key&readaccesskey='+mykey).read()
-	#print("Parsing response...")
-	#xmldoc = minidom.parseString(data.decode('utf-8'))
-	#airplanes = xmldoc.getElementsByTagName("Aircraft")
 	airplanes = fserequest('query=aircraft&search=key&readaccesskey='+mykey,'Aircraft')
 	for plane in airplanes:
 		loc = plane.getElementsByTagName("Location")[0].firstChild.nodeValue
 		reg = plane.getElementsByTagName("Registration")[0].firstChild.nodeValue
 		eng = plane.getElementsByTagName("EngineTime")[0].firstChild.nodeValue
 		chk = plane.getElementsByTagName("TimeLast100hr")[0].firstChild.nodeValue
-		planes[reg]=(loc,eng,chk)
-	return planes
+		#planes[reg]=(loc,eng,chk)
+		print(reg+" at "+loc+"  tot: "+eng+"  last: "+chk)
+
+def jobsforairplanes(price):
+	models={}
+	jobs=[]
+	print("Sending request for aircraft list...")
+	airplanes = fserequest('query=aircraft&search=key&readaccesskey='+mykey,'Aircraft')
+	for plane in airplanes:
+		loc = plane.getElementsByTagName("Location")[0].firstChild.nodeValue
+		mod = plane.getElementsByTagName("MakeModel")[0].firstChild.nodeValue
+		try:
+			apts=models[mod]
+			apts=apts+"-"+loc
+		except (KeyError,IndexError) as e:
+			apts=loc
+		models[mod]=apts
+	for model,apts in models.items():
+		seats=getseats(model)
+		jobs.extend(jobsto(apts,price,seats))
+	return jobs
+	
+def getseats(model):
+	if model=="Pilatus PC-12":
+		seats=10
+	elif model=="Bombardier Challenger 300":
+		seats=8
+	elif model=="Ilyushin Il-14":
+		seats=32
+	elif model=="Beechcraft 1900D":
+		seats=19
+	elif model=="Alenia C-27J Spartan (IRIS)" or model=="Alenia C-27J Spartan":
+		seats=45
+	else:
+		seats=0
+	return seats
 
 def jobsfrom(apts,price,pax):
 	#High paying jobs from airports
 	jobs=[]
 	print("Sending request for jobs from "+apts+"...")
-	#data = urllib.request.urlopen('http://server.fseconomy.net/data?userkey='+mykey+'&format=xml&query=icao&search=jobsfrom&icaos='+apts).read()
-	#print("Parsing response...")
-	#xmldoc = minidom.parseString(data.decode('utf-8'))
-	#assignments = xmldoc.getElementsByTagName("Assignment")
 	assignments = fserequest('query=icao&search=jobsfrom&icaos='+apts,'Assignment')
 	for assignment in assignments:
-		pay = float(assignment.getElementsByTagName("Pay")[0].firstChild.nodeValue)
-		if pay>price:
-			dep = assignment.getElementsByTagName("FromIcao")[0].firstChild.nodeValue
-			arr = assignment.getElementsByTagName("ToIcao")[0].firstChild.nodeValue
-			loc = assignment.getElementsByTagName("Location")[0].firstChild.nodeValue
-			amt = assignment.getElementsByTagName("Amount")[0].firstChild.nodeValue
-			typ = assignment.getElementsByTagName("UnitType")[0].firstChild.nodeValue
-			exp = assignment.getElementsByTagName("Expires")[0].firstChild.nodeValue
-			if not(int(amt)>pax and typ=="passengers"):
-				jobs.append((loc,arr,amt,typ,pay,exp))
-				# if dep==loc:
-					# print(amt+" "+typ+" "+dep+"-"+arr+" $"+str(int(pay))+" "+exp)
-				# else:
-					# print(amt+" "+typ+" @"+dep+"-"+arr+" $"+str(int(pay))+" "+exp)
+		jobs=jobstest(assignment,jobs,price,pax)
 		global totalfrom
 		totalfrom+=1
 	return jobs
@@ -120,31 +143,84 @@ def jobsto(apts,price,pax):
 	#High paying jobs to airports
 	jobs=[]
 	print("Sending request for jobs to "+apts+"...")
-	#data = urllib.request.urlopen('http://server.fseconomy.net/data?userkey='+mykey+'&format=xml&query=icao&search=jobsto&icaos='+apts).read()
-	#print("Parsing response...")
-	#xmldoc = minidom.parseString(data.decode('utf-8'))
-	#assignments = xmldoc.getElementsByTagName("Assignment")
 	assignments = fserequest('query=icao&search=jobsto&icaos='+apts,'Assignment')
 	for assignment in assignments:
-		pay = float(assignment.getElementsByTagName("Pay")[0].firstChild.nodeValue)
-		if pay>price:
-			dep = assignment.getElementsByTagName("FromIcao")[0].firstChild.nodeValue
-			arr = assignment.getElementsByTagName("ToIcao")[0].firstChild.nodeValue
-			loc = assignment.getElementsByTagName("Location")[0].firstChild.nodeValue
-			amt = assignment.getElementsByTagName("Amount")[0].firstChild.nodeValue
-			typ = assignment.getElementsByTagName("UnitType")[0].firstChild.nodeValue
-			exp = assignment.getElementsByTagName("Expires")[0].firstChild.nodeValue
-			if not(int(amt)>pax and typ=="passengers"):
-				jobs.append((loc,arr,amt,typ,pay,exp))
-				#if dep==loc:
-				#	print (amt+" "+typ+" "+dep+"-"+arr+" $"+str(int(pay))+" "+exp)
-				#else:
-				#	print (amt+" "+typ+" @"+loc+"-"+arr+" $"+str(int(pay))+" "+exp)
+		jobs=jobstest(assignment,jobs,price,pax)
 		global totalto
 		totalto+=1
 	return jobs
 
-def printjobs(jobs):
+def jobstest(assignment,jobs,price,pax):
+	pay = float(assignment.getElementsByTagName("Pay")[0].firstChild.nodeValue)
+	if pay>price:
+		amt = assignment.getElementsByTagName("Amount")[0].firstChild.nodeValue
+		typ = assignment.getElementsByTagName("UnitType")[0].firstChild.nodeValue
+		if not(int(amt)>pax and typ=="passengers"):
+			#dep = assignment.getElementsByTagName("FromIcao")[0].firstChild.nodeValue
+			arr = assignment.getElementsByTagName("ToIcao")[0].firstChild.nodeValue
+			loc = assignment.getElementsByTagName("Location")[0].firstChild.nodeValue
+			exp = assignment.getElementsByTagName("Expires")[0].firstChild.nodeValue
+			jobs.append((loc,arr,amt,typ,pay,exp))
+			#if dep==loc:
+			#	print (amt+" "+typ+" "+dep+"-"+arr+" $"+str(int(pay))+" "+exp)
+			#else:
+			#	print (amt+" "+typ+" @"+loc+"-"+arr+" $"+str(int(pay))+" "+exp)
+	return jobs
+
+def paxto(apts,minpax,maxpax):
+	#Pax jobs to airports (incl green jobs)
+	print("Sending request incl pax jobs to "+apts+"...")
+	assignments = fserequest('query=icao&search=jobsto&icaos='+apts,'Assignment')
+	jobs=paxtest(assignments,minpax,maxpax,"to")
+	return jobs
+
+def paxfrom(apts,minpax,maxpax):
+	#Pax jobs from airports (incl green jobs)
+	print("Sending request incl pax jobs from "+apts+"...")
+	assignments = fserequest('query=icao&search=jobsfrom&icaos='+apts,'Assignment')
+	jobs=paxtest(assignments,minpax,maxpax,"from")
+	return jobs
+
+def paxtest(assignments,minpax,maxpax,tofrom):
+	candidates=[]
+	apts={}
+	jobs=[]
+	for assignment in assignments:
+		loc = assignment.getElementsByTagName("Location")[0].firstChild.nodeValue
+		arr = assignment.getElementsByTagName("ToIcao")[0].firstChild.nodeValue
+		amt = assignment.getElementsByTagName("Amount")[0].firstChild.nodeValue
+		typ = assignment.getElementsByTagName("UnitType")[0].firstChild.nodeValue
+		if tofrom=="to":
+			global totalto
+			totalto+=1
+			key=loc
+		else:
+			global totalfrom
+			totalfrom+=1
+			key=arr
+		if not(int(amt)>maxpax and typ=="passengers") and typ=="passengers":
+			amt=int(amt)
+			pay = float(assignment.getElementsByTagName("Pay")[0].firstChild.nodeValue)
+			#dep = assignment.getElementsByTagName("FromIcao")[0].firstChild.nodeValue
+			exp = assignment.getElementsByTagName("Expires")[0].firstChild.nodeValue
+			candidates.append((loc,arr,amt,typ,pay,exp))
+			try:
+				tot=apts[key]
+				tot+=amt
+			except (KeyError,IndexError) as e:
+				tot=amt
+			apts[key]=tot
+	for option in candidates:
+	tot=apts[option[0]]
+	if tot>minpax:
+		jobs.append(option)
+	return jobs
+
+def printjobs(jobs,rev):
+	if rev==1:
+		list=jobs
+	else:
+		list=reversed(jobs)
 	for job in jobs:
 		print(job[2]+" "+job[3]+" "+job[0]+"-"+job[1]+" $"+str(int(job[4]))+" "+str(distbwt(job[0],job[1]))+" "+job[5])
 
@@ -193,29 +269,6 @@ def distbwt(icaofrom,icaoto):
 	dist=cosinedist(lat1,lon1,lat2,lon2)
 	return dist
 
-def get_dest_info(icao): #Get info about destination
-	found=0
-	# r'\b[01] [01] '+dest+r'\b'
-	# r'^1(6?|7?)\s+\d{1,5}\s+[01]\s+[01]\s+'+dest+r'\b'
-	regex=re.compile(r'^1(6?|7?)\s.*?'+icao+r'\b').search
-	dir1='/mnt/data/XPLANE10/X-Plane10/Resources/default scenery/default apt dat/Earth nav data/apt.dat'
-	dir2='/mnt/data/XPLANE10/X-Plane10/Custom Scenery/zzzz_FSE_Airports/Earth nav data/apt.dat'
-	for line in fileinput.input([dir1,dir2]): # I am forever indebted to Padraic Cunningham for this code
-		if found==1:
-			params=line.split()
-			if int(params[0])==100:
-				lat=float(params[9])
-				lon=float(params[10])
-				break
-		if regex(line):
-			found=1
-	else:
-		print(icao+" not found, giving up")
-		lat=0
-		lon=0
-	fileinput.close()
-	return (lat, lon)
-
 def build_xplane_locations(): #return dictionary of airport locations
 	loc_dict = {}
 	in_ap=0
@@ -251,33 +304,52 @@ def build_csv(): #return dictionary of airport locations, using FSE csv file
 			loc_dict[row[0]]=(float(row[1]),float(row[2]))
 	return loc_dict
 
-def walkthewalk(icaofrom,icaoto,chain):
+def walkthewalk(icaofrom,icaoto,chain,green,minpax,maxpax):
+	print("Walking from "+icaofrom+" to "+icaoto)
 	global checked
-	if not icaoto in checked:
-		checked=checked+"-"+icaoto
-		#print("Basic direction from "+icaoto[0:4]+" to "+icaofrom)
-		hdg=dirbwt(icaoto[0:4],icaofrom)
-		min_hdg=chgdir(hdg,-80)
-		max_hdg=chgdir(hdg,80)
-		jobs=jobsto(icaoto,4000,8) #(loc,arr,amt,typ,pay,exp)
-		print("Searching job chain from "+icaofrom+" to "+icaoto+", hdg "+str(int(round(min_hdg)))+"-"+str(int(round(max_hdg)))+"...")
-		for job in jobs:
-			if job[0]==icaofrom:
-				chain.append(job)
-				return chain
-			else:
-				hdg=dirbwt(job[1],job[0])
-				#print("JOB:"+job[2]+" "+job[3]+" "+job[0]+"-"+job[1]+" "+str(hdg)+" $"+str(int(job[4]))+" "+str(distbwt(job[0],job[1]))+"Nm "+job[5])
-				if (hdg<max_hdg and (hdg>min_hdg or min_hdg>max_hdg) or hdg>min_hdg and (hdg<max_hdg or min_hdg>max_hdg)):
-					chain.append(job)
-					walkthewalk(icaofrom,job[0],chain)
-		if len(icaoto)>4:
+	print("Basic direction from "+icaoto[0:4]+" to "+icaofrom)
+	hdg=dirbwt(icaoto[0:4],icaofrom)
+	min_hdg=chgdir(hdg,-60)
+	max_hdg=chgdir(hdg,60)
+	if green==0:
+		jobs=jobsto(icaoto,4000,maxpax) #(loc,arr,amt,typ,pay,exp)
+		checked[0]=checked[0]+"-"+icaoto
+		pax=""
+	else:
+		jobs=paxto(icaoto,minpax,maxpax)
+		checked[1]=checked[1]+"-"+icaoto
+		pax="pax "
+	print("Searching "+pax+"job chain from "+icaofrom+" to "+icaoto+", hdg "+str(int(round(min_hdg)))+"-"+str(int(round(max_hdg)))+"...")
+	iter=0
+	for job in jobs:
+		iter+=1
+		if job[0]==icaofrom:
+			print("You win")
+			chain.append(job)
 			return chain
 		else:
-			near=nearby(icaoto,50)
-			if len(near)>0:
-				walkthewalk(icaofrom,near,chain)
+			hdg=dirbwt(job[1],job[0])
+			#print("JOB:"+job[2]+" "+job[3]+" "+job[0]+"-"+job[1]+" "+str(hdg)+" $"+str(int(job[4]))+" "+str(distbwt(job[0],job[1]))+"Nm "+job[5])
+			if (hdg<max_hdg and (hdg>min_hdg or min_hdg>max_hdg) or hdg>min_hdg and (hdg<max_hdg or min_hdg>max_hdg)):
+				print("Adding job "+job[0]+" to "+job[1]+" "+job[2]+" "+job[3]+" $"+str(job[4])+" "+job[5])
+				chain.append(job)
+				return walkthewalk(icaofrom,job[0],chain,0,minpax,maxpax)
+	if len(icaoto)>4:
+		print("Failed to find jobs nearby")
+		return walkthewalk(icaofrom,near,chain,1,minpax,maxpax)
+	else:
+		near=nearby(icaoto,50)+"-"+icaoto
+		if len(near)>0:
+			if not icaoto in checked[0]:
+				return walkthewalk(icaofrom,near,chain,0,minpax,maxpax)
+			elif not icaoto in checked[1]:
+				print("Failed to find arpts nearby")
+				return walkthewalk(icaofrom,near,chain,1,minpax,maxpax)
 			else:
+				print("Dead end")
+				return chain
+		else:
+				print("Dead end")
 				return chain
 
 def chgdir(hdg,delt):
@@ -309,29 +381,29 @@ def bigjobs(apts):
 	for airport in apts:
 		area=nearby(airport,50)
 		jobs=jobsfrom(area,30000,8)
-		printjobs(jobs)
+		printjobs(jobs,0)
 		total+=len(jobs)
-	print("Found "+str(total)+" jobs at those airports:")
-	
+	print("Found "+str(total)+" big jobs at those airports:")
+
 
 print("Building airport location dictionary from csv...")
 loc_dict=build_csv()
 
 acforsale()
 
-#walkthewalk("MMCY","MPTO",chain)
-#printjobs(chain)
+#walkthewalk("MMCY","MPTO",chain,0,4,8)
+#printjobs(chain,1)
 
-bigjobs(("KEGI","KPBF","KMLC","TS08","XS44","MMMA","KPWG","KCZT","MMCY"))
+bigjobs(("SPIM-SPJJ-SEGU-SEQU-SPZO-SPQU-SPJN-SPGM-SPOL-SETA-SPEO-SKBO-SKGB-SKCL-MPTO-MPHO"))
+
+jobs=jobsforairplanes(10000)
 
 #Airports to watch
 #apts="SPIM-SPJJ-SEGU-SEQU-SPZO-SPQU-SPJN-SPGM-SPOL-SETA-SPEO-SKBO-SKGB-SKCL-MPTO-MPHO"
 #jobs=jobsfrom(apts,30000,32)
-#printjobs(jobs)
+#printjobs(jobs,0)
 
-#locations=dudewheresmyairplane()
-#for plane,info in locations.items():
-#	print(plane+" at "+info[0]+"  tot: "+info[1]+"  since: "+info[2])
+#dudewheresmyairplane()
 
 print("Made "+str(len(requests))+" requests in "+str(requests[len(requests)-1]-requests[0])+" secs.")
 print("Considered "+str(totalto)+" jobs to and "+str(totalfrom)+" jobs from airports.")
