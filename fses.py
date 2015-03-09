@@ -322,7 +322,7 @@ acforsale()
 #walkthewalk("MMCY","MPTO",chain)
 #printjobs(chain)
 
-bigjobs(("KEGI","KPBF","KMLC","TS08","XS44","MMMA","KPWG","KCZT","MMCY"))
+bigjobs(("TS08","XS44","MMMA","KPWG","KCZT","MMCY"))
 
 #Airports to watch
 #apts="SPIM-SPJJ-SEGU-SEQU-SPZO-SPQU-SPJN-SPGM-SPOL-SETA-SPEO-SKBO-SKGB-SKCL-MPTO-MPHO"
