@@ -13,9 +13,7 @@ with open(file, 'r') as f:
 	mykey = f.readline()
 mykey=mykey.strip()
 chain=[]
-checked=[]
-checked.append("")
-checked.append("")
+checked=["","",""]
 requests=[]
 totalto=0
 totalfrom=0
@@ -28,7 +26,7 @@ def fserequest(rqst,tagname):
 		sinceten=now-requests[total-11]
 		if sinceten<60:
 			towait=66-sinceten
-			print("Last 10 requests too fast, sleeping "+str(towait)+" secs.")
+			print("Reached 10 requests/min limit, sleeping "+str(towait)+" secs.")
 			time.sleep(towait)
 	requests.append(now)
 	data = urllib.request.urlopen('http://server.fseconomy.net/data?userkey='+mykey+'&format=xml&'+rqst)
@@ -309,16 +307,26 @@ def walkthewalk(icaofrom,icaoto,chain,green,minpax,maxpax):
 	global checked
 	print("Basic direction from "+icaoto[0:4]+" to "+icaofrom)
 	hdg=dirbwt(icaoto[0:4],icaofrom)
-	min_hdg=chgdir(hdg,-60)
-	max_hdg=chgdir(hdg,60)
-	if green==0:
+	if green>0:
+		min=-120
+		max=120
+	else:
+		min=-60
+		max=60
+	min_hdg=chgdir(hdg,min)
+	max_hdg=chgdir(hdg,max)
+	if green==2:
+		jobs=paxto(icaoto,minpax,maxpax)
+		checked[2]=checked[2]+"-"+icaoto
+		pax="pax "
+	elif green==1:
+		jobs=jobsto(icaoto,4000,maxpax) #(loc,arr,amt,typ,pay,exp)
+		checked[1]=checked[1]+"-"+icaoto
+		pax=""
+	else:
 		jobs=jobsto(icaoto,4000,maxpax) #(loc,arr,amt,typ,pay,exp)
 		checked[0]=checked[0]+"-"+icaoto
 		pax=""
-	else:
-		jobs=paxto(icaoto,minpax,maxpax)
-		checked[1]=checked[1]+"-"+icaoto
-		pax="pax "
 	print("Searching "+pax+"job chain from "+icaofrom+" to "+icaoto+", hdg "+str(int(round(min_hdg)))+"-"+str(int(round(max_hdg)))+"...")
 	iter=0
 	for job in jobs:
@@ -336,20 +344,26 @@ def walkthewalk(icaofrom,icaoto,chain,green,minpax,maxpax):
 				return walkthewalk(icaofrom,job[0],chain,0,minpax,maxpax)
 	if len(icaoto)>4:
 		print("Failed to find jobs nearby")
-		return walkthewalk(icaofrom,near,chain,1,minpax,maxpax)
+		if green<2:
+			return walkthewalk(icaofrom,icaoto,chain,green+1,minpax,maxpax)
+		else
+			return chain
 	else:
 		near=nearby(icaoto,50)+"-"+icaoto
 		if len(near)>0:
-			if not icaoto in checked[0]:
+			if not near in checked[0]:
 				return walkthewalk(icaofrom,near,chain,0,minpax,maxpax)
-			elif not icaoto in checked[1]:
-				print("Failed to find arpts nearby")
+			elif not near in checked[1]:
+				print("Failed to find jobs at arpts nearby")
 				return walkthewalk(icaofrom,near,chain,1,minpax,maxpax)
+			elif not near in checked[2]:
+				print("Failed to find expanded direction jobs at arpts nearby")
+				return walkthewalk(icaofrom,near,chain,2,minpax,maxpax)
 			else:
 				print("Dead end")
 				return chain
 		else:
-				print("Dead end")
+				print("Dead end, no airports near"+icaoto)
 				return chain
 
 def chgdir(hdg,delt):
@@ -391,7 +405,7 @@ loc_dict=build_csv()
 
 acforsale()
 
-#walkthewalk("MMCY","MPTO",chain,0,4,8)
+#walkthewalk("MRCH","SEGU",chain,0,4,8)
 #printjobs(chain,1)
 
 bigjobs(("SPIM-SPJJ-SEGU-SEQU-SPZO-SPQU-SPJN-SPGM-SPOL-SETA-SPEO-SKBO-SKGB-SKCL-MPTO-MPHO"))
