@@ -209,9 +209,9 @@ def paxtest(assignments,minpax,maxpax,tofrom):
 				tot=amt
 			apts[key]=tot
 	for option in candidates:
-	tot=apts[option[0]]
-	if tot>minpax:
-		jobs.append(option)
+		tot=apts[option[0]]
+		if tot>minpax:
+			jobs.append(option)
 	return jobs
 
 def printjobs(jobs,rev):
@@ -346,7 +346,7 @@ def walkthewalk(icaofrom,icaoto,chain,green,minpax,maxpax):
 		print("Failed to find jobs nearby")
 		if green<2:
 			return walkthewalk(icaofrom,icaoto,chain,green+1,minpax,maxpax)
-		else
+		else:
 			return chain
 	else:
 		near=nearby(icaoto,50)+"-"+icaoto
