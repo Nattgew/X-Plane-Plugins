@@ -45,11 +45,11 @@ def acforsale():
 	goodones=[]
 	file='/mnt/data/XPLANE10/XSDK/criteria.csv'
 	with open(file, 'r') as f:
-		has_header = csv.Sniffer().has_header(f.read(1024))
-		f.seek(0)  # rewind
+		#has_header = csv.Sniffer().has_header(f.read(1024)) #could not determine delimiter
+		#f.seek(0)  # rewind
 		reader = csv.reader(f)
-		if has_header:
-			next(reader)  # skip header row
+		#if has_header:
+			#next(reader)  # skip header row
 		for row in reader:
 			goodones.append(row[0],row[1],int(row[2]),int(row[3]))
 	# goodones=(("Pilatus PC-12","PC12",750000,100),
@@ -100,16 +100,18 @@ def jobsforairplanes(price):
 	for plane in airplanes:
 		loc = plane.getElementsByTagName("Location")[0].firstChild.nodeValue
 		mod = plane.getElementsByTagName("MakeModel")[0].firstChild.nodeValue
+		near=nearby(loc,75)
 		try:
 			apts=models[mod]
-			apts=apts+"-"+loc
+			apts=apts+"-"+near
 		except (KeyError,IndexError) as e:
-			apts=loc
+			apts=near
 		models[mod]=apts
 	for model,apts in models.items():
 		seats=getseats(model)
-		jobs.extend(jobsto(apts,price,seats))
-	return jobs
+		jobs=jobsto(apts,price,seats)
+		print(model+": "+str(seats)+" seats")
+		printjobs(jobs)
 	
 def getseats(model):
 	if model=="Pilatus PC-12":
