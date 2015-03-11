@@ -11,7 +11,7 @@
 static float gameLoopCallback(float inElapsedSinceLastCall,
 				float inElapsedTimeSinceLastFlightLoop, int inCounter,	
 				void *inRefcon);
-static XPLMCommandRef CmdSTConn, CmdLTConn, CmdFTConn, CmdVSupConn, CmdVSdnConn, CmdLCConn, CmdRCConn, CmdUCConn, CmdDCConn, CmdVDConn, CmdVUConn, CmdVLConn, CmdVRConn, CmdCPConn, CmdMBConn, Cmd2BConn, CmdMCConn, CmdMSConn, CmdEOConn, CmdECConn, CmdAMConn;
+static XPLMCommandRef CmdSTConn, CmdLTConn, CmdFTConn, CmdVSupConn, CmdVSdnConn, CmdLCConn, CmdRCConn, CmdUCConn, CmdDCConn, CmdVDConn, CmdVUConn, CmdVLConn, CmdVRConn, CmdCPConn, CmdMBConn, Cmd2BConn, CmdMCConn, CmdMSConn, CmdEOConn, CmdECConn, CmdAMConn, CmdFSConn;
 int CmdSTConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
 int CmdLTConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
 int CmdFTConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
@@ -33,8 +33,9 @@ int CmdMSConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRef
 int CmdEOConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
 int CmdECConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
 int CmdAMConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
+int CmdFSConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
 //int MyCommandHandler(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
-static XPLMDataRef acf_desc_ref, acf_icao_ref, speed_brake_ref, landing_lights_ref, geardep_ref, gearhand_ref, flap_h_pos_ref, ap_vvi_ref, ap_hdg_ref, ap_ref, trim_ail_ref, trim_elv_ref, view_ref, sbrake_ref, flap_ref, axis_assign_ref, axis_values_ref, axis_min_ref, axis_max_ref, axis_rev_ref, ev_ip_ref, is_ev_ref, trackv_ref, cowl_ref, mach_ref, ap_state_ref;
+static XPLMDataRef acf_desc_ref, acf_icao_ref, speed_brake_ref, landing_lights_ref, geardep_ref, gearhand_ref, flap_h_pos_ref, ap_vvi_ref, ap_hdg_ref, ap_ref, trim_ail_ref, trim_elv_ref, view_ref, sbrake_ref, flap_ref, axis_assign_ref, axis_values_ref, axis_min_ref, axis_max_ref, axis_rev_ref, ev_ip_ref, is_ev_ref, trackv_ref, cowl_ref, mach_ref, ap_state_ref, fse_fly_ref, fse_air_ref, fse_conn_ref;
 static int cmdhold=0;
 static int propbrakes=0;
 static int propeng=0;
@@ -92,6 +93,10 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
 	is_ev_ref=XPLMFindDataRef("sim/network/dataout/is_external_visual"); //int
 	trackv_ref=XPLMFindDataRef("sim/network/dataout/track_external_visual"); //int[20]
 	cowl_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_cowl"); //float[8]  0 = closed, 1 = open
+	
+	fse_conn_ref=XPLMFindDataRef("fse/status/connected"); //int
+	fse_fly_ref=XPLMFindDataRef("fse/status/flying"); //int
+	fse_air_ref=XPLMFindDataRef("fse/status/airborne"); //int
 	
 	CmdSTConn = XPLMCreateCommand("cmod/toggle/speedbrake","Toggles speed brakes");
 	XPLMRegisterCommandHandler(CmdSTConn, CmdSTConnCB, 0, (void *) 0);
@@ -161,6 +166,9 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
 	
 	CmdAMConn = XPLMCreateCommand("cmod/toggle/airspeed_is_mach","Toggle autopilot airspeed knots/mach");
 	XPLMRegisterCommandHandler(CmdAMConn, CmdAMConnCB, 0, (void *) 0);
+	
+	CmdFSConn = XPLMCreateCommand("cmod/toggle/fseflight","Login/begin/cancel/end FSE flight");
+	XPLMRegisterCommandHandler(CmdFSConn, CmdFSConnCB, 0, (void *) 0);
 
 	printf("CMOD - plugin loaded\n");	
 
@@ -190,6 +198,7 @@ PLUGIN_API void	XPluginStop(void)
 	XPLMUnregisterCommandHandler(CmdECConn, CmdECConnCB, 0, 0);
 	XPLMUnregisterCommandHandler(CmdEOConn, CmdEOConnCB, 0, 0);
 	XPLMUnregisterCommandHandler(CmdAMConn, CmdAMConnCB, 0, 0);
+	XPLMUnregisterCommandHandler(CmdFSConn, CmdFSConnCB, 0, 0);
 	if (propbrakes==1)
 			CmdMBConnCB(NULL, 0, NULL);
 }
@@ -361,7 +370,6 @@ int CmdMSConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //T
 int CmdMBConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //prop axis for speed brakes
 	if (phase==0) {
 		if (propbrakes==0) {
-			XPLMSpeakString("Starting propbrake");
 			float mins[100], maxs[100];
 			int assignments[100], revs[100];
 			XPLMGetDatavi(axis_assign_ref, assignments, 0, 100);
@@ -381,17 +389,18 @@ int CmdMBConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //p
 				} else {
 					rev=1;
 				}
-				propbrakes=1;
 				float propmax;
 				propmin=mins[0];
 				propmax=maxs[0];
 				proprange=propmax-propmin;
 				XPLMRegisterFlightLoopCallback(gameLoopCallback, 0.5, NULL);
-			} else {
-				XPLMSpeakString("Stopping propbrake");
-				propbrakes=0;
-				XPLMUnregisterFlightLoopCallback(gameLoopCallback, NULL);
+				XPLMSpeakString("Started propbrake");
+				propbrakes=1;
 			}
+		} else {
+			XPLMUnregisterFlightLoopCallback(gameLoopCallback, NULL);
+			propbrakes=0;
+			XPLMSpeakString("Stopped propbrake");
 		}
 	}
 	return 0;
@@ -438,6 +447,27 @@ int CmdAMConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //a
 		} else {
 			XPLMSetDatai(mach_ref,0);
 		}
+	}
+	return 0;
+}
+
+int CmdFSConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //FSE flight login/begin/cancel/end
+	if (phase==0) {
+		XPLMCommandRef fse_cmd;
+		int loggedin=XPLMGetDatai(fse_conn_ref);
+		int flying=XPLMGetDatai(fse_fly_ref);
+		int airborne=XPLMGetDatai(fse_air_ref);
+		if loggedin==0 {
+			fse_cmd=XPLMFindCommand("fse/server/connect");
+		} else if flying==0 {
+			fse_cmd=XPLMFindCommand("fse/flight/start");
+		} else if airborne==1 {
+			fse_cmd=XPLMFindCommand("fse/flight/cancelArm");
+		} else {
+			fse_cmd=XPLMFindCommand("fse/flight/finish");
+		}
+		if (fse_cmd)
+			XPLMCommandOnce(fse_cmd);
 	}
 	return 0;
 }
