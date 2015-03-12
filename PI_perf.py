@@ -258,6 +258,7 @@ class PythonInterface:
 		win_w=270
 		win_h=90
 		self.init_variables()
+		self.alt_dict=self.build_dict()
 		
 		self.gameLoopCB=self.gameLoopCallback
 		self.DrawWindowCB=self.DrawWindowCallback
@@ -294,6 +295,21 @@ class PythonInterface:
 		self.elevate_dest=0
 		self.flightTimerLast=-1
 		pass
+
+	def build_dict(self): #return dictionary of airport altitudes
+		alt_dict = {}
+		dir2=os.path.join('Resources','default scenery','default apt dat','Earth nav data','apt.dat')
+		dir1=os.path.join('Custom Scenery','zzzz_FSE_Airports','Earth nav data','apt.dat')
+		for line in fileinput.input([dir1,dir2]): # I am forever indebted to Padraic Cunningham for this code
+			params=line.split()
+			try:
+				header=params[0]
+				if header=="1" or header=="16" or header=="17":
+					alt_dict[params[4]]=int(params[1])
+			except (KeyError,IndexError) as e:
+				pass
+		fileinput.close()
+		return alt_dict
 
 	def MouseClickCallback(self, inWindowID, x, y, inMouse, inRefcon):
 		return 0
@@ -667,6 +683,8 @@ class PythonInterface:
 		destid=[]
 		XPLMGetFMSEntryInfo(destindex, None, destid, None, None, None, None)
 		dest=str(destid[0])
+		dalt=self.alt_dict[dest]
+		return dalt
 		if dest != self.current_dest:
 			# r'\b[01] [01] '+dest+r'\b'
 			# r'^1(6?|7?)\s+\d{1,5}\s+[01]\s+[01]\s+'+dest+r'\b'
