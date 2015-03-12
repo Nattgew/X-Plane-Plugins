@@ -51,7 +51,7 @@ def acforsale():
 		#if has_header:
 			#next(reader)  # skip header row
 		for row in reader:
-			goodones.append(row[0],row[1],int(row[2]),int(row[3]))
+			goodones.append((row[0],row[1],int(row[2]),int(row[3])))
 	# goodones=(("Pilatus PC-12","PC12",750000,100),
 			# ("Beechcraft 1900D","BE19",1150000,50),
 			# ("Bombardier Challenger 300","CL30",875000,100),
@@ -100,18 +100,19 @@ def jobsforairplanes(price):
 	for plane in airplanes:
 		loc = plane.getElementsByTagName("Location")[0].firstChild.nodeValue
 		mod = plane.getElementsByTagName("MakeModel")[0].firstChild.nodeValue
-		near=nearby(loc,75)
-		try:
-			apts=models[mod]
-			apts=apts+"-"+near
-		except (KeyError,IndexError) as e:
-			apts=near
-		models[mod]=apts
+		if loc!="In Flight":
+			near=nearby(loc,75)
+			try:
+				apts=models[mod]
+				apts=apts+"-"+near
+			except (KeyError,IndexError) as e:
+				apts=near
+			models[mod]=apts
 	for model,apts in models.items():
 		seats=getseats(model)
 		jobs=jobsto(apts,price,seats)
 		print(model+": "+str(seats)+" seats")
-		printjobs(jobs)
+		printjobs(jobs,0)
 	
 def getseats(model):
 	if model=="Pilatus PC-12":
@@ -405,12 +406,12 @@ def bigjobs(apts):
 print("Building airport location dictionary from csv...")
 loc_dict=build_csv()
 
-acforsale()
+#acforsale()
 
 #walkthewalk("MRCH","SEGU",chain,0,4,8)
 #printjobs(chain,1)
 
-bigjobs(("SPIM-SPJJ-SEGU-SEQU-SPZO-SPQU-SPJN-SPGM-SPOL-SETA-SPEO-SKBO-SKGB-SKCL-MPTO-MPHO"))
+#bigjobs(("SPIM","SPJJ","SEGU","SEQU","SPZO","SPQU","SPJN","SPGM","SPOL","SETA","SPEO","SKBO","SKGB","SKCL","MPTO","MPHO"))
 
 jobs=jobsforairplanes(10000)
 
