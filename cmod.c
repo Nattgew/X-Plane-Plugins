@@ -457,11 +457,11 @@ int CmdFSConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //F
 		int loggedin=XPLMGetDatai(fse_conn_ref);
 		int flying=XPLMGetDatai(fse_fly_ref);
 		int airborne=XPLMGetDatai(fse_air_ref);
-		if loggedin==0 {
+		if (loggedin==0) {
 			fse_cmd=XPLMFindCommand("fse/server/connect");
-		} else if flying==0 {
+		} else if (flying==0) {
 			fse_cmd=XPLMFindCommand("fse/flight/start");
-		} else if airborne==1 {
+		} else if (airborne==1) {
 			fse_cmd=XPLMFindCommand("fse/flight/cancelArm");
 		} else {
 			fse_cmd=XPLMFindCommand("fse/flight/finish");
