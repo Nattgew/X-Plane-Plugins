@@ -221,6 +221,7 @@ class PythonInterface:
 		self.EGT_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_EGT_c")
 		self.TRQ_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_TRQ") #NewtonMeters
 		self.RPM_ref=XPLMFindDataRef("sim/flightmodel/engine/POINT_tacrad") #prop speed, rad/sec?
+		self.ITT_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_ITT_c")
 		self.alt_ref=XPLMFindDataRef("sim/flightmodel/position/elevation")
 		self.agl_ref=XPLMFindDataRef("sim/flightmodel/position/y_agl")
 		self.ias_ref=XPLMFindDataRef("sim/flightmodel/position/indicated_airspeed")
@@ -257,7 +258,6 @@ class PythonInterface:
 		win_w=270
 		win_h=90
 		self.init_variables()
-		self.alt_dict=self.build_dict()
 		
 		self.gameLoopCB=self.gameLoopCallback
 		self.DrawWindowCB=self.DrawWindowCallback
@@ -294,21 +294,6 @@ class PythonInterface:
 		self.elevate_dest=0
 		self.flightTimerLast=-1
 		pass
-
-	def build_dict(self): #return dictionary of airport altitudes
-		alt_dict = {}
-		dir2=os.path.join('Resources','default scenery','default apt dat','Earth nav data','apt.dat')
-		dir1=os.path.join('Custom Scenery','zzzz_FSE_Airports','Earth nav data','apt.dat')
-		for line in fileinput.input([dir1,dir2]): # I am forever indebted to Padraic Cunningham for this code
-			params=line.split()
-			try:
-				header=params[0]
-				if header=="1" or header=="16" or header=="17":
-					alt_dict[params[4]]=int(params[1])
-			except (KeyError,IndexError) as e:
-				pass
-		fileinput.close()
-		return alt_dict
 
 	def MouseClickCallback(self, inWindowID, x, y, inMouse, inRefcon):
 		return 0
@@ -635,7 +620,9 @@ class PythonInterface:
 			elif self.aircraft.name=="PC12":
 				torque_psi=self.Npsi*TRQ[0]
 				pwr=str(round(torque_psi,1))+" psi"
-				if torque_psi>37.0: #Takeoff power
+				ITT=[]
+				XPLMGetDatavf(self.ITT_ref, ITT, 0, self.aircraft.num_eng)
+				if torque_psi>37.0 or ITT[0]>760: #Takeoff power
 					TOP_str=self.get_topwr(300)
 				else:
 					self.TO_pwr=300
@@ -680,8 +667,6 @@ class PythonInterface:
 		destid=[]
 		XPLMGetFMSEntryInfo(destindex, None, destid, None, None, None, None)
 		dest=str(destid[0])
-		dalt=self.alt_dict[dest]
-		return dalt
 		if dest != self.current_dest:
 			# r'\b[01] [01] '+dest+r'\b'
 			# r'^1(6?|7?)\s+\d{1,5}\s+[01]\s+[01]\s+'+dest+r'\b'
