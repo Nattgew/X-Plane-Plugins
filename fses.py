@@ -22,12 +22,13 @@ def fserequest(rqst,tagname):
 	global requests
 	now=int(time.time())
 	total=len(requests)
-	if total>10:
+	if total>9: #Be conservative here...
 		sinceten=now-requests[total-11]
 		if sinceten<60:
-			towait=66-sinceten
-			print("Reached 10 requests/min limit, sleeping "+str(towait)+" secs.")
-			time.sleep(towait)
+			towait=90-sinceten #...because server is evidently dumb
+			print("Reaching 10 requests/min limit, sleeping "+str(towait)+" secs.")
+			printsleep(towait)
+			print('Hopefully we have appeased the rate limiter gods, resuming requests now...')
 	requests.append(now)
 	data = urllib.request.urlopen('http://server.fseconomy.net/data?userkey='+mykey+'&format=xml&'+rqst)
 	print("Parsing data...")
@@ -40,31 +41,23 @@ def fserequest(rqst,tagname):
 		tags = xmldoc.getElementsByTagName(tagname)
 	return tags
 
+def printsleep(towait):
+	for i in range(towait,1):
+		print('Resuming in '+str(i)+' seconds...   ', end='\r')
+		time.sleep(1)
+	
 def acforsale():
 	# Aircraft name, ICAO code, max price, max hours
 	goodones=[]
 	file='/mnt/data/XPLANE10/XSDK/criteria.csv'
 	with open(file, 'r') as f:
-		#has_header = csv.Sniffer().has_header(f.read(1024)) #could not determine delimiter
-		#f.seek(0)  # rewind
+		has_header = csv.Sniffer().has_header(f.read(1024)) #could not determine delimiter
+		f.seek(0)  # rewind
 		reader = csv.reader(f)
-		#if has_header:
-			#next(reader)  # skip header row
+		if has_header:
+			next(reader)  # skip header row
 		for row in reader:
 			goodones.append((row[0],row[1],int(row[2]),int(row[3])))
-	# goodones=(("Pilatus PC-12","PC12",750000,100),
-			# ("Beechcraft 1900D","BE19",1150000,50),
-			# ("Bombardier Challenger 300","CL30",875000,100),
-			# ("Ilyushin Il-14","IL14",1450000,50),
-			# ("Alenia C-27J Spartan","C27J",3600000,200),
-			# ("Alenia C-27J Spartan (IRIS)","C27J",3600000,200),
-			# ("Lockheed C-130 (Generic)","C130",4500000,500),
-			# ("Lockheed C-130 (Capt Sim)","C130",4500000,500),
-			# ("Bombardier Dash-8 Q400","DH8D",8000000,500),
-			# ("Dassault Falcon 7X","FA7X",1800000,10000),
-			# ("Fairchild C123","C123",5000000,10000),
-			# ("Douglas C117D","C117",5000000,10000),
-			# ("Cessna Citation X","C750",1200000,10000))
 	print("Sending request for sales listing...")
 	airplanes = fserequest('query=aircraft&search=forsale','Aircraft')
 	for airplane in airplanes:
@@ -125,6 +118,10 @@ def getseats(model):
 		seats=19
 	elif model=="Alenia C-27J Spartan (IRIS)" or model=="Alenia C-27J Spartan":
 		seats=45
+	elif model=="Saab 340B":
+		seats=34
+	elif model=="Cessna 208":
+		seats=13
 	else:
 		seats=0
 	return seats
