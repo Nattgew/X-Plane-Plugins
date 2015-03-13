@@ -477,7 +477,7 @@ void holdincrement(XPLMDataRef dataref, float del, int num, XPLMCommandPhase pha
 		increment(dataref, del, num);
 	} else if (phase==1) {
 		if (cmdhold>10 && cmdhold%3==0) {
-			inrement(dataref, del, num);
+			increment(dataref, del, num);
 		}
 		cmdhold+=1;
 	} else if (phase==2)
