@@ -11,7 +11,7 @@
 static float gameLoopCallback(float inElapsedSinceLastCall,
 				float inElapsedTimeSinceLastFlightLoop, int inCounter,	
 				void *inRefcon);
-static XPLMCommandRef CmdSTConn, CmdLTConn, CmdFTConn, CmdVSupConn, CmdVSdnConn, CmdLCConn, CmdRCConn, CmdUCConn, CmdDCConn, CmdVDConn, CmdVUConn, CmdVLConn, CmdVRConn, CmdCPConn, CmdMBConn, Cmd2BConn, CmdMCConn, CmdMSConn, CmdEOConn, CmdECConn, CmdAMConn, CmdFSConn;
+static XPLMCommandRef CmdSTConn, CmdLTConn, CmdFTConn, CmdVSupConn, CmdVSdnConn, CmdLCConn, CmdRCConn, CmdUCConn, CmdDCConn, CmdVDConn, CmdVUConn, CmdVLConn, CmdVRConn, CmdCPConn, CmdMBConn, Cmd2BConn, CmdMCConn, CmdMSConn, CmdEOConn, CmdECConn, CmdAMConn, CmdFSConn, CmdSSConn;
 int CmdSTConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
 int CmdLTConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
 int CmdFTConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
@@ -34,8 +34,9 @@ int CmdEOConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRef
 int CmdECConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
 int CmdAMConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
 int CmdFSConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
+int CmdSSConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
 //int MyCommandHandler(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
-static XPLMDataRef acf_desc_ref, acf_icao_ref, speed_brake_ref, landing_lights_ref, geardep_ref, gearhand_ref, flap_h_pos_ref, ap_vvi_ref, ap_hdg_ref, ap_ref, trim_ail_ref, trim_elv_ref, view_ref, sbrake_ref, flap_ref, axis_assign_ref, axis_values_ref, axis_min_ref, axis_max_ref, axis_rev_ref, ev_ip_ref, is_ev_ref, trackv_ref, cowl_ref, mach_ref, ap_state_ref, fse_fly_ref, fse_air_ref, fse_conn_ref;
+static XPLMDataRef acf_desc_ref, acf_icao_ref, speed_brake_ref, landing_lights_ref, geardep_ref, gearhand_ref, flap_h_pos_ref, ap_vvi_ref, ap_hdg_ref, ap_ref, trim_ail_ref, trim_elv_ref, view_ref, sbrake_ref, flap_ref, axis_assign_ref, axis_values_ref, axis_min_ref, axis_max_ref, axis_rev_ref, ev_ip_ref, is_ev_ref, trackv_ref, cowl_ref, mach_ref, ap_state_ref, fse_fly_ref, fse_air_ref, fse_conn_ref, sim_time_ref;
 static int cmdhold=0;
 static int propbrakes=0;
 static int propeng=0;
@@ -97,6 +98,8 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
 	fse_conn_ref=XPLMFindDataRef("fse/status/connected"); //int
 	fse_fly_ref=XPLMFindDataRef("fse/status/flying"); //int
 	fse_air_ref=XPLMFindDataRef("fse/status/airborne"); //int
+
+	sim_time_ref=XPLMFindDataRef("sim/time/sim_speed"); //int
 	
 	CmdSTConn = XPLMCreateCommand("cmod/toggle/speedbrake","Toggles speed brakes");
 	XPLMRegisterCommandHandler(CmdSTConn, CmdSTConnCB, 0, (void *) 0);
@@ -170,6 +173,9 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
 	CmdFSConn = XPLMCreateCommand("cmod/toggle/fseflight","Login/begin/cancel/end FSE flight");
 	XPLMRegisterCommandHandler(CmdFSConn, CmdFSConnCB, 0, (void *) 0);
 
+	CmdSSConn = XPLMCreateCommand("cmod/toggle/simtime","Bigger change sim time speed");
+	XPLMRegisterCommandHandler(CmdSSConn, CmdSSConnCB, 0, (void *) 0);
+
 	printf("CMOD - plugin loaded\n");	
 
 	return 1;
@@ -199,6 +205,7 @@ PLUGIN_API void	XPluginStop(void)
 	XPLMUnregisterCommandHandler(CmdEOConn, CmdEOConnCB, 0, 0);
 	XPLMUnregisterCommandHandler(CmdAMConn, CmdAMConnCB, 0, 0);
 	XPLMUnregisterCommandHandler(CmdFSConn, CmdFSConnCB, 0, 0);
+	XPLMUnregisterCommandHandler(CmdSSConn, CmdSSConnCB, 0, 0);
 	if (propbrakes==1)
 			CmdMBConnCB(NULL, 0, NULL);
 }
@@ -468,6 +475,22 @@ int CmdFSConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //F
 		}
 		if (fse_cmd)
 			XPLMCommandOnce(fse_cmd);
+	}
+	return 0;
+}
+
+int CmdSSConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //FSE flight login/begin/cancel/end
+	XPLMDebugString("CMOD - Going full potato");
+	if (phase==0) {
+		int simtime=XPLMGetDatai(sim_time_ref);
+		if (simtime<32) {
+			XPLMDebugString("CMOD - Going to 32");
+			simtime=32;
+		} else {
+			XPLMDebugString("CMOD - Going to 1");
+			simtime=1;
+		}
+		XPLMSetDatai(sim_time_ref, simtime);
 	}
 	return 0;
 }
