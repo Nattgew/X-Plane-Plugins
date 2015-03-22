@@ -58,6 +58,8 @@ def acforsale():
 			next(reader)  # skip header row
 		for row in reader:
 			goodones.append((row[0],row[1],int(row[2]),int(row[3])))
+	#for option in goodones:
+	#	print(option[0]+" | "+option[1]+" | "+option[2]+" | "+option[3])
 	print("Sending request for sales listing...")
 	airplanes = fserequest('query=aircraft&search=forsale','Aircraft')
 	for airplane in airplanes:
@@ -103,7 +105,7 @@ def jobsforairplanes(price):
 			models[mod]=apts
 	for model,apts in models.items():
 		seats=getseats(model)
-		jobs=jobsto(apts,price,seats)
+		jobs=jobsfrom(apts,price,seats)
 		print(model+": "+str(seats)+" seats")
 		printjobs(jobs,0)
 	
@@ -403,7 +405,7 @@ def bigjobs(apts):
 print("Building airport location dictionary from csv...")
 loc_dict=build_csv()
 
-#acforsale()
+acforsale()
 
 #walkthewalk("MRCH","SEGU",chain,0,4,8)
 #printjobs(chain,1)
@@ -417,7 +419,7 @@ jobs=jobsforairplanes(10000)
 #jobs=jobsfrom(apts,30000,32)
 #printjobs(jobs,0)
 
-#dudewheresmyairplane()
+dudewheresmyairplane()
 
 print("Made "+str(len(requests))+" requests in "+str(requests[len(requests)-1]-requests[0])+" secs.")
 print("Considered "+str(totalto)+" jobs to and "+str(totalfrom)+" jobs from airports.")
