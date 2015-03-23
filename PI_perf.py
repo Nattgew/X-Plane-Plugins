@@ -457,16 +457,22 @@ class PythonInterface:
 			XPLMSpeakString("AP fuel estimate: "+str(int(round(fuel)))+" gal")
 			#XPLMSetDataf(self.ap_spd_ref, fuel) #Other plugin will show speed change, speed setting not important
 		general_fl+=int(dalt/1000+alt_ind/1000)/2 #Account for departure/arrival altitudes
+		if general_fl>self.aircraft.ceiling:
+				general_fl=self.aircraft.ceiling
 		if aphdg<180: #NEodd
-			if general_fl%2==0:
-				general_fl-=1
-			if general_fl>self.aircraft.ceiling:
-				general_fl=self.aircraft.ceiling-1 if self.aircraft.ceiling%2==0 else self.aircraft.ceiling
+			if general_fl<41:
+				if general_fl%2==0:
+					general_fl-=1
+			else:
+				while (general_fl-41)%4!=0:
+					general_fl-=1
 		else: #SWeven
-			if general_fl%2==1:
-				general_fl-=1
-			if general_fl>self.aircraft.ceiling:
-				general_fl=self.aircraft.ceiling-1 if self.aircraft.ceiling%2==1 else self.aircraft.ceiling
+			if general_fl<41:
+				if general_fl%2==1:
+					general_fl-=1
+			else:
+				while (general_fl-41)%4!=2:
+					general_fl-=1
 		alt=float(general_fl*1000)
 		if alt<dalt+2000:
 			alt=dalt+2000
