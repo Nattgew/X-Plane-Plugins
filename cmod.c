@@ -173,7 +173,7 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
 	CmdFSConn = XPLMCreateCommand("cmod/toggle/fseflight","Login/begin/cancel/end FSE flight");
 	XPLMRegisterCommandHandler(CmdFSConn, CmdFSConnCB, 0, (void *) 0);
 
-	CmdSSConn = XPLMCreateCommand("cmod/toggle/simtime","Bigger change sim time speed");
+	CmdSSConn = XPLMCreateCommand("cmod/toggle/simtime","Toggle 1x/32x sim time");
 	XPLMRegisterCommandHandler(CmdSSConn, CmdSSConnCB, 0, (void *) 0);
 
 	printf("CMOD - plugin loaded\n");	
@@ -480,14 +480,11 @@ int CmdFSConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //F
 }
 
 int CmdSSConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //FSE flight login/begin/cancel/end
-	XPLMDebugString("CMOD - Going full potato");
 	if (phase==0) {
 		int simtime=XPLMGetDatai(sim_time_ref);
 		if (simtime<32) {
-			XPLMDebugString("CMOD - Going to 32");
 			simtime=32;
 		} else {
-			XPLMDebugString("CMOD - Going to 1");
 			simtime=1;
 		}
 		XPLMSetDatai(sim_time_ref, simtime);
@@ -646,7 +643,7 @@ struct gotAC getshortac(XPLMDataRef desc_ref, XPLMDataRef icao_ref) {
 	if (strcmp(buffer, "Boeing 737-80")==0 || strcmp(ibuffer, "B738")==0) {
 		strncpy(thisAC.AC,"B738",4);
 		thisAC.has3D=1;
-	} else if (strcmp(buffer, "Pilatus PC-12")==0 || strcmp(ibuffer, "PC12")==0) {
+	} else if (strcmp(buffer, "Pilatus PC-12")==0 || strcmp(buffer, "Pilatus PC12")==0 || strcmp(ibuffer, "PC12")==0) {
 		strncpy(thisAC.AC,"PC12",4);
 		thisAC.has3D=1;
 	} else if (strcmp(buffer, "B1900 for X-p")==0 || strcmp(ibuffer, "BE19")==0) {
