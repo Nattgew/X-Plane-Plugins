@@ -201,7 +201,7 @@ class PythonInterface:
 		altitude=XPLMGetDataf(self.alt_ref)*3.33
 		ias=XPLMGetDataf(self.ias_ref)
 		flying=XPLMGetDatai(self.fly_ref)
-		if flying==0 and ias>60 and (altitude<20 or altitude>10000 and altitude<11000):
+		if flying==0 and ias>60:
 			self.e1="FSE FLIGHT NOT STARTED"
 			self.err=1
 			return 1
