@@ -25,13 +25,16 @@ class PythonInterface:
 		#print "Altimeter changed to: " + str(round(bar_new,2))
 		self.msg1="Altimeter  " + str(round(bar_new,2))+"  "+del_baro_str+" inHg"
 		self.remainingShowTime=self.showTime
-		
 		pass
 	
-	def showBaro(self, bar_new): #Show the barometer setting
-		self.msg1="Altimeter  " + str(round(bar_new,2))
+	def showBaro(self, bar): #Show the barometer setting
+		self.msg1="Altimeter  "+self.getBaroString(bar)
 		self.remainingShowTime=self.showTime
 		pass
+	
+	def getBaroString(self, bar): #Get string with setting in inHg and hPa
+		string=str(round(bar,2))+" inHg  ("+str(round(bar*self.inhghpa))+" hPa)"
+		return string
 
 	def XPluginStart(self):
 		self.Name="Altimeter Helper 1.3"
@@ -41,12 +44,12 @@ class PythonInterface:
 		
 		self.baro_set_ref=XPLMFindDataRef("sim/cockpit/misc/barometer_setting")
 		self.baro_act_ref=XPLMFindDataRef("sim/weather/barometer_sealevel_inhg")
-		self.baro_am_ref=XPLMFindDataRef("sim/weather/barometer_current_inhg")
 		self.alt_act_ref=XPLMFindDataRef("sim/flightmodel/position/elevation")
 		self.alt_ind_ref=XPLMFindDataRef("sim/flightmodel/misc/h_ind")
 		self.vvi_ref=XPLMFindDataRef("sim/flightmodel/position/vh_ind_fpm")
 		
 		self.mft=3.2808399 #m -> ft
+		self.inhghpa=33.8638866667 #inHg -> hPa
 		self.msg1=""
 		self.remainingShowTime=0
 		self.showTime=3 #Seconds to show the altimeter setting when changed
@@ -55,7 +58,7 @@ class PythonInterface:
 		win_w=200
 		win_h=35
 		self.stdpress=0 #Whether standard pressure is set
-		self.trans_alt=18000
+		self.trans_alt=18000 #Transition altitude
 		self.tol=[17.009, 0.0058579, -0.000000012525] #Parameters for altimeter tolerance
 		self.last_bar=XPLMGetDataf(self.baro_set_ref)
 
@@ -125,14 +128,13 @@ class PythonInterface:
 		vvi=XPLMGetDataf(self.vvi_ref) #Vertical speed, fpm
 		alt_act=XPLMGetDataf(self.alt_act_ref)*self.mft #Real altitude, convert to ft
 		bar=XPLMGetDataf(self.baro_set_ref) #Current altimeter setting
-		bar_am=XPLMGetDataf(self.baro_am_ref) #Current outside barometric pressure
 		bar_act=XPLMGetDataf(self.baro_act_ref) #Current local sea level pressure
 		
-		if (vvi >= 500 and alt >= (self.trans_alt-25) or vvi < 500 and vvi > 0 and alt > self.trans_alt + 250) and self.stdpress==0: # Climbing through 18000
+		if (vvi >= 500 and alt >= (self.trans_alt-25) or 0 < vvi < 500 and alt > self.trans_alt + 250) and self.stdpress==0: # Climbing through TA
 			bar=29.92
 			self.stdpress=1
 			self.setBaro(bar)
-		elif (vvi <= -500 and alt < (self.trans_alt-25) or vvi > -500 and vvi < 0 and alt < self.trans_alt - 250) and self.stdpress==1: # Descending through 18000
+		elif (vvi <= -500 and alt < (self.trans_alt-25) or 0 > vvi > -500 and alt < self.trans_alt - 250) and self.stdpress==1: # Descending through TL
 			bar=XPLMGetDataf(self.baro_act_ref)
 			self.stdpress=0
 			self.setBaro(bar)
@@ -142,7 +144,7 @@ class PythonInterface:
 		tolerance=self.tol[2]*alt**2+self.tol[1]*alt+self.tol[0] #Determine altimeter error tolerance
 		if abs(alt_err)>tolerance and self.stdpress==0:
 			alt_err_str=self.getSign(alt_err)+str(round(alt_err))
-			self.msg1="Altimeter off by "+alt_err_str+" feet!"
+			self.msg1="Local QNH "+getBaroString(bar_act)+", "+alt_err_str+" feet!"
 			self.remainingShowTime=self.showTime
 		
 		if round(self.last_bar,2)!=round(bar,2):
