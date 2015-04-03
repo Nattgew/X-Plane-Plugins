@@ -26,8 +26,13 @@ class PythonInterface:
 		XPLMSetDataf(self.baro_set_ref, bar_new)
 		del_baro_set=bar_new-bar_old
 		del_baro_str=self.getSign(del_baro_set)+str(round(del_baro_set,2))
-		#print "Altimeter changed to: " + str(round(bar_new,2))
-		self.msg1="Altimeter  " + str(round(bar_new,2))+"  "+del_baro_str+" inHg"
+		if self.inHg==1:
+			baro_str=str(round(bar_new,2))
+			del_baro_str=self.getSign(del_baro_set)+str(round(del_baro_set,2))+" inHg"
+		else:
+			baro_str=str(round(bar_new*self.inhghpa))
+			del_baro_str=self.getSign(del_baro_set)+str(round(del_baro_set*self.inhghpa))+" hPa"
+		self.msg1="Altimeter  " +baro_str+"  "+del_baro_str
 		self.remainingShowTime=self.showTime
 		pass
 	
@@ -36,15 +41,18 @@ class PythonInterface:
 		self.remainingShowTime=self.showTime
 		pass
 	
-	def getBaroString(self, bar): #Get string with setting in inHg and hPa
-		string=str(round(bar,2))+" inHg  ("+str(round(bar*self.inhghpa))+" hPa)"
+	def getBaroString(self, bar): #Get string with setting in inHg or hPa
+		if self.inHg==1:
+			string=str(round(bar,2))+" inHg"
+		else:
+			string=str(round(bar*self.inhghpa))+" hPa"
 		return string
 
 	def XPluginStart(self):
-		self.Name="Altimeter Helper 1.3"
+		self.Name="Altimeter Helper 1.3.1"
 		self.Sig= "natt.python.altimeterhelper"
 		self.Desc="A plugin that helps with altimeter settings"
-		self.VERSION="1.3"
+		self.VERSION="1.3.1"
 		
 		self.baro_set_ref=XPLMFindDataRef("sim/cockpit/misc/barometer_setting")
 		self.baro_act_ref=XPLMFindDataRef("sim/weather/barometer_sealevel_inhg")
@@ -62,11 +70,12 @@ class PythonInterface:
 		win_w=200
 		win_h=35
 		self.stdpress=0 #Whether standard pressure is set
-		_TAINI,_ErrINI=self.ReadSFromFile()
+		_TAINI,_ErrINI,_HgINI=self.ReadSFromFile()
 		self.trans_alt=18000 #Transition altitude
 		self.err=1 #Whether to show altitude error
 		self.trans_alt=int(_TAINI)
 		self.err=int(_ErrINI)
+		self.inHg=int(_HgINI)
 		self.tol=[17.009, 0.0058579, -0.000000012525] #Parameters for altimeter tolerance
 		self.last_bar=XPLMGetDataf(self.baro_set_ref)
 
@@ -148,7 +157,7 @@ class PythonInterface:
 	#############################################################
 	## GUI Creation Handler
 	def CreateSWidget(self, x, y, w, h):
-		_TAINI,_ErrINI=self.ReadSFromFile()
+		_TAINI,_ErrINI,_HgINI=self.ReadSFromFile()
 
 		self.globalX=x
 		self.globalY=y
@@ -163,7 +172,7 @@ class PythonInterface:
 		# Add Close Box decorations to the Main Widget
 		XPSetWidgetProperty(self.SWidget, xpProperty_MainWindowHasCloseBoxes, 1)
 
-		# Login user caption
+		# TA caption
 		TACaption = XPCreateWidget(x+20, y-40, x+50, y-60,1, "Transition altitude:", 0, self.SWidget,xpWidgetClass_Caption)
 
 		# TA field
@@ -171,14 +180,23 @@ class PythonInterface:
 		XPSetWidgetProperty(self.TAEdit, xpProperty_TextFieldType, xpTextEntryField)
 		XPSetWidgetProperty(self.TAEdit, xpProperty_Enabled, 1)
 
-		# TA caption
+		# Err caption
 		ErrCaption = XPCreateWidget(x+20, y-60, x+50, y-80,1, "Altimeter error warning:", 0, self.SWidget,xpWidgetClass_Caption)
 
 		# Error option
-		self.ErrOpt = XPCreateWidget(x+80, y-60, x+160, y-80,1, "Save", 0, self.SWidget,xpWidgetClass_Button)
+		self.ErrOpt = XPCreateWidget(x+80, y-60, x+160, y-80,1, "ErrOpt", 0, self.SWidget,xpWidgetClass_Button)
 		XPSetWidgetProperty(self.ErrOpt, xpProperty_ButtonType, xpRadioButton)
 		XPSetWidgetProperty(self.ErrOpt, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
 		XPSetWidgetProperty(self.ErrOpt, xpProperty_ButtonState, _ErrINI)
+		
+		# Units caption
+		HgCaption = XPCreateWidget(x+20, y-60, x+50, y-80,1, "Display inHg:", 0, self.SWidget,xpWidgetClass_Caption)
+
+		# Units option
+		self.HgOpt = XPCreateWidget(x+80, y-80, x+160, y-100,1, "HgOpt", 0, self.SWidget,xpWidgetClass_Button)
+		XPSetWidgetProperty(self.HgOpt, xpProperty_ButtonType, xpRadioButton)
+		XPSetWidgetProperty(self.HgOpt, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
+		XPSetWidgetProperty(self.HgOpt, xpProperty_ButtonState, _HgINI)
 
 		# Save button
 		self.SaveButton = XPCreateWidget(x+180, y-40, x+260, y-60,1, "Save", 0, self.SWidget,xpWidgetClass_Button)
@@ -187,9 +205,7 @@ class PythonInterface:
 		# Register our widget handler
 		self.SHandlerCB = self.SHandler
 		XPAddWidgetCallback(self, self.SWidget, self.SHandlerCB)
-	
-	#############################################################
-	## GUI (BTN) Message Handler
+
 	def SHandler(self, inMessage, inWidget,    inParam1, inParam2):
 		if (inMessage == xpMessage_CloseButtonPushed):
 			print "ALTHELP | Client window closed"
@@ -199,46 +215,51 @@ class PythonInterface:
 
 		if (inMessage == xpMsg_PushButtonPressed):
 			if (inParam1 == self.SaveButton):
+				print "ALTHELP | Saving settings"
 				TA = []
 				XPGetWidgetDescriptor(self.TAEdit, TA, 256)
 				Err=XPGetWidgetProperty(self.ErrOpt, xpProperty_ButtonState, None)
-				self.WriteSToFile(TA[0],Err)
+				inHg=XPGetWidgetProperty(self.HgOpt, xpProperty_ButtonState, None)
+				self.WriteSToFile(TA[0],Err,inHg)
 				self.trans_alt=int(TA[0])
 				self.err=int(Err)
+				self.inHg=int(inHg)
 				XPHideWidget(self.SWidget)
 				return 1
 
 		if (inMessage == xpMsg_Shown):
-			TA = self.ReadTAFromFile()
+			TA, Err, inHg = self.ReadSFromFile()
 			XPSetWidgetDescriptor(self.TAEdit, TA)
+			XPSetWidgetProperty(self.ErrOpt, xpProperty_ButtonState, Err)
+			XPSetWidgetProperty(self.HgOpt, xpProperty_ButtonState, inHg)
 			return 1
 				
 		return 0
 
 	def ReadSFromFile(self):
-		SFile = os.path.join('Resources','plugins','PythonScripts','x-economy.ini', 'altimeterhelper.txt')
+		SFile = os.path.join('Resources','plugins','PythonScripts','altimeterhelper.ini')
 		if (os.path.exists(SFile) and os.path.isfile(SFile)):
 			fd = open(SFile, 'r')
 			_TAINI=fd.readline()
 			_TAINI=_TAINI.replace('\n','')
 			_ErrINI=fd.readline()
+			_ErrINI=_ErrINI.replace('\n','')
+			_HgINI=fd.readline()
 			fd.close()
-			return _TAINI,_ErrINI
+			return _TAINI,_ErrINI,_HgINI
 		return "",""
 
-	def WriteSToFile(self, TA, Err):
-		SFile = os.path.join('Resources','plugins','PythonScripts','x-economy.ini', 'altimeterhelper.txt')
+	def WriteSToFile(self, TA, Err, inHg):
+		SFile = os.path.join('Resources','plugins','PythonScripts','altimeterhelper.ini')
 		fd = open(SFile, 'wb')
-		fd.write(TA+'\n'+Err)
+		fd.write(TA+'\n'+Err+'\n'+inHg)
 		fd.close()
-	
-	#############################################################
-	## Menu Handler
+
 	def SMenuHandler(self, inMenuRef, inItemRef):
 		# If menu selected create our widget dialog
 		if (inItemRef == 1):
 			if (self.MenuItem1 == 0):
-				self.CreateSWidget(221, 640, 480, 490)
+				self.CreateSWidget(221, 640, 200, 100)
 				self.MenuItem1 = 1
 			else:
 				if(not XPIsWidgetVisible(self.SWidget)):
@@ -266,7 +287,7 @@ class PythonInterface:
 		alt_err=self.getAlt(bar-bar_act,0)
 		alt_err=(alt-alt_act)
 		tolerance=self.tol[2]*alt**2+self.tol[1]*alt+self.tol[0] #Determine altimeter error tolerance
-		if abs(alt_err)>tolerance and self.stdpress==0:
+		if abs(alt_err)>tolerance and self.stdpress==0 and self.err==1:
 			alt_err_str=self.getSign(alt_err)+str(round(alt_err))
 			self.msg1="Local QNH "+getBaroString(bar_act)+", "+alt_err_str+" feet!"
 			self.remainingShowTime=self.showTime
