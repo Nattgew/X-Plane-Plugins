@@ -464,13 +464,20 @@ int CmdFSConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //F
 		int loggedin=XPLMGetDatai(fse_conn_ref);
 		int flying=XPLMGetDatai(fse_fly_ref);
 		int airborne=XPLMGetDatai(fse_air_ref);
+		char *buf= malloc(16);
+		sprintf(buf, "C:%d F:%d A:%d\n", loggedin,flying,airborne);
+		XPLMDebugString(buf);
 		if (loggedin==0) {
+			XPLMDebugString("Why u no logged in");
 			fse_cmd=XPLMFindCommand("fse/server/connect");
 		} else if (flying==0) {
+			XPLMDebugString("Let's go fly away");
 			fse_cmd=XPLMFindCommand("fse/flight/start");
 		} else if (airborne==1) {
+			XPLMDebugString("IN THE AIR");
 			fse_cmd=XPLMFindCommand("fse/flight/cancelArm");
 		} else {
+			XPLMDebugString("IN THE END");
 			fse_cmd=XPLMFindCommand("fse/flight/finish");
 		}
 		if (fse_cmd)
