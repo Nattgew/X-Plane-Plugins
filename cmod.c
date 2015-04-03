@@ -36,7 +36,7 @@ int CmdAMConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRef
 int CmdFSConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
 int CmdSSConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
 //int MyCommandHandler(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
-static XPLMDataRef acf_desc_ref, acf_icao_ref, speed_brake_ref, landing_lights_ref, geardep_ref, gearhand_ref, flap_h_pos_ref, ap_vvi_ref, ap_hdg_ref, ap_ref, trim_ail_ref, trim_elv_ref, view_ref, sbrake_ref, flap_ref, axis_assign_ref, axis_values_ref, axis_min_ref, axis_max_ref, axis_rev_ref, ev_ip_ref, is_ev_ref, trackv_ref, cowl_ref, mach_ref, ap_state_ref, fse_fly_ref, fse_air_ref, fse_conn_ref, sim_time_ref;
+static XPLMDataRef acf_desc_ref, acf_icao_ref, speed_brake_ref, landing_lights_ref, geardep_ref, gearhand_ref, flap_h_pos_ref, ap_vvi_ref, ap_hdg_ref, ap_ref, trim_ail_ref, trim_elv_ref, view_ref, sbrake_ref, flap_ref, axis_assign_ref, axis_values_ref, axis_min_ref, axis_max_ref, axis_rev_ref, ev_ip_ref, is_ev_ref, trackv_ref, cowl_ref, mach_ref, ap_state_ref, sim_time_ref;
 static int cmdhold=0;
 static int propbrakes=0;
 static int propeng=0;
@@ -94,10 +94,6 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
 	is_ev_ref=XPLMFindDataRef("sim/network/dataout/is_external_visual"); //int
 	trackv_ref=XPLMFindDataRef("sim/network/dataout/track_external_visual"); //int[20]
 	cowl_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_cowl"); //float[8]  0 = closed, 1 = open
-	
-	fse_conn_ref=XPLMFindDataRef("fse/status/connected"); //int
-	fse_fly_ref=XPLMFindDataRef("fse/status/flying"); //int
-	fse_air_ref=XPLMFindDataRef("fse/status/airborne"); //int
 
 	sim_time_ref=XPLMFindDataRef("sim/time/sim_speed"); //int
 	
@@ -429,7 +425,7 @@ int CmdMCConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //M
 		}
 		got_cmd=XPLMFindCommand(cmdref);
 		if (got_cmd) {
-			XPLMDebugString("CMOD - Running switch command");
+			XPLMDebugString("CMOD - Running switch command\n");
 			XPLMCommandOnce(got_cmd);
 		}
 	}
@@ -461,23 +457,19 @@ int CmdAMConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //a
 int CmdFSConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //FSE flight login/begin/cancel/end
 	if (phase==0) {
 		XPLMCommandRef fse_cmd;
-		int loggedin=XPLMGetDatai(fse_conn_ref);
-		int flying=XPLMGetDatai(fse_fly_ref);
-		int airborne=XPLMGetDatai(fse_air_ref);
+		int loggedin=XPLMGetDatai(XPLMFindDataRef("fse/status/connected"));
+		int flying=XPLMGetDatai(XPLMFindDataRef("fse/status/flying"));
+		int airborne=XPLMGetDatai(XPLMFindDataRef("fse/status/airborne"));
 		char *buf= malloc(16);
-		sprintf(buf, "C:%d F:%d A:%d\n", loggedin,flying,airborne);
+		sprintf(buf, "CMOD | FSE Status: C:%d F:%d A:%d\n", loggedin,flying,airborne);
 		XPLMDebugString(buf);
 		if (loggedin==0) {
-			XPLMDebugString("Why u no logged in");
 			fse_cmd=XPLMFindCommand("fse/server/connect");
 		} else if (flying==0) {
-			XPLMDebugString("Let's go fly away");
 			fse_cmd=XPLMFindCommand("fse/flight/start");
 		} else if (airborne==1) {
-			XPLMDebugString("IN THE AIR");
 			fse_cmd=XPLMFindCommand("fse/flight/cancelArm");
 		} else {
-			XPLMDebugString("IN THE END");
 			fse_cmd=XPLMFindCommand("fse/flight/finish");
 		}
 		if (fse_cmd)
