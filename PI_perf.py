@@ -39,8 +39,7 @@ class getaircraft:
 			self.name="B738"
 			self.flaps=(0.125,0.375,0.625,0.875,1.0) #1 5 15 30 40
 			self.ceiling=42
-		elif desc=="['Pilatus PC-12']" or acf_icao=="PC12":
-			#XPLMSetDataf(self.acf_EW_ref,2605)
+		elif desc=="['Pilatus PC-12']" or desc=="['Pilatus PC12']" or acf_icao=="PC12":
 			self.name="PC12"
 			self.setEW(self.name,1895)
 			self.flaps=(0.3,0.7,1.0) #15 30 40
