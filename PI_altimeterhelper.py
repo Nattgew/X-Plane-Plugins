@@ -8,6 +8,7 @@ from XPLMDisplay import *
 from XPLMGraphics import *
 from XPLMUtilities import *
 from XPLMDefs import *
+import os
 
 class PythonInterface:
 
@@ -73,6 +74,7 @@ class PythonInterface:
 		_TAINI,_ErrINI,_HgINI=self.ReadSFromFile()
 		self.trans_alt=18000 #Transition altitude
 		self.err=1 #Whether to show altitude error
+		self.inHg=1
 		self.trans_alt=int(_TAINI)
 		self.err=int(_ErrINI)
 		self.inHg=int(_HgINI)
@@ -98,7 +100,7 @@ class PythonInterface:
 		XPLMAppendMenuItem(self.Id, "Settings", 1, 1)
 		
 		#Create the Main Window Widget
-		self.CreateSWidget(221, 640, 200, 100)
+		self.CreateSWidget(221, 640, 250, 150)
 		self.MenuItem1 = 1
 		XPHideWidget(self.SWidget)
 		
@@ -142,7 +144,6 @@ class PythonInterface:
 			XPDestroyWidget(self, self.SWidget, 1)
 			self.MenuItem1 = 0
 		XPLMDestroyMenu(self, self.Id)
-		XPLMDestroyWindow(self, self.SWindowId)
 		pass
 
 	def XPluginEnable(self):
@@ -167,39 +168,39 @@ class PythonInterface:
 		Title = "Altimeter Helper v"+str(self.VERSION)
 
 		# Create the Main Widget window
-		self.SWidget = XPCreateWidget(x, y, x2, y2, 1, Title, 1,	0, xpWidgetClass_MainWindow)
+		self.SWidget = XPCreateWidget(x, y, x2, y2, 1, Title, 1, 0, xpWidgetClass_MainWindow)
 
 		# Add Close Box decorations to the Main Widget
 		XPSetWidgetProperty(self.SWidget, xpProperty_MainWindowHasCloseBoxes, 1)
 
 		# TA caption
-		TACaption = XPCreateWidget(x+20, y-40, x+50, y-60,1, "Transition altitude:", 0, self.SWidget,xpWidgetClass_Caption)
+		TACaption = XPCreateWidget(x+20, y-30, x+50, y-50,1, "Transition altitude", 0, self.SWidget,xpWidgetClass_Caption)
 
 		# TA field
-		self.TAEdit = XPCreateWidget(x+80, y-40, x+160, y-60,1, _TAINI, 0, self.SWidget,xpWidgetClass_TextField)
+		self.TAEdit = XPCreateWidget(x+130, y-30, x+180, y-50,1, _TAINI, 0, self.SWidget,xpWidgetClass_TextField)
 		XPSetWidgetProperty(self.TAEdit, xpProperty_TextFieldType, xpTextEntryField)
 		XPSetWidgetProperty(self.TAEdit, xpProperty_Enabled, 1)
 
 		# Err caption
-		ErrCaption = XPCreateWidget(x+20, y-60, x+50, y-80,1, "Altimeter error warning:", 0, self.SWidget,xpWidgetClass_Caption)
+		ErrCaption = XPCreateWidget(x+20, y-50, x+50, y-70,1, "Altimeter error warning", 0, self.SWidget,xpWidgetClass_Caption)
 
 		# Error option
-		self.ErrOpt = XPCreateWidget(x+80, y-60, x+160, y-80,1, "ErrOpt", 0, self.SWidget,xpWidgetClass_Button)
+		self.ErrOpt = XPCreateWidget(x+120, y-50, x+200, y-70,1, "", 0, self.SWidget,xpWidgetClass_Button)
 		XPSetWidgetProperty(self.ErrOpt, xpProperty_ButtonType, xpRadioButton)
 		XPSetWidgetProperty(self.ErrOpt, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
-		XPSetWidgetProperty(self.ErrOpt, xpProperty_ButtonState, _ErrINI)
+		XPSetWidgetProperty(self.ErrOpt, xpProperty_ButtonState, int(_ErrINI))
 		
 		# Units caption
-		HgCaption = XPCreateWidget(x+20, y-60, x+50, y-80,1, "Display inHg:", 0, self.SWidget,xpWidgetClass_Caption)
+		HgCaption = XPCreateWidget(x+20, y-70, x+50, y-90,1, "Display inHg", 0, self.SWidget,xpWidgetClass_Caption)
 
 		# Units option
-		self.HgOpt = XPCreateWidget(x+80, y-80, x+160, y-100,1, "HgOpt", 0, self.SWidget,xpWidgetClass_Button)
+		self.HgOpt = XPCreateWidget(x+120, y-70, x+200, y-90,1, "", 0, self.SWidget,xpWidgetClass_Button)
 		XPSetWidgetProperty(self.HgOpt, xpProperty_ButtonType, xpRadioButton)
 		XPSetWidgetProperty(self.HgOpt, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
-		XPSetWidgetProperty(self.HgOpt, xpProperty_ButtonState, _HgINI)
+		XPSetWidgetProperty(self.HgOpt, xpProperty_ButtonState, int(_HgINI))
 
 		# Save button
-		self.SaveButton = XPCreateWidget(x+180, y-40, x+260, y-60,1, "Save", 0, self.SWidget,xpWidgetClass_Button)
+		self.SaveButton = XPCreateWidget(x+70, y-100, x+150, y-120,1, "Save", 0, self.SWidget,xpWidgetClass_Button)
 		XPSetWidgetProperty(self.SaveButton, xpProperty_ButtonType, xpPushButton)
 		
 		# Register our widget handler
@@ -230,8 +231,8 @@ class PythonInterface:
 		if (inMessage == xpMsg_Shown):
 			TA, Err, inHg = self.ReadSFromFile()
 			XPSetWidgetDescriptor(self.TAEdit, TA)
-			XPSetWidgetProperty(self.ErrOpt, xpProperty_ButtonState, Err)
-			XPSetWidgetProperty(self.HgOpt, xpProperty_ButtonState, inHg)
+			XPSetWidgetProperty(self.ErrOpt, xpProperty_ButtonState, int(Err))
+			XPSetWidgetProperty(self.HgOpt, xpProperty_ButtonState, int(inHg))
 			return 1
 				
 		return 0
@@ -247,19 +248,19 @@ class PythonInterface:
 			_HgINI=fd.readline()
 			fd.close()
 			return _TAINI,_ErrINI,_HgINI
-		return "",""
+		return "18000","0","1"
 
 	def WriteSToFile(self, TA, Err, inHg):
 		SFile = os.path.join('Resources','plugins','PythonScripts','altimeterhelper.ini')
 		fd = open(SFile, 'wb')
-		fd.write(TA+'\n'+Err+'\n'+inHg)
+		fd.write(str(TA)+'\n'+str(Err)+'\n'+str(inHg))
 		fd.close()
 
 	def SMenuHandler(self, inMenuRef, inItemRef):
 		# If menu selected create our widget dialog
 		if (inItemRef == 1):
 			if (self.MenuItem1 == 0):
-				self.CreateSWidget(221, 640, 200, 100)
+				self.CreateSWidget(221, 640, 250, 150)
 				self.MenuItem1 = 1
 			else:
 				if(not XPIsWidgetVisible(self.SWidget)):
@@ -289,7 +290,7 @@ class PythonInterface:
 		tolerance=self.tol[2]*alt**2+self.tol[1]*alt+self.tol[0] #Determine altimeter error tolerance
 		if abs(alt_err)>tolerance and self.stdpress==0 and self.err==1:
 			alt_err_str=self.getSign(alt_err)+str(round(alt_err))
-			self.msg1="Local QNH "+getBaroString(bar_act)+", "+alt_err_str+" feet!"
+			self.msg1="Local QNH "+self.getBaroString(bar_act)+", "+alt_err_str+" feet!"
 			self.remainingShowTime=self.showTime
 		
 		if round(self.last_bar,2)!=round(bar,2):
