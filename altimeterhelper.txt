@@ -1,20 +1,49 @@
-09/05/2014 - Updated the code to add some functionality. I did not update the C version, so it is not included. If there are any 64-bit Linux users out there that don't want to use the Python version, let me know and I may try to keep the C version up to date.
 
-The old hard-coded "hot key" of Shift+Ctrl+B has been replaced with a custom command. You can now go to the "Joysticks and Controls" settings to create your own key combination for this feature. You can view the extra commands from the upper right of that window.
+This is a Python plugin that uses Sandy Barbour's Python Interface.
+ 
+Tested on 64-bit Arch Linux running X-Plane 10.35, Python Interface 2.73.06.
+ 
+This plugin will display a small overlay window (for 3 seconds) every time the altimeter setting is changed. This is helpful for cases where the setting is hard to read, or when outside the cockpit.
+ 
+The altimeter can also be automatically set with a custom command ("althelp/set_altimeter"), which will use either 29.92 (if above transition altitude) or the current local altimeter (if below transition altitude).
+ 
+The plugin will also automatically switch the altimeter when passing through transition altitude.
+ 
+To Do:
+I welcome any suggestions.
+ 
+Notes:
+You can see if it's working just by changing the altimeter setting.
+Setting the altimeter with your custom key combo when below or descending through transition altitude uses the pressure setting from your current position. Depending on conditions, it may be different further along your course.
+Pressing "Save" will save your settings and close the settings window. Pressing close will cancel any changes and close the settings window.
 
-The plugin will now alert you if your altimeter setting causes your indicated altitude to be off by more than 250 feet. You can comment that part out of you don't want this.
+Update 2.0:
 
+As per suggestions by deetee, a menu entry has been added to support changing settings for transition altitude, pressure units, and error display. These should be saved to a file and remembered for future sessions. This doubled the length of the code and added some good functionality so I figured it's worth a 2.0 version.
+
+Rather than show both hPa and inHg, I decided to add an option for one or the other. Including both was making the messages longer than I would like them to be, and the Dial Magnifier plugin shows both anyway. If you don't find this optimal let me know and maybe we can find a solution.
+
+I also added a dataref for transition altitude. This can be written from other plugins, which will use the new value and save it as well. I am envisioning a separate plugin that sets the TA based on location... but I'm also envisioning that this will be a lot of work. :)
+
+If you want to disable the automatic change at the transition altitude, simply set the transition altitude higher than you intend to fly.
+ 
+Update 1.2:
+ 
+Updated the code to add some functionality. I did not update the C version, so it is not included. If there are any 64-bit Linux users out there that don't want to use the Python version, let me know and I may try to keep the C version up to date.
+ 
+You can now go to the "Joysticks and Controls" settings to create your own key combination for this feature. You can view the extra commands from the upper right of that window.
+ 
+The plugin will now alert you if your altimeter setting causes your indicated altitude to be off by more than a certain tolerance. You can comment that part out of you don't want this.
+ 
 The popup now shows the change in altimeter setting versus the previous setting. This is helpful to see how much of a change there was when descending through the transition altitude or using the key combination to set the altimeter.
+ 
+about:
+The "Visual Altimeter" plugin available here supports Windows, Mac, and Linux, but is unfortunately only 32-bit at this time. Since it has not been updated since 2007, I did not have much hope for an update anytime soon, and decided to write my own.
+ 
+The source code for a landing speed plugin was very helpful, and I used it as a basis for the display functions.
+http://www.babichev.info/en/projects/xgs/
 
-* Removed the "hot key" and replaced with a custom command
-* Moved the popup down slightly to not interfere with the Dial Magnifier plugin (thanks for the tip about that plugin, by the way)
-* In addition to the new altimeter setting, popup also shows the net change in inHg from previous setting
-* Transition altitude is now a variable so it can be easily changed as needed
-* Cleaned out some unneeded things from the code
 
-12/12/2014 - Some small changes to make it more reliable.
-
-* Changed transition altitude behavior to be more reliable and stable
-* Changed altitude error calculation to scale with altitude (Based on the US altimeter accuracy regulation)
-* Altitude error should not be shown when above transition level
-* Added code comments for better readability
+* Setting the transition altitude
+* Choosing units for displaying pressure setting
+* Choosing whether to show altitude error
