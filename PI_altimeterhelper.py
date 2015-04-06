@@ -68,7 +68,7 @@ class PythonInterface:
 		self.showTime=3 #Seconds to show the altimeter setting when changed
 		winPosX=20
 		winPosY=500
-		win_w=200
+		win_w=250
 		win_h=35
 		self.stdpress=0 #Whether standard pressure is set
 		_TAINI,_ErrINI,_HgINI=self.ReadSFromFile()
@@ -92,6 +92,10 @@ class PythonInterface:
 		self.CmdSHConn = XPLMCreateCommand("althelp/set_altimeter","Sets altimeter for current position and altitude")
 		self.CmdSHConnCB  = self.CmdSHConnCallback
 		XPLMRegisterCommandHandler(self, self.CmdSHConn,  self.CmdSHConnCB, 0, 0)
+		
+		self.tempCB0 = self.CallbackDatarefTA
+		self.tempCB1 = self.CallbackDatarefTAw
+		self.drTA  = XPLMRegisterDataAccessor(self, "althelp/transition_altitude",  xplmType_Int, 0, self.tempCB0, self.tempCB1, None, None, None, None, None, None, None, None, None, None, 0, 0)
 		
 		self.MenuItem1 = 0			#Flag if main window has already been created
 		Item = XPLMAppendMenuItem(XPLMFindPluginsMenu(), "Altimeter Helper", 0, 1)
@@ -137,6 +141,7 @@ class PythonInterface:
 
 	def XPluginStop(self):
 		XPLMUnregisterCommandHandler(self, self.CmdSHConn, self.CmdSHConnCB, 0, 0)
+		XPLMUnregisterDataAccessor(self, self.drTA)
 		XPLMUnregisterFlightLoopCallback(self, self.gameLoopCB, 0);
 		XPLMDestroyWindow(self, self.gWindow)
 		
@@ -153,6 +158,17 @@ class PythonInterface:
 		pass
 
 	def XPluginReceiveMessage(self, inFromWho, inMessage, inParam):
+		pass
+	
+	def CallbackDatarefTA(self, inref):
+		return self.trans_alt
+	
+	def CallbackDatarefTAw(self, inref, inval):
+		_, Err, inHg = self.ReadSFromFile()
+		self.WriteSToFile(str(inval),Err,inHg)
+		self.trans_alt=int(inval)
+		self.msg1="Transition altitude: "+str(inval)
+		self.remainingShowTime=self.showTime
 		pass
 	
 	#############################################################
