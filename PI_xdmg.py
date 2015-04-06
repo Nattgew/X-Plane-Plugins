@@ -201,12 +201,6 @@ class PythonInterface:
 		altitude=XPLMGetDataf(self.alt_ref)*3.33
 		ias=XPLMGetDataf(self.ias_ref)
 		flying=XPLMGetDatai(self.fly_ref)
-		if flying==0 and ias>60:
-			self.e1="FSE FLIGHT NOT STARTED"
-			self.err=1
-			return 1
-		else:
-			self.err=0
 		mixes=[]
 		XPLMGetDatavf(self.mix_ref, mixes, 0, self.num_eng)
 		if (mixes[0] > 0.95 and altitude > 900):
@@ -283,6 +277,13 @@ class PythonInterface:
 		self.msg[0]="Run: "+str(self.runtime)+" RPM: "+str(round(rpms[0]))
 		self.msg[2]="Mix: "+str(round(mixes[0],2))+" dmg: "+str(round(self.mixtureDamage,2))
 		self.msg[3]="En: "+str(self.eng_type[0])+" Prop: "+str(self.prop_type[0])
+		
+		if flying==0 and ias>60:
+			self.e1="FSE FLIGHT NOT STARTED"
+			self.err=1
+			return 1
+		else:
+			self.err=0
 
 		if self.end_flight>0:
 			return 5
