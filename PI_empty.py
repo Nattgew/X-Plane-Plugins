@@ -24,6 +24,7 @@ class PythonInterface:
 			self.msg.append("")
 		self.ac=""
 		self.eng_type=[]
+		self.started=0
 		
 		self.gameLoopCB=self.gameLoopCallback
 		self.DrawWindowCB=self.DrawWindowCallback
@@ -34,6 +35,8 @@ class PythonInterface:
 		self.CmdATConn = XPLMCreateCommand("","")
 		self.CmdATConnCB = self.CmdATConnCallback
 		XPLMRegisterCommandHandler(self, self.CmdATConn, self.CmdATConnCB, 0, 0)
+		
+		XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 0.25, 0)
 
 		return self.Name, self.Sig, self.Desc
 		
@@ -49,6 +52,7 @@ class PythonInterface:
 		return 0
 	
 	def XPluginStop(self):
+		XPLMUnregisterFlightLoopCallback(self, self.gameLoopCB, 0)
 		XPLMUnregisterCommandHandler(self, self.CmdATConn, self.CmdATConnCB, 0, 0)
 		XPLMDestroyWindow(self, self.gWindow)
 		pass
