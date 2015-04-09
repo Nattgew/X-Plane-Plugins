@@ -104,7 +104,7 @@ class PythonInterface:
 		XPLMAppendMenuItem(self.Id, "Settings", 1, 1)
 		
 		#Create the Main Window Widget
-		self.CreateSWidget(221, 640, 250, 150)
+		self.CreateSWidget(221, 640, 210, 135)
 		self.MenuItem1 = 1
 		XPHideWidget(self.SWidget)
 		
@@ -193,7 +193,7 @@ class PythonInterface:
 		TACaption = XPCreateWidget(x+20, y-30, x+50, y-50,1, "Transition altitude", 0, self.SWidget,xpWidgetClass_Caption)
 
 		# TA field
-		self.TAEdit = XPCreateWidget(x+130, y-30, x+180, y-50,1, _TAINI, 0, self.SWidget,xpWidgetClass_TextField)
+		self.TAEdit = XPCreateWidget(x+130, y-30, x+185, y-50,1, _TAINI, 0, self.SWidget,xpWidgetClass_TextField)
 		XPSetWidgetProperty(self.TAEdit, xpProperty_TextFieldType, xpTextEntryField)
 		XPSetWidgetProperty(self.TAEdit, xpProperty_Enabled, 1)
 
@@ -201,7 +201,7 @@ class PythonInterface:
 		ErrCaption = XPCreateWidget(x+20, y-50, x+50, y-70,1, "Altimeter error warning", 0, self.SWidget,xpWidgetClass_Caption)
 
 		# Error option
-		self.ErrOpt = XPCreateWidget(x+120, y-50, x+200, y-70,1, "", 0, self.SWidget,xpWidgetClass_Button)
+		self.ErrOpt = XPCreateWidget(x+140, y-50, x+210, y-70,1, "", 0, self.SWidget,xpWidgetClass_Button)
 		XPSetWidgetProperty(self.ErrOpt, xpProperty_ButtonType, xpRadioButton)
 		XPSetWidgetProperty(self.ErrOpt, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
 		XPSetWidgetProperty(self.ErrOpt, xpProperty_ButtonState, int(_ErrINI))
@@ -210,7 +210,7 @@ class PythonInterface:
 		HgCaption = XPCreateWidget(x+20, y-70, x+50, y-90,1, "Display inHg", 0, self.SWidget,xpWidgetClass_Caption)
 
 		# Units option
-		self.HgOpt = XPCreateWidget(x+120, y-70, x+200, y-90,1, "", 0, self.SWidget,xpWidgetClass_Button)
+		self.HgOpt = XPCreateWidget(x+140, y-70, x+210, y-90,1, "", 0, self.SWidget,xpWidgetClass_Button)
 		XPSetWidgetProperty(self.HgOpt, xpProperty_ButtonType, xpRadioButton)
 		XPSetWidgetProperty(self.HgOpt, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
 		XPSetWidgetProperty(self.HgOpt, xpProperty_ButtonState, int(_HgINI))
@@ -276,7 +276,7 @@ class PythonInterface:
 		# If menu selected create our widget dialog
 		if (inItemRef == 1):
 			if (self.MenuItem1 == 0):
-				self.CreateSWidget(221, 640, 250, 150)
+				self.CreateSWidget(221, 640, 210, 135)
 				self.MenuItem1 = 1
 			else:
 				if(not XPIsWidgetVisible(self.SWidget)):
