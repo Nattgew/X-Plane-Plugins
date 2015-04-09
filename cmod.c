@@ -460,9 +460,9 @@ int CmdFSConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //F
 		int loggedin=XPLMGetDatai(XPLMFindDataRef("fse/status/connected"));
 		int flying=XPLMGetDatai(XPLMFindDataRef("fse/status/flying"));
 		int airborne=XPLMGetDatai(XPLMFindDataRef("fse/status/airborne"));
-		char *buf= malloc(16);
-		sprintf(buf, "CMOD | FSE Status: C:%d F:%d A:%d\n", loggedin,flying,airborne);
-		XPLMDebugString(buf);
+		//char *buf= malloc(16);
+		//sprintf(buf, "CMOD | FSE Status: C:%d F:%d A:%d\n", loggedin,flying,airborne);
+		//XPLMDebugString(buf);
 		if (loggedin==0) {
 			fse_cmd=XPLMFindCommand("fse/server/connect");
 		} else if (flying==0) {
