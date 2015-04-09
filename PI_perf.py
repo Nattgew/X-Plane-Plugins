@@ -7,7 +7,6 @@ from XPLMUtilities import * #Commands
 from XPLMNavigation import * #Nav/FMS tools
 from XPLMPlugin import *
 import math
-import re
 import os
 import fileinput
 
@@ -96,6 +95,11 @@ class getaircraft:
 			self.setEW(self.name,12500)
 			self.ceiling=24
 			self.agl=1500
+		elif desc[0:15]=="['C-27J Spartan" or acf_icao=="C27J":
+			self.name="C27J"
+			self.setEW(self.name,15880)
+			self.ceiling=30
+			self.agl=1500
 		else:
 			if acf_icao!="": #I guess we'll trust it
 				self.name=acf_icao
@@ -104,7 +108,7 @@ class getaircraft:
 				print str(desc[0:8])
 			self.ceiling=30
 	
-	def setEW(self,AC,pyld): #Set aircraft EW to match FSE
+	def setEW(self,AC,pyld): #Set aircraft EW to match FSE payload capacity
 		MTOW=XPLMGetDataf(self.acf_MTOW_ref)
 		EW_now=XPLMGetDataf(self.acf_EW_ref)
 		EW=MTOW-pyld
@@ -221,6 +225,9 @@ class PythonInterface:
 		self.TRQ_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_TRQ") #NewtonMeters
 		self.RPM_ref=XPLMFindDataRef("sim/flightmodel/engine/POINT_tacrad") #prop speed, rad/sec?
 		self.ITT_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_ITT_c")
+		self.FF_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_FF_")
+		self.TH_ref=XPLMFindDataRef("sim/flightmodel/engine/POINT_thrust")
+		self.PWR_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_power")
 		self.alt_ref=XPLMFindDataRef("sim/flightmodel/position/elevation")
 		self.agl_ref=XPLMFindDataRef("sim/flightmodel/position/y_agl")
 		self.ias_ref=XPLMFindDataRef("sim/flightmodel/position/indicated_airspeed")
@@ -648,6 +655,16 @@ class PythonInterface:
 				else:
 					self.TO_pwr=300
 					TOP_str=""
+			elif self.aircraft.name=="C27J":
+				FF=[]
+				TH=[]
+				PWR=[]
+				XPLMGetDatavf(self.FF_ref, FF, 0, self.aircraft.num_eng)
+				XPLMGetDatavf(self.TH_ref, TH, 0, self.aircraft.num_eng)
+				XPLMGetDatavf(self.PWR_ref, PWR, 0, self.aircraft.num_eng)
+				tsfc=3600*FF[0]/(TH[0]/self.Nlb)
+				bsfc=3600*FF[0]/(PWR[0])
+				pwr=" T: "+str(round(tsfc,2))+"  B: "+str(round(bsfc,2))
 			else:
 				torque_ftlb=self.Nlb*self.mft*TRQ[0]
 				pwr=str(round(torque_ftlb,1))+" ftlb"
@@ -689,28 +706,6 @@ class PythonInterface:
 		XPLMGetFMSEntryInfo(destindex, None, destid, None, None, None, None)
 		dest=str(destid[0])
 		dalt=self.alt_dict[dest]
-		return dalt
-		if dest != self.current_dest:
-			# r'\b[01] [01] '+dest+r'\b'
-			# r'^1(6?|7?)\s+\d{1,5}\s+[01]\s+[01]\s+'+dest+r'\b'
-			regex=re.compile(r'^1(6?|7?)\s.*?'+dest+r'\b').search
-			dir1=os.path.join('Resources','default scenery','default apt dat','Earth nav data','apt.dat')
-			dir2=os.path.join('Custom Scenery','zzzz_FSE_Airports','Earth nav data','apt.dat')
-			for line in fileinput.input([dir1,dir2]): # I am forever indebted to Padraic Cunningham for this code
-				if regex(line):
-					params=line.split()
-					dalt=float(params[1])
-					break
-			else:
-				print "AP - "+dest+" not found, giving up"
-				dalt=0.0
-			fileinput.close()
-			self.current_dest=dest
-			self.elevate_dest=dalt
-		else:
-			#print "AP - Reusing elevation value for "+dest
-			dalt=self.elevate_dest
-		
 		return dalt
 	
 	def getDpro(self, AC, alt): #Show applicable descent profile
