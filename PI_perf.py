@@ -453,6 +453,11 @@ class PythonInterface:
 			climb=1000 if alt_ind<6000 else 750
 			speed=180
 			gph=75
+		elif self.aircraft.name=="C27J":
+			general_fl=int(dist/10+2)
+			climb=3000
+			speed=275
+			gph=400
 		else:
 			general_fl=int(dist/10+2) #General rule for PC-12 cruise altitude
 			climb=1000
