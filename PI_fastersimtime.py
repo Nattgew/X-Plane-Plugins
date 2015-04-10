@@ -28,7 +28,7 @@ class PythonInterface:
 		self.MouseClickCB=self.MouseClickCallback
 		self.gWindow=XPLMCreateWindow(self, winPosX, winPosY, winPosX + win_w, winPosY - win_h, 1, self.DrawWindowCB, self.KeyCB, self.MouseClickCB, 0)
 		
-		self.CmdATConn = XPLMCreateCommand("fsei/flight/efficiency","Show/hide efficiency info")
+		self.CmdATConn = XPLMCreateCommand("fastersimtime/toggle","Toggle 32x sim time rate")
 		self.CmdATConnCB = self.CmdATConnCallback
 		XPLMRegisterCommandHandler(self, self.CmdATConn, self.CmdATConnCB, 0, 0)
 
