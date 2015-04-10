@@ -18,10 +18,11 @@ class PythonInterface:
 		self.PWR_ref=XPLMFindDataRef("sim/flightmodel/engine/ENGN_power")
 		self.TIM_ref=XPLMFindDataRef("sim/time/sim_speed_actual")
 		self.Nlb=0.22481 # N to lbf
-		winPosX=1000
-		winPosY=800
-		win_w=230
-		win_h=80
+		self.Whp=0.00134102209 # W to hp
+		winPosX=800
+		winPosY=1000
+		win_w=200
+		win_h=50
 		self.msg1=""
 		self.msg2=""
 		self.started=0
@@ -89,8 +90,8 @@ class PythonInterface:
 		XPLMGetDatavf(self.TH_ref, TH, 0, 1)
 		XPLMGetDatavf(self.PWR_ref, PWR, 0, 1)
 		warp=XPLMGetDataf(self.TIM_ref)
-		tsfc=3600*FF[0]/(TH[0]/self.Nlb)
-		bsfc=3600*FF[0]/(PWR[0])
-		self.msg1="Time: "+str(round(warp,1))
-		self.msg2="T: "+str(round(tsfc,2))+"  B: "+str(round(bsfc,2))
+		tsfc=3600*FF[0]/(TH[0]*self.Nlb)
+		bsfc=3600*FF[0]/(PWR[0]*self.Whp)
+		self.msg1="Warp: "+str(round(warp,1))+" FF: "+str(round(FF[0],3))+" kg/s"
+		self.msg2="TSFC: "+str(round(tsfc,3))+"  BSFC: "+str(round(bsfc,3))
 		return 0.25
