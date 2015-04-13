@@ -290,12 +290,7 @@ class PythonInterface:
 		self.started=0
 		self.Dstarted=0
 		self.msg=[""]*5
-		# self.num_eng=0
 		self.TO_pwr=0
-		# self.eng_type=[]
-		# self.prop_type=[]
-		# self.flaps=(0,1)
-		# self.acf_short=""
 		self.aircraft=[]
 		self.current_dest=""
 		self.elevate_dest=0
@@ -351,6 +346,8 @@ class PythonInterface:
 		if gear==1: #If gear down, set AP for climb to destination
 			alt,climb=self.getFL(dalt,alt_ind,aphdg)
 			hdginit=self.getHDG(aphdg)
+			if self.aircraft.name=="C27J":
+				XPLMSetDataf(self.ap_spd_ref, 160)
 		else: #If gear up, set AP for descent to destination
 			alt=dalt
 			hdginit=aphdg
@@ -367,10 +364,13 @@ class PythonInterface:
 			else:
 				climb=-1000
 			alt+=self.aircraft.agl
+			if self.aircraft.name=="C27J":
+				XPLMSetDataf(self.ap_spd_ref, 200)
 		#Set autopilot values
 		XPLMSetDataf(self.ap_hdg_ref, hdginit)
 		XPLMSetDataf(self.ap_alt_ref, alt)
 		XPLMSetDataf(self.ap_vvi_ref, climb)
+		
 		# if self.maxcabin>0: #Attempt to set cabin altitude
 			# if alt>10000:
 				# cabalt=alt/ceiling*3048 #Approximate rule for PC-12 cabin altitude
@@ -466,7 +466,6 @@ class PythonInterface:
 		if speed>0:
 			fuel=dist/speed*gph
 			XPLMSpeakString("AP fuel estimate: "+str(int(round(fuel)))+" gal")
-			#XPLMSetDataf(self.ap_spd_ref, fuel) #Other plugin will show speed change, speed setting not important
 		general_fl+=int(dalt/1000+alt_ind/1000)/2 #Account for departure/arrival altitudes
 		if general_fl>self.aircraft.ceiling:
 				general_fl=self.aircraft.ceiling
@@ -508,7 +507,6 @@ class PythonInterface:
 	
 	def toggleInfo(self): #Toggle whether any info is computed/shown
 		if self.started==0:
-			# self.aircraft.name=self.getacfshort() #Find name of aircraft
 			self.aircraft=getaircraft()
 			XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 0.25, 0)
 			self.started=1
@@ -663,10 +661,10 @@ class PythonInterface:
 			elif self.aircraft.name=="C27J":
 				FF=[]
 				TH=[]
-				PWR=[]
+				PW=[]
 				XPLMGetDatavf(self.FF_ref, FF, 0, self.aircraft.num_eng)
 				XPLMGetDatavf(self.TH_ref, TH, 0, self.aircraft.num_eng)
-				XPLMGetDatavf(self.PWR_ref, PWR, 0, self.aircraft.num_eng)
+				XPLMGetDatavf(self.PWR_ref, PW, 0, self.aircraft.num_eng)
 				tsfc=3600*FF[0]/(TH[0]/self.Nlb)
 				bsfc=3600*FF[0]/(PWR[0])
 				pwr=" T: "+str(round(tsfc,2))+"  B: "+str(round(bsfc,2))
