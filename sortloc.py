@@ -18,7 +18,6 @@ def build_csv(): #return dictionary of airport locations, using FSE csv file
 	return loc_dict
 
 def buildkdata(): #i don't even know
-	loc_dict = {}
 	file='/mnt/data/XPLANE10/XSDK/icaodata.csv'
 	with open(file, 'r') as f:
 		has_header = csv.Sniffer().has_header(f.read(1024))
@@ -26,28 +25,40 @@ def buildkdata(): #i don't even know
 		reader = csv.reader(f)
 		if has_header:
 			next(reader)  # skip header row
+		lat_tot=0
+		lon_tot=0
+		latmax,lonmax,latmin,lonmin=100,200,100,200 #garbage to signal init
+		loc_dict = {}
+		apt_dict = {}
 		dataset=[]
-		trainingSet=[]
-		testSet=[]
 		for row in reader:
 			tup=(float(row[1]),float(row[2]))
 			dataset.append(tup)
 			loc_dict[row[0]]=tup
-			if random.random() < 0.66:
-				trainingSet.append(tup)
-			else:
-				testSet.append(tup)
+			apt_dict[tup]=row[0]
+			lat_tot+=tup[0]
+			lon_tot+=tup[1]
+			if tup[0]<latmin or latmin>90:
+				latmin=tup[0]
+			elif tup[0]>latmax or latmax>90:
+				latmax=tup[0]
+			if tup[1]<lonmin or lonmin>180:
+				lonmin=tup[1]
+			elif tup[1]>lonmax or lonmin>180:
+				lonmax=tup[1]
+	pts=len(lat_tot)
+	center=(lat_tot/pts,lon_tot/pts)
+	return loc_dict, apt_dict, dataset, center, latmin, latmax, lonmin, lonmax
 
-def getNeighbors(trainingSet, testInstance, k):
+def getNeighbors(dataset, testInstance, k): #Get k nearest neighbors
 	distances=[]
-	length=len(testInstance)-1
-	for x in range(len(trainingSet)):
-		dist=cosinedist(trainingSet[x][0],trainingSet[x][1],testinstance[0],testInstance[1])
-		distances.append((trainingSet[x], dist))
+	for x in range(len(dataset)):
+		dist=cosinedist(*dataset[x],*testinstance)
+		distances.append((dataset[x], dist, x))
 	distances.sort(key=operator.itemgetter(1))
 	neighbors=[]
-	for x in range(k)
-		neighbors.append(distances[x][0])
+	for x in range(k):
+		neighbors.append((distances[x][0], distances[x][2]))
 	return neighbors
 
 def cosinedist(lat1,lon1,lat2,lon2):
@@ -55,52 +66,64 @@ def cosinedist(lat1,lon1,lat2,lon2):
 	phi2 = math.radians(lat2)
 	dellamb = math.radians(lon2-lon1)
 	R = 6371000
-	# gives d in metres
 	d = math.acos( math.sin(phi1)*math.sin(phi2) + math.cos(phi1)*math.cos(phi2) * math.cos(dellamb) ) * R * 3.2808399 / 6076 # m to ft to Nm
 	return int(round(d))
 
-def getResponse(neighbors):
-	classVotes={}
-	for x in range(len(neighbors)):
-		response=neighbors[x][-1]
-		if response in classVotes:
-			classVotes[response]+=1
-		else
-			classVotes[response]=1
-	sortedVotes=sorted(classVotes.iteritems(),key=operator.itemgetter(1),reverse=True
-	return sortedVotes[0][0]
+def getseeds(dataset, seeds, i, k):
+	# if i==k:
+		# return seeds
+	# else:
+	for i in range(k):
+		points=len(dataset)
+		for x in range(i,k):
+			seeds[x]=dataset[int(random.random()*points)]
+		totaldist=[]
+		for x in range(k):
+			totaldist[x]=(x,0)
+			for y in range(k):
+				if y!=x:
+					totaldist[x][1]+=cosinedist(*seed[x],*seed[y])
+		totaldist.sort(key=operator.itemgetter(1),reverse=True)
+		best=[]
+		for x in range(i+1):
+			best.append(seed[totaldist[x][0]])
+		seeds=best
+		#return getseeds(dataset, best, i+1, k)
+
+def divvy(dataset, seeds):
+	divs=[]
+	for x in range(len(seeds)):
+		divs[x]=[]
+	while dataset!=[]:
+		for x in range(len(seeds)):
+			neighbors=getNeighbors(dataset, seeds[x], 25)
+			for i in range(len(neighbors)):
+				divs[x].append(neighbors[i][0])
+			for y in range(len(neighbors)):
+				del dataset[neighbors[y][1]]
+				for z in range(y+1,len(neighbors)):
+					if neighbors[z][1]>neighbors[y][1]:
+						neighbors[z][1]-=1
+	return divs
 
 maxlength=1950
 
 print("Building airport location dictionary from csv...")
-loc_dict=build_csv()
+#loc_dict=build_csv()
+loc_dict, apt_dict, dataset, center, latmin, latmax, lonmin, lonmax=buildkdata()
 
-input""
+maxdistest=cosinedist(latmin,lonmin,latmax,lonmax)
+
+input=""
 airports=input.split("-")
 
-each=length(airports)*5
+each=len(airports)*5
 divs=1
 while each>maxlength:
 	divs+=1
-	each=length(airports)*5/divs
+	each=len(airports)*5/divs
 
-latmin,lonmin=loc_dict[airports[0]] #Initialize min,max from within set
-latmax,lonmax=latmin,lonmin
-	
-for airport in apts:
-	lat,lon=loc_dict[airport]
-	if lat<latmin:
-		latmin=lat
-	elif lat>latmax:
-		latmax=lat
-	if lon<lonmin:
-		lonmin=lon
-	elif lon>lonmax:
-		lonmax=lon
+seeds=getseeds(dataset, [], x, divs)
 
-for airport in apts:
-	
-	for airport2 in apts:
-	
 	
 # http://machinelearningmastery.com/tutorial-to-implement-k-nearest-neighbors-in-python-from-scratch/
