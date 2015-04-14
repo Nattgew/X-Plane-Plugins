@@ -1,22 +1,11 @@
+#!/usr/bin/python
 from xml.dom import minidom
 import urllib.request
 import math
-import os
-import re
-import fileinput
-import csv
-import locale
-import time
-
-file='/mnt/data/XPLANE10/XSDK/mykey.txt'
-with open(file, 'r') as f:
-	mykey = f.readline()
-mykey=mykey.strip()
-chain=[]
-checked=["","",""]
-requests=[]
-totalto=0
-totalfrom=0
+import os, re, fileinput, csv
+import locale, time
+import sys, getopt
+import regions
 
 def fserequest(rqst,tagname):
 	global requests
@@ -119,7 +108,7 @@ def getseats(model):
 	elif model=="Beechcraft 1900D":
 		seats=19
 	elif model=="Alenia C-27J Spartan (IRIS)" or model=="Alenia C-27J Spartan":
-		seats=45
+		seats=48
 	elif model=="Saab 340B":
 		seats=34
 	elif model=="Cessna 208":
@@ -269,7 +258,7 @@ def distbwt(icaofrom,icaoto):
 	dist=cosinedist(lat1,lon1,lat2,lon2)
 	return dist
 
-def build_xplane_locations(): #return dictionary of airport locations
+def build_xplane_locations(): #keeping this in case FSE csv file fails
 	loc_dict = {}
 	in_ap=0
 	dir1='/mnt/data/XPLANE10/X-Plane10/Custom Scenery/zzzz_FSE_Airports/Earth nav data/apt.dat'
@@ -317,15 +306,15 @@ def walkthewalk(icaofrom,icaoto,chain,green,minpax,maxpax):
 		max=60
 	min_hdg=chgdir(hdg,min)
 	max_hdg=chgdir(hdg,max)
-	if green==2:
+	if green==2: #Include green jobs
 		jobs=paxto(icaoto,minpax,maxpax)
 		checked[2]=checked[2]+"-"+icaoto
 		pax="pax "
-	elif green==1:
+	elif green==1: #Wider (+/-120 deg) search
 		jobs=jobsto(icaoto,4000,maxpax) #(loc,arr,amt,typ,pay,exp)
 		checked[1]=checked[1]+"-"+icaoto
 		pax=""
-	else:
+	else: #Standard (+/-60 deg) search
 		jobs=jobsto(icaoto,4000,maxpax) #(loc,arr,amt,typ,pay,exp)
 		checked[0]=checked[0]+"-"+icaoto
 		pax=""
@@ -392,34 +381,108 @@ def nearby(icao,rad):
 	#print(near)
 	return near
 
-def bigjobs(apts):
+def bigjobs(apts,dir):
 	total=0
 	for airport in apts:
-		area=nearby(airport,50)
-		jobs=jobsfrom(area,30000,8)
+		if dir==0:
+			area=nearby(airport,50)
+			jobs=jobsfrom(area,30000,8) 
+		else:
+			jobs=jobsto(airport,30000,8)
 		printjobs(jobs,0)
 		total+=len(jobs)
-	print("Found "+str(total)+" big jobs at those airports:")
+	word="from near" if dir==0 else "to"
+	print("Found these "+str(total)+" big jobs "+word+" those airports:")
 
+def main(argv):
+	file='/mnt/data/XPLANE10/XSDK/mykey.txt'
+	with open(file, 'r') as f:
+		mykey = f.readline()
+	mykey=mykey.strip()
+	chain=[]
+	checked=["","",""]
+	requests=[]
+	totalto=0
+	totalfrom=0
+	walk=0
+	planes=0
+	sale=0
+	big=0
+	minrev=30000
+	minpax=4
+	maxpax=8
+	fromairports=""
+	toairports=""
+	fromregion=""
+	toregion=""
+	print("Building airport location dictionary from csv...")
+	loc_dict=build_csv()
+	syntaxstring='fses.py -hcpsb -f <from ICAOs> -t <to ICAOs> -r <min pay> -m <min pax> -n <max pax> -g <from region> -u <to region>'
+	try:
+		opts, args = getopt.getopt(argv,"hcpf:t:r:m:n:g:u:",["from=","to=","minrev=","minpax=","maxpax=","fromregion=","toregion="])
+	except getopt.GetoptError:
+		print syntaxstring
+		sys.exit(2)
+	for opt, arg in opts:
+		if opt=='-h':
+			print syntaxstring
+			sys.exit()
+		elif opt=='-c':
+			walk=1
+		elif opt=='-p':
+			planes=1
+		elif opt=='-s':
+			sale=1
+		elif opt=='-b':
+			big=1
+		elif opt in ("-r", "--minrev"):
+			minrev=int(arg)
+		elif opt in ("-m", "--minpax"):
+			minpax=int(arg)
+		elif opt in ("-n", "--maxpax"):
+			maxpax=int(arg)
+		elif opt in ("-f", "--from"):
+			fromairports=arg
+		elif opt in ("-t", "--to"):
+			toairports=arg
+		elif opt in ("g", "--fromregion"):
+			fromregion=regions.getairports(arg)
+		elif opt in ("u", "--to region"):
+			toregion=regions.getairports(arg)
+	if walk==1:
+		if fromairports!="" and toairports!="":
+			walkthewalk(fromairports,toairports,chain,0,minpax,maxpax)
+			printjobs(chain,1)
+		else:
+			print 'fses.py: need both from and to airports for -c chain option'
+			sys.exit(2)
+	elif big==1:
+		if fromairports!="":
+			bigjobs(fromairports,0)
+		if toairports!="":
+			bigjobs(toairports,1)
+		if fromregion!="":
+			bigjobs(fromregion,0)
+		if toregion!="":
+			bigjobs(toregion,1)
+	else:
+		if fromairports!="":
+			jobs=jobsfrom(fromairports,minrev,maxpax)
+			printjobs(jobs,0)
+		if toairports!="":
+			jobs=jobsto(toairports,minrev,maxpax)
+			printjobs(jobs,0)
+	if sale==1:
+		acforsale()
+	if planes==1:
+		dudewheresmyairplane()
+		jobs=jobsforairplanes(minrev)
+		printjobs(jobs,0)
+	
+	
+	print("Made "+str(len(requests))+" requests in "+str(requests[len(requests)-1]-requests[0])+" secs.")
+	print("Considered "+str(totalto)+" jobs to and "+str(totalfrom)+" jobs from airports.")
 
-print("Building airport location dictionary from csv...")
-loc_dict=build_csv()
-
-acforsale()
-
-#walkthewalk("MRCH","SEGU",chain,0,4,8)
-#printjobs(chain,1)
-
-#bigjobs(("SPIM","SPJJ","SEGU","SEQU","SPZO","SPQU","SPJN","SPGM","SPOL","SETA","SPEO","SKBO","SKGB","SKCL","MPTO","MPHO"))
-
-jobs=jobsforairplanes(10000)
-
-#Airports to watch
-#apts="SPIM-SPJJ-SEGU-SEQU-SPZO-SPQU-SPJN-SPGM-SPOL-SETA-SPEO-SKBO-SKGB-SKCL-MPTO-MPHO"
-#jobs=jobsfrom(apts,30000,32)
-#printjobs(jobs,0)
-
-dudewheresmyairplane()
-
-print("Made "+str(len(requests))+" requests in "+str(requests[len(requests)-1]-requests[0])+" secs.")
-print("Considered "+str(totalto)+" jobs to and "+str(totalfrom)+" jobs from airports.")
+if __name__ == "__main__":
+   main(sys.argv[1:])
+   
