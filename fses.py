@@ -213,25 +213,13 @@ def printjobs(jobs,rev):
 	for job in jobs:
 		print(job[2]+" "+job[3]+" "+job[0]+"-"+job[1]+" $"+str(int(job[4]))+" "+str(distbwt(job[0],job[1]))+" "+job[5])
 
-def haverdist(lat1,lon1,lat2,lon2):
-	#http://www.movable-type.co.uk/scripts/latlong.html
-	R = 6371000; # metres
-	phi1 = math.radians(lat1)
-	phi2 = math.radians(lat2)
-	delphi = math.radians(lat2-lat1)
-	dellamb = math.radians(lon2-lon1)
-	a = math.sin(delphi/2) * math.sin(delphi/2) + math.cos(phi1) * math.cos(phi2) * math.sin(dellamb/2) * math.sin(dellamb/2)
-	c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
-	d = R * c * 3.2808399 / 6076 # m to ft to Nm
-	return int(round(d))
-
 def cosinedist(lat1,lon1,lat2,lon2):
 	phi1 = math.radians(lat1)
 	phi2 = math.radians(lat2)
 	dellamb = math.radians(lon2-lon1)
-	R = 6371000
+	R = 3440.06479 # Nm
 	# gives d in metres
-	d = math.acos( math.sin(phi1)*math.sin(phi2) + math.cos(phi1)*math.cos(phi2) * math.cos(dellamb) ) * R * 3.2808399 / 6076 # m to ft to Nm
+	d = math.acos( math.sin(phi1)*math.sin(phi2) + math.cos(phi1)*math.cos(phi2) * math.cos(dellamb) ) * R
 	return int(round(d))
 
 def inithdg(lat1,lon1,lat2,lon2):
