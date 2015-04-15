@@ -412,7 +412,7 @@ acforsale()
 
 #bigjobs(("SPIM","SPJJ","SEGU","SEQU","SPZO","SPQU","SPJN","SPGM","SPOL","SETA","SPEO","SKBO","SKGB","SKCL","MPTO","MPHO"))
 
-jobs=jobsforairplanes(10000)
+#jobs=jobsforairplanes(10000)
 
 #Airports to watch
 #apts="SPIM-SPJJ-SEGU-SEQU-SPZO-SPQU-SPJN-SPGM-SPOL-SETA-SPEO-SKBO-SKGB-SKCL-MPTO-MPHO"
