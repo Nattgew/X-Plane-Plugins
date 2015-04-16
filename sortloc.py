@@ -37,13 +37,13 @@ def builddset(airports, loc_dict): #Create dataset (list of coordinates) from ai
 		dataset.append(tup)
 		lat_tot+=tup[0]
 		lon_tot+=tup[1]
-		if tup[0]<latmin or latmin>90:
+		if tup[0]<latmin or abs(latmin)>90:
 			latmin=tup[0]
-		elif tup[0]>latmax or latmax>90:
+		elif tup[0]>latmax or abs(latmax)>90:
 			latmax=tup[0]
-		if tup[1]<lonmin or lonmin>180:
+		if tup[1]<lonmin or abs(lonmin)>180:
 			lonmin=tup[1]
-		elif tup[1]>lonmax or lonmin>180:
+		elif tup[1]>lonmax or abs(lonmax)>180:
 			lonmax=tup[1]
 	pts=len(dataset)
 	center=(lat_tot/pts,lon_tot/pts)
@@ -78,9 +78,9 @@ def draftNeighbors(dataset, testInstance, k): #Get k nearest neighbors AND remov
 		distances.sort(key=operator.itemgetter(1))
 		neighbors=[]
 		for x in range(k):
-			print("Adding neighbor: "+str(distances[x][0][0])+", "+str(distances[x][0][1]))
+			#print("Adding neighbor: "+str(distances[x][0][0])+", "+str(distances[x][0][1]))
 			neighbors.append(distances[x][0])
-			print("Removing from dataset")
+			#print("Removing from dataset")
 			dataset.remove(distances[x][0])
 		#neighbors.extend([distances[:k][0], distance[:k][2]])
 		return neighbors, dataset
@@ -113,20 +113,21 @@ def getseeds(dataset, k): # Choose airports to use as location basis for each di
 		best=[]
 		for x in range(i+1):
 			best.append(seeds[totaldist[x][0]])
-		seeds=best
-	return seeds
+	for i in range(len(best)):
+		dataset.remove(best[i])
+	return best,dataset
 
 def divvy(dataset, seeds): # Divide dataset into groups around the seed locations
 	divs=[]
 	for x in range(len(seeds)):
-		divs.append([])
+		divs.append([seeds[x]])
 	each=int(len(dataset)/20)
 	while dataset!=[]:
 		for x in range(len(seeds)):
 			if dataset==[]:
 				break
 			else:
-				print("Adding "+str(each)+" neighbors to div "+str(x))
+				#print("Adding "+str(each)+" neighbors to div "+str(x))
 				neighbors,dataset=draftNeighbors(dataset, seeds[x], each)
 				divs[x].extend(neighbors)
 				# for i in range(len(neighbors)):
@@ -142,11 +143,22 @@ def divvy(dataset, seeds): # Divide dataset into groups around the seed location
 
 def mapper(divs, center, mapwidth, mapheight): # Put the points on a map, color by division
 	m = Basemap(width=mapwidth, height=mapheight, projection='lcc', resolution=None, lat_0=center[0], lon_0=center[1])
+	#m = Basemap(width=35000000, height=22000000, projection='lcc', resolution=None, lat_0=1.0, lon_0=1.0)
+	#m = Basemap(projection='hammer',lon_0=-100)
 	m.shadedrelief()
 	colors=['b','g','r','c','m','k']
 	for i in range(len(divs)):
-		x, y = m(divs[i][:][0],divs[i][:][1])
-		m.scatter(x,y,2,marker='o',color=colors[i])
+		print("Plotting division "+str(i))
+		for j in range(len(divs[i])):
+#			print("Plotting coord "+str(divs[i][j][0])+", "+str(divs[i][j][1]))
+			x, y = m(divs[i][j][1],divs[i][j][0])
+			if j==0:
+				ptsize=10
+				c=i-3
+			else:
+				ptsize=3
+				c=i
+			m.scatter(x,y,ptsize,marker='o',color=colors[c])
 	plt.title('Locations of airports divided into regions',fontsize=12)
 	plt.show()
 
@@ -162,7 +174,8 @@ print("Building dataset from airport list...")
 dataset, center, latmin, latmax, lonmin, lonmax=builddset(airports,loc_dict)
 width=cosinedist(center[0],lonmin,center[0],lonmax)/3.2808399 * 6076 # Nm to ft to m
 height=cosinedist(latmin,center[1],latmax,center[1])/3.2808399 * 6076
-
+print('Map will be centered at %f.2, %f.2 from lat %.2f to %.2f and lon %.2f to %.2f'%(center[0],center[1],latmin,latmax,lonmin,lonmax))
+print('Map width %.2f x %.2f'%(width,height))
 # print("Finding max distance...")
 maxdistest=cosinedist(latmin,lonmin,latmax,lonmax)
 
@@ -173,10 +186,13 @@ while each>maxlength: #Find how many divisions need to be made
 	each=len(airports)*5/divs
 print("Will divide airports into "+str(divs)+" groups of about "+str(each)+" each.")
 print("Choosing seeds...")
-seeds=getseeds(dataset, divs)
+seeds,dataset=getseeds(dataset, divs)
+for seed in seeds:
+	apt=apt_dict[seed]
+	print(apt)
 print("Dividing airports...")
 divlist=divvy(dataset,seeds)
 print("Mapping results...")
-mapper(divlist,center,width*1.1,height*1.1)
+mapper(divlist,center,width*1.25,height*1.25)
 	
 # http://machinelearningmastery.com/tutorial-to-implement-k-nearest-neighbors-in-python-from-scratch/
