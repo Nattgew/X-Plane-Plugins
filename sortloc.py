@@ -95,11 +95,11 @@ def cosinedist(lat1,lon1,lat2,lon2): #Return distance between coordinates in Nm
 
 def getseeds(dataset, k): # Choose airports to use as location basis for each division
 	seeds=[]
-	for i in range(k): # Loop through the process once for each seed
-		points=len(dataset)
+	i,j=0,-1
+	while i<k: # Loop through the process multiple times for each seed
 		for x in range(i,k): # Choose new seed for remaining seeds
-			newseed=dataset[int(random.random()*points)]
-			if len(seeds)-1<x or len(seeds)==0: # Building seeds list
+			newseed=random.choice(dataset)
+			if len(seeds)-1<x: # Building seeds list
 				seeds.append(newseed)
 			else: # Replacing with new seeds
 				seeds[x]=newseed
@@ -113,15 +113,18 @@ def getseeds(dataset, k): # Choose airports to use as location basis for each di
 		best=[]
 		for x in range(i+1):
 			best.append(seeds[totaldist[x][0]])
-	for i in range(len(best)):
-		dataset.remove(best[i])
-	return best,dataset
+		seeds=best
+		j+=1
+		if j%1000==0: # That should do it
+			i+=1
+	return best
 
 def divvy(dataset, seeds): # Divide dataset into groups around the seed locations
 	divs=[]
 	for x in range(len(seeds)):
 		divs.append([seeds[x]])
-	each=int(len(dataset)/20)
+	#each=int(len(dataset)/20)
+	each=5 # This is fast so probably could go down to 1
 	while dataset!=[]:
 		for x in range(len(seeds)):
 			if dataset==[]:
@@ -141,24 +144,31 @@ def divvy(dataset, seeds): # Divide dataset into groups around the seed location
 					# del dataset[neighbors[y][1]]
 	return divs
 
-def mapper(divs, center, mapwidth, mapheight): # Put the points on a map, color by division
-	#m = Basemap(width=mapwidth, height=mapheight, projection='lcc', resolution=None, lat_0=center[0], lon_0=center[1])
-	#m = Basemap(width=35000000, height=22000000, projection='lcc', resolution=None, lat_0=1.0, lon_0=1.0)
-	m = Basemap(projection='hammer',lon_0=1)
+def mapper(divs, mincoords, maxcoords): # Put the points on a map, color by division
+	if maxcoords[1]-mincoords[1]>180 or maxcoords[0]-mincoords[0]>60: # World with center aligned
+		m = Basemap(projection='hammer',lon_0=(maxcoords[1]+mincoords[1])/2)
+	else: # Center map on area
+		width=maxcoords[1]-mincoords[1]
+		height=maxcoords[0]-mincoords[0]
+		m = Basemap(projection='lcc', resolution=None, llcrnrlon=mincoords[1]+0.1*width, llcrnrlat=mincoords[0]+0.1*height, urcrnrlon=maxcoords[1]+0.1*width, urcrnrlat=maxcoords[0]+0.1*height)
+		# m = Basemap(width=35000000, height=22000000, projection='lcc', resolution=None, lat_0=1.0, lon_0=1.0)
 	m.shadedrelief()
-	colors=['b','g','r','c','m','k']
+	# m.drawlsmask(land_color='#F5F6CE',ocean_color='#CEECF5',lakes=True)
+	colors=['b','g','r','c','m','#088A29','#FF8000','#6A0888','#610B0B','#8A4B08','#A9F5A9'] # HTML dark green, orange, purple, dark red, dark orange, light green
 	for i in range(len(divs)):
 		print("Plotting division "+str(i))
+		# x, y = m([k[1] for k in divs[i]], [k[0] for k in divs[i]])
 		for j in range(len(divs[i])):
 #			print("Plotting coord "+str(divs[i][j][0])+", "+str(divs[i][j][1]))
 			x, y = m(divs[i][j][1],divs[i][j][0])
 			if j==0:
 				ptsize=10
-				c=len(divs)%len(colors)-3
+				c='k'
 			else:
 				ptsize=3
-				c=len(divs)%len(colors)
-			m.scatter(x,y,ptsize,marker='o',color=colors[c])
+				c=i if i<len(colors) else i%colors
+			# m.scatter(x,y,ptsize,marker='o',color=colors[c])
+			m.plot(x,y,markersize=ptsize,marker='o',markerfacecolor=c)
 	plt.title('Locations of airports divided into regions',fontsize=12)
 	plt.show()
 
@@ -175,10 +185,11 @@ for apt,loc in loc_dict.items():
 
 print("Building dataset from airport list...")
 dataset, center, latmin, latmax, lonmin, lonmax=builddset(airports,loc_dict)
-width=cosinedist(center[0],lonmin,center[0],lonmax)/3.2808399 * 6076 # Nm to ft to m
-height=cosinedist(latmin,center[1],latmax,center[1])/3.2808399 * 6076
-print('Map will be centered at %f.2, %f.2 from lat %.2f to %.2f and lon %.2f to %.2f'%(center[0],center[1],latmin,latmax,lonmin,lonmax))
-print('Map width %.2f x %.2f'%(width,height))
+#width=cosinedist(center[0],lonmin,center[0],lonmax)/3.2808399 * 6076 # Nm to ft to m
+#height=cosinedist(latmin,center[1],latmax,center[1])/3.2808399 * 6076
+mapcenter=((latmax+latmin)/2,(lonmax+lonmin)/2)
+print('Map will be centered at %f.2, %f.2 from lat %.2f to %.2f and lon %.2f to %.2f'%(mapcenter[0],mapcenter[1],latmin,latmax,lonmin,lonmax))
+#print('Map width %.2f x %.2f'%(width,height))
 # print("Finding max distance...")
 maxdistest=cosinedist(latmin,lonmin,latmax,lonmax)
 
@@ -189,13 +200,16 @@ while each>maxlength: #Find how many divisions need to be made
 	each=len(airports)*5/divs
 print("Will divide airports into "+str(divs)+" groups of about "+str(each)+" each.")
 print("Choosing seeds...")
-seeds,dataset=getseeds(dataset, divs)
+seeds=getseeds(dataset, divs)
+print("Seeds are: ", end="")
 for seed in seeds:
+	dataset.remove(seed) #delete these items from the dataset
 	apt=apt_dict[seed]
-	print(apt)
+	print(apt, end="")
+print(" ")
 print("Dividing airports...")
 divlist=divvy(dataset,seeds)
 print("Mapping results...")
-mapper(divlist,center,width*1.25,height*1.25)
+mapper(divlist,(latmin,lonmin),(latmax,lonmax))
 	
 # http://machinelearningmastery.com/tutorial-to-implement-k-nearest-neighbors-in-python-from-scratch/
