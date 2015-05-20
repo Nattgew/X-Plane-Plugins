@@ -7,8 +7,14 @@ import locale, time
 import sys, getopt
 import regions
 import sqlite3
+from mpl_toolkits.basemap import Basemap
+import matplotlib.pyplot as plt
 
 def fserequest(rqst,tagname):
+	file='/mnt/data/XPLANE10/XSDK/mykey.txt'
+	with open(file, 'r') as f:
+		mykey = f.readline()
+	mykey=mykey.strip()
 	data = urllib.request.urlopen('http://server.fseconomy.net/data?userkey='+mykey+'&format=xml&'+rqst)
 	print("Parsing data...")
 	xmldoc = minidom.parse(data)
@@ -20,15 +26,15 @@ def fserequest(rqst,tagname):
 		tags = xmldoc.getElementsByTagName(tagname)
 	return tags
 
-def acforsale():
+def acforsale(conn):
 	print("Sending request for sales listing...")
 	airplanes = fserequest('query=aircraft&search=forsale','Aircraft')
 	print("Recording data...")
-	c=getdbcon()
-	iter=getmaxiter()
-	iter+=1
+	c=getdbcon(conn)
+	count=getmaxiter(conn)
+	count+=1
 	now=time.strftime("%Y-%m-%d %H:%M", time.gmtime())
-	row=(iter, now)
+	row=(count, now)
 	c.execute('INSERT INTO queries VALUES (?,?);',row)
 	for airplane in airplanes:
 		actype = airplane.getElementsByTagName("MakeModel")[0].firstChild.nodeValue
@@ -38,15 +44,18 @@ def acforsale():
 		price = float(airplane.getElementsByTagName("SalePrice")[0].firstChild.nodeValue)
 		loc = airplane.getElementsByTagName("Location")[0].firstChild.nodeValue
 		locname = airplane.getElementsByTagName("LocationName")[0].firstChild.nodeValue
-		row=(serial, actype, loc, locname, hours, price, iter)
+		row=(serial, actype, loc, locname, hours, price, count)
 		c.execute('INSERT INTO allac VALUES (?,?,?,?,?,?,?);',row)
 	conn.commit()
-	conn.close()
 
 def getdbcon(conn):
+	print("Initializing database...")
 	c = conn.cursor()
 	c.execute("select count(*) from sqlite_master where type = 'table';")
-	if c.fetchone() == 0:
+	exist=c.fetchone()
+	print("Found " + str(exist[0]) + " tables...")
+	if  exist[0]== 0:
+		print("Creating tables...")
 		c.execute('''CREATE TABLE allac
 			 (serial real, type text, loc text, locname text, hours real, price real, obsiter real)''')
 		c.execute('''CREATE TABLE queries
@@ -55,13 +64,16 @@ def getdbcon(conn):
 		conn.commit()
 	return c
 	
-def getmaxiter():
+def getmaxiter(conn):
+	c = conn.cursor()
 	c.execute('SELECT iter FROM queries ORDER BY iter DESC;')
-	if c.fetchone() > 0:
-		iter=c.fetchone()
+	count=c.fetchone()
+	print("Found "+str(count)+" previous queries")
+	if count is not None:
+		current=int(count[0])
 	else:
-		iter=0
-	return iter
+		current=0
+	return current
 
 def dudewheresmyairplane():
 	#planes={}
@@ -392,12 +404,12 @@ def mapper(points, mincoords, maxcoords): # Put the points on a map, color by di
 	m.shadedrelief()
 	# m.drawlsmask(land_color='#F5F6CE',ocean_color='#CEECF5',lakes=True)
 	colors=['b','g','r','c','m','#088A29','#FF8000','#6A0888','#610B0B','#8A4B08','#A9F5A9'] # HTML dark green, orange, purple, dark red, dark orange, light green
-	for i in range(len(divs)):
+	for i in range(len(points)):
 		print("Plotting division "+str(i))
 		# x, y = m([k[1] for k in divs[i]], [k[0] for k in divs[i]])
 #			print("Plotting coord "+str(divs[i][j][0])+", "+str(divs[i][j][1]))
 		x, y = m(points[i][1],points[i][0])
-		ptsize=3
+		ptsize=2
 		c='b'
 		m.plot(x,y,markersize=ptsize,marker='o',markerfacecolor=c)
 	plt.title('Locations of aircraft for sale',fontsize=12)
@@ -406,20 +418,27 @@ def mapper(points, mincoords, maxcoords): # Put the points on a map, color by di
 def gettotals(conn):
 	c=getdbcon(conn)
 	totals=[]
-	iters=getmaxiter()
+	iters=getmaxiter(conn)
+	print("Findind totals for "+str(iters)+" queries...")
 	for i in range(iters):
-		c.execute("SELECT COUNT(*) FROM allac WHERE iter = ?;", i)
-		totals.append(c.fetchone())
+		c.execute('SELECT COUNT(*) FROM allac WHERE obsiter = ?', (i+1,))
+		totals.append(c.fetchone()[0])
 	return totals
 
 def maplocations(conn):
 	c=getdbcon(conn)
+	print("Building airport location dictionary from csv...")
+	loc_dict=build_csv()
 	locations=[]
 	lat_tot=0
 	lon_tot=0
+	iters=getmaxiter(conn)
 	latmax,lonmax,latmin,lonmin=100,200,100,200 #garbage to signal init
-	for row in c.execute("SELECT loc FROM allac WHERE iter = ?;", iters)
-		lat,lon=loc_dict[row[0]]
+	for row in c.execute('SELECT loc FROM allac WHERE obsiter = ?', (iters,)):
+		try:
+			lat,lon=loc_dict[row[0]]
+		except KeyError:
+			continue
 		locations.append((lat,lon))
 		lat_tot+=lat
 		lon_tot+=lon
@@ -437,89 +456,23 @@ def maplocations(conn):
 	mapper(locations, (latmin,lonmin), (latmax,lonmax))
 
 def main(argv):
-	file='/mnt/data/XPLANE10/XSDK/mykey.txt'
-	with open(file, 'r') as f:
-		mykey = f.readline()
-	mykey=mykey.strip()
-	
 	requests=[]
 	
-	print("Building airport location dictionary from csv...")
-	loc_dict=build_csv()
+	
 	
 	conn = sqlite3.connect('/mnt/data/XPLANE10/XSDK/forsale.db')
 	
-	acforsale(conn)
+	#acforsale(conn)
+	totals=gettotals(conn)
+
+	for i in range(len(totals)):
+		print("Query "+str(i+1)+ " found "+str(totals[i])+" planes for sale")
+	
+	maplocations(conn)
 	
 	# We can also close the connection if we are done with it.
 	# Just be sure any changes have been committed or they will be lost.
 	conn.close()
 	
-	syntaxstring='fses.py -hcpsb -f <from ICAOs> -t <to ICAOs> -r <min pay> -m <min pax> -n <max pax> -g <from region> -u <to region>'
-	try:
-		opts, args = getopt.getopt(argv,"hcpf:t:r:m:n:g:u:",["from=","to=","minrev=","minpax=","maxpax=","fromregion=","toregion="])
-	except getopt.GetoptError:
-		print syntaxstring
-		sys.exit(2)
-	for opt, arg in opts:
-		if opt=='-h':
-			print syntaxstring
-			sys.exit()
-		elif opt=='-c':
-			walk=1
-		elif opt=='-p':
-			planes=1
-		elif opt=='-s':
-			sale=1
-		elif opt=='-b':
-			big=1
-		elif opt in ("-r", "--minrev"):
-			minrev=int(arg)
-		elif opt in ("-m", "--minpax"):
-			minpax=int(arg)
-		elif opt in ("-n", "--maxpax"):
-			maxpax=int(arg)
-		elif opt in ("-f", "--from"):
-			fromairports=arg
-		elif opt in ("-t", "--to"):
-			toairports=arg
-		elif opt in ("g", "--fromregion"):
-			fromregion=regions.getairports(arg)
-		elif opt in ("u", "--to region"):
-			toregion=regions.getairports(arg)
-	if walk==1:
-		if fromairports!="" and toairports!="":
-			walkthewalk(fromairports,toairports,chain,0,minpax,maxpax)
-			printjobs(chain,1)
-		else:
-			print 'fses.py: need both from and to airports for -c chain option'
-			sys.exit(2)
-	elif big==1:
-		if fromairports!="":
-			bigjobs(fromairports,0)
-		if toairports!="":
-			bigjobs(toairports,1)
-		if fromregion!="":
-			bigjobs(fromregion,0)
-		if toregion!="":
-			bigjobs(toregion,1)
-	else:
-		if fromairports!="":
-			jobs=jobsfrom(fromairports,minrev,maxpax)
-			printjobs(jobs,0)
-		if toairports!="":
-			jobs=jobsto(toairports,minrev,maxpax)
-			printjobs(jobs,0)
-	if sale==1:
-		acforsale()
-	if planes==1:
-		dudewheresmyairplane()
-		jobs=jobsforairplanes(minrev)
-		printjobs(jobs,0)
-	
-	
-	print("Made "+str(len(requests))+" requests in "+str(requests[len(requests)-1]-requests[0])+" secs.")
-	print("Considered "+str(totalto)+" jobs to and "+str(totalfrom)+" jobs from airports.")
-
 if __name__ == "__main__":
    main(sys.argv[1:])
