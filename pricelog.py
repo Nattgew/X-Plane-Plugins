@@ -49,7 +49,7 @@ def acforsale(conn):
 	conn.commit()
 
 def getdbcon(conn):
-	print("Initializing database...")
+	print("Initializing database cursor...")
 	c = conn.cursor()
 	c.execute("select count(*) from sqlite_master where type = 'table';")
 	exist=c.fetchone()
@@ -59,7 +59,7 @@ def getdbcon(conn):
 		c.execute('''CREATE TABLE allac
 			 (serial real, type text, loc text, locname text, hours real, price real, obsiter real)''')
 		c.execute('''CREATE TABLE queries
-			 (iter real, qtime text)''')
+			 (obsiter real, qtime text)''')
 		# Save (commit) the changes
 		conn.commit()
 	return c
@@ -87,28 +87,6 @@ def dudewheresmyairplane():
 		#planes[reg]=(loc,eng,chk)
 		print(reg+" at "+loc+"  tot: "+eng+"  last: "+chk)
 
-def jobsforairplanes(price):
-	models={}
-	jobs=[]
-	print("Sending request for aircraft list...")
-	airplanes = fserequest('query=aircraft&search=key&readaccesskey='+mykey,'Aircraft')
-	for plane in airplanes:
-		loc = plane.getElementsByTagName("Location")[0].firstChild.nodeValue
-		mod = plane.getElementsByTagName("MakeModel")[0].firstChild.nodeValue
-		if loc!="In Flight":
-			near=nearby(loc,75)
-			try:
-				apts=models[mod]
-				apts=apts+"-"+near
-			except (KeyError,IndexError) as e:
-				apts=near
-			models[mod]=apts
-	for model,apts in models.items():
-		seats=getseats(model)
-		jobs=jobsfrom(apts,price,seats)
-		print(model+": "+str(seats)+" seats")
-		printjobs(jobs,0)
-	
 def getseats(model):
 	if model=="Pilatus PC-12":
 		seats=10
@@ -257,28 +235,6 @@ def distbwt(icaofrom,icaoto):
 	dist=cosinedist(lat1,lon1,lat2,lon2)
 	return dist
 
-def build_xplane_locations(): #keeping this in case FSE csv file fails
-	loc_dict = {}
-	in_ap=0
-	dir1='/mnt/data/XPLANE10/X-Plane10/Custom Scenery/zzzz_FSE_Airports/Earth nav data/apt.dat'
-	dir2='/mnt/data/XPLANE10/X-Plane10/Resources/default scenery/default apt dat/Earth nav data/apt.dat'
-	for line in fileinput.input([dir1,dir2]): # I am forever indebted to Padraic Cunningham for this code
-		params=line.split()
-		try:
-			header=params[0]
-			if in_ap=="1":
-				if header==100:
-					lat=float(params[9])
-					lon=float(params[10])
-					loc_dict[icao]=(lat,lon)
-				in_ap=0
-			if header=="1" or header=="16" or header=="17":
-				icao=params[4]
-				in_ap=1
-		except (KeyError,IndexError) as e:
-			pass
-	return loc_dict
-
 def build_csv(): #return dictionary of airport locations, using FSE csv file
 	loc_dict = {}
 	file='/mnt/data/XPLANE10/XSDK/icaodata.csv'
@@ -291,70 +247,6 @@ def build_csv(): #return dictionary of airport locations, using FSE csv file
 		for row in reader:
 			loc_dict[row[0]]=(float(row[1]),float(row[2]))
 	return loc_dict
-
-def walkthewalk(icaofrom,icaoto,chain,green,minpax,maxpax):
-	print("Walking from "+icaofrom+" to "+icaoto)
-	global checked
-	print("Basic direction from "+icaoto[0:4]+" to "+icaofrom)
-	hdg=dirbwt(icaoto[0:4],icaofrom)
-	if green>0:
-		min=-120
-		max=120
-	else:
-		min=-60
-		max=60
-	min_hdg=chgdir(hdg,min)
-	max_hdg=chgdir(hdg,max)
-	if green==2: #Include green jobs
-		jobs=paxto(icaoto,minpax,maxpax)
-		checked[2]=checked[2]+"-"+icaoto
-		pax="pax "
-	elif green==1: #Wider (+/-120 deg) search
-		jobs=jobsto(icaoto,4000,maxpax) #(loc,arr,amt,typ,pay,exp)
-		checked[1]=checked[1]+"-"+icaoto
-		pax=""
-	else: #Standard (+/-60 deg) search
-		jobs=jobsto(icaoto,4000,maxpax) #(loc,arr,amt,typ,pay,exp)
-		checked[0]=checked[0]+"-"+icaoto
-		pax=""
-	print("Searching "+pax+"job chain from "+icaofrom+" to "+icaoto+", hdg "+str(int(round(min_hdg)))+"-"+str(int(round(max_hdg)))+"...")
-	iter=0
-	for job in jobs:
-		iter+=1
-		if job[0]==icaofrom:
-			print("You win")
-			chain.append(job)
-			return chain
-		else:
-			hdg=dirbwt(job[1],job[0])
-			#print("JOB:"+job[2]+" "+job[3]+" "+job[0]+"-"+job[1]+" "+str(hdg)+" $"+str(int(job[4]))+" "+str(distbwt(job[0],job[1]))+"Nm "+job[5])
-			if (hdg<max_hdg and (hdg>min_hdg or min_hdg>max_hdg) or hdg>min_hdg and (hdg<max_hdg or min_hdg>max_hdg)):
-				print("Adding job "+job[0]+" to "+job[1]+" "+job[2]+" "+job[3]+" $"+str(job[4])+" "+job[5])
-				chain.append(job)
-				return walkthewalk(icaofrom,job[0],chain,0,minpax,maxpax)
-	if len(icaoto)>4:
-		print("Failed to find jobs nearby")
-		if green<2:
-			return walkthewalk(icaofrom,icaoto,chain,green+1,minpax,maxpax)
-		else:
-			return chain
-	else:
-		near=nearby(icaoto,50)+"-"+icaoto
-		if len(near)>0:
-			if not near in checked[0]:
-				return walkthewalk(icaofrom,near,chain,0,minpax,maxpax)
-			elif not near in checked[1]:
-				print("Failed to find jobs at arpts nearby")
-				return walkthewalk(icaofrom,near,chain,1,minpax,maxpax)
-			elif not near in checked[2]:
-				print("Failed to find expanded direction jobs at arpts nearby")
-				return walkthewalk(icaofrom,near,chain,2,minpax,maxpax)
-			else:
-				print("Dead end")
-				return chain
-		else:
-				print("Dead end, no airports near"+icaoto)
-				return chain
 
 def chgdir(hdg,delt):
 	hdg+=delt
@@ -394,6 +286,7 @@ def bigjobs(apts,dir):
 	print("Found these "+str(total)+" big jobs "+word+" those airports:")
 	
 def mapper(points, mincoords, maxcoords): # Put the points on a map, color by division
+	print("Mapping points...")
 	if maxcoords[1]-mincoords[1]>180 or maxcoords[0]-mincoords[0]>60: # World with center aligned
 		m = Basemap(projection='hammer',lon_0=(maxcoords[1]+mincoords[1])/2)
 	else: # Center map on area
@@ -404,31 +297,50 @@ def mapper(points, mincoords, maxcoords): # Put the points on a map, color by di
 	m.shadedrelief()
 	# m.drawlsmask(land_color='#F5F6CE',ocean_color='#CEECF5',lakes=True)
 	colors=['b','g','r','c','m','#088A29','#FF8000','#6A0888','#610B0B','#8A4B08','#A9F5A9'] # HTML dark green, orange, purple, dark red, dark orange, light green
-	for i in range(len(points)):
-		print("Plotting division "+str(i))
+	#for i in range(len(points)):
+		#print("Plotting division "+str(i))
 		# x, y = m([k[1] for k in divs[i]], [k[0] for k in divs[i]])
 #			print("Plotting coord "+str(divs[i][j][0])+", "+str(divs[i][j][1]))
-		x, y = m(points[i][1],points[i][0])
-		ptsize=2
-		c='b'
-		m.plot(x,y,markersize=ptsize,marker='o',markerfacecolor=c)
+		# x, y = m(points[i][1],points[i][0])
+	x, y = m([i[1] for i in points], [i[0] for i in points])
+	ptsize=2
+	c='b'
+	m.plot(x,y,markersize=ptsize,marker='o',markerfacecolor=c)
 	plt.title('Locations of aircraft for sale',fontsize=12)
 	plt.show()
 
-def gettotals(conn):
+def gettotals(conn,fr,to):
 	c=getdbcon(conn)
 	totals=[]
-	iters=getmaxiter(conn)
 	print("Findind totals for "+str(iters)+" queries...")
-	for i in range(iters):
+	for query in c.execute('SELECT qtime FROM queries WHERE obsiter = ? AND qtime BETWEEN ? AND ?', (i+1,fr,to)):
+		qtime=query[0]
 		c.execute('SELECT COUNT(*) FROM allac WHERE obsiter = ?', (i+1,))
-		totals.append(c.fetchone()[0])
+		total=int(c.fetchone()[0])
+		totals.append((qtime,total))
 	return totals
+
+def getaverages(actype,fr,to):
+	c=getdbcon(conn)
+	averages=[]
+	print("Findind averages for "+actype+" in "+str(iters)+" queries...")
+	for query in c.execute('SELECT qtime FROM queries WHERE obsiter = ? AND qtime BETWEEN ? AND ?', (i+1,fr,to)):
+		numforsale=0
+		totalprice=0
+		qtime=query[0]
+		for sale in c.execute('SELECT price FROM allac WHERE obsiter = ? AND type = ?', (i+1,actype)):
+			totalprice+=int(sale[0])
+			numforsale+=1
+		if numforsale>0:
+			avg=totalprice/numforsale
+			averages.append((qtime,avg))
+	return averages
 
 def maplocations(conn):
 	c=getdbcon(conn)
 	print("Building airport location dictionary from csv...")
 	loc_dict=build_csv()
+	print("Creating locations list...")
 	locations=[]
 	lat_tot=0
 	lon_tot=0
@@ -455,23 +367,82 @@ def maplocations(conn):
 	
 	mapper(locations, (latmin,lonmin), (latmax,lonmax))
 
+def plotdates(prices,title,ylbl):
+	print("Plotting figure for: "+title)
+	fig, ax = plt.subplots()
+	ax.plot([i[0] for i in prices], [i[1] for i in prices], 'o-')
+	fig.autofmt_xdate()
+	plt.title(title,fontsize=12)
+	plt.xlabel("Date")
+	plt.ylabel(ylbl)
+	plt.show()
+
+def gettype(icao):
+	icaodict=types.getdict()
+	try:
+		actype=icaodict[icao]
+		success=1
+	except (KeyError,IndexError) as e:
+		print("Name for code "+icao+" not found!")
+		actype=""
+		success=0
+	return actype, success
+
 def main(argv):
-	requests=[]
-	
-	
 	
 	conn = sqlite3.connect('/mnt/data/XPLANE10/XSDK/forsale.db')
+	avg=0
+	tot=0
+	low=0
+	fromdate=""
+	todate=""
+		
+	syntaxstring='pricelog.py -unm -a <aircraft icao> -f <YYYY-MM-DD> -t <YYYY-MM-DD>'
+	try:
+		opts, args = getopt.getopt(argv,"unma:l:f:t:",["average=","lowest=","from=","to="])
+	except getopt.GetoptError:
+		print(syntaxstring)
+		sys.exit(2)
+	for opt, arg in opts:
+		if opt=='-h':
+			print(syntaxstring)
+			sys.exit()
+		elif opt=='-u':
+			acforsale(conn)
+		elif opt=='-n':
+			tot=1
+		elif opt=='-m':
+			maplocations(conn)
+		elif opt in ("-f", "--from"):
+			fromdate=arg
+		elif opt in ("-t", "--to"):
+			todate=arg
+		elif opt in ("-a", "--average"):
+			avgtype,avg=gettype(arg)
+		elif opt in ("-l", "--lowest"):
+			lowtype,low=gettype(arg)
+	if fromdate=="":
+		fromdate=="0000-01-01"
+	if todate=="":
+		todate=="9999-12-31"
 	
-	#acforsale(conn)
-	totals=gettotals(conn)
-
-	for i in range(len(totals)):
-		print("Query "+str(i+1)+ " found "+str(totals[i])+" planes for sale")
+	if tot==1:
+		totals=gettotals(conn,fromdate,todate)
+		# for i in range(len(totals)):
+			# print("Query "+str(i+1)+ " at "+totals[i][0]+" lists "+str(totals[i][1])+" planes for sale")
+		plotdates(totals,"Aircraft for sale","Aircraft")
 	
-	maplocations(conn)
+	if avg==1:
+		averages=getaverages(avgtype,fromdate,todate)
+		plotdates(averages,"Average price for "+avgtype,"Price")
+	
+	if low==1:
+		lows=getlows(lowtype,fromdate,todate)
+		plotdates(lows,"Lowest price for "+lowtype,"Price")
 	
 	# We can also close the connection if we are done with it.
-	# Just be sure any changes have been committed or they will be lost.
+	# Just be sure any changes have been committed or they will be lost. FOREVER
+	print("Finished, closing database...")
 	conn.close()
 	
 if __name__ == "__main__":
