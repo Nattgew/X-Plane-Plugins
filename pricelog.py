@@ -8,6 +8,7 @@ import sys, getopt
 import regions, actypes
 import sqlite3
 from mpl_toolkits.basemap import Basemap
+from matplotlib.dates import DateFormatter
 import matplotlib.pyplot as plt
 
 def fserequest(rqst,tagname):
@@ -285,28 +286,24 @@ def bigjobs(apts,dir):
 	word="from near" if dir==0 else "to"
 	print("Found these "+str(total)+" big jobs "+word+" those airports:")
 	
-def mapper(points, mincoords, maxcoords): # Put the points on a map, color by division
+def mapper(points, mincoords, maxcoords, title): # Put the points on a map, color by division
 	print("Mapping points...")
 	if maxcoords[1]-mincoords[1]>180 or maxcoords[0]-mincoords[0]>60: # World with center aligned
 		m = Basemap(projection='hammer',lon_0=(maxcoords[1]+mincoords[1])/2)
+		mk='o'
+		ptsize=2
 	else: # Center map on area
 		width=maxcoords[1]-mincoords[1]
 		height=maxcoords[0]-mincoords[0]
 		m = Basemap(projection='lcc', resolution=None, llcrnrlon=mincoords[1]+0.1*width, llcrnrlat=mincoords[0]+0.1*height, urcrnrlon=maxcoords[1]+0.1*width, urcrnrlat=maxcoords[0]+0.1*height)
-		# m = Basemap(width=35000000, height=22000000, projection='lcc', resolution=None, lat_0=1.0, lon_0=1.0)
+		verts = list(zip([0.,1.,1.,10.,10.,9.,6.,1.,1.,4.,1.,0.,-1.,-4.,-1.,-1.,-5.,-9.,-10.,-10.,-1.,-1.,0.],[9.,8.,3.,-1.,-2.,-2.,0.,0.,-5.,-8.,-8.,-9.,-8.,-8.,-5.,0.,0.,-2.,-2.,-1.,3.,8.,9.])) #Supposed to be an airplane
+		mk=(verts,0)
+		ptsize=5
 	m.shadedrelief()
-	# m.drawlsmask(land_color='#F5F6CE',ocean_color='#CEECF5',lakes=True)
-	colors=['b','g','r','c','m','#088A29','#FF8000','#6A0888','#610B0B','#8A4B08','#A9F5A9'] # HTML dark green, orange, purple, dark red, dark orange, light green
-	#for i in range(len(points)):
-		#print("Plotting division "+str(i))
-		# x, y = m([k[1] for k in divs[i]], [k[0] for k in divs[i]])
-#			print("Plotting coord "+str(divs[i][j][0])+", "+str(divs[i][j][1]))
-		# x, y = m(points[i][1],points[i][0])
 	x, y = m([i[1] for i in points], [i[0] for i in points])
-	ptsize=2
 	c='b'
-	m.plot(x,y,markersize=ptsize,marker='o',markerfacecolor=c)
-	plt.title('Locations of aircraft for sale',fontsize=12)
+	m.scatter(x,y,markersize=ptsize,marker=mk,markerfacecolor=b)
+	plt.title(title,fontsize=12)
 	plt.show()
 
 def gettotals(conn,fr,to):
@@ -328,16 +325,26 @@ def getaverages(conn,actype,fr,to):
 	for query in c.execute('SELECT * FROM queries WHERE qtime BETWEEN ? AND ?', (fr,to)):
 		numforsale=0
 		totalprice=0
-		qtime=query[1]
 		for sale in c.execute('SELECT price FROM allac WHERE obsiter = ? AND type = ?', (query[0],actype)):
 			totalprice+=int(sale[0])
 			numforsale+=1
 		if numforsale>0:
 			avg=totalprice/numforsale
-			averages.append((qtime,avg))
+			averages.append((query[1],avg))
 	return averages
 
-def maplocations(conn):
+def getlows(conn,actype,fr,to):
+	c=getdbcon(conn)
+	lows=[]
+	print("Finding low low prices for: "+actype+"...")
+	for query in c.execute('SELECT * FROM queries WHERE qtime BETWEEN ? AND ?', (fr,to)):
+		c.execute('SELECT price FROM allac WHERE obsiter = ? AND type = ? ORDER BY price', (query[0],actype))
+		price=c.fetchone()
+		if price is not None:
+			lows.append((query[1],int(price[0])))
+	return averages
+
+def maplocations(conn,actype):
 	c=getdbcon(conn)
 	print("Building airport location dictionary from csv...")
 	loc_dict=build_csv()
@@ -347,10 +354,16 @@ def maplocations(conn):
 	lon_tot=0
 	iters=getmaxiter(conn)
 	latmax,lonmax,latmin,lonmin=100,200,100,200 #garbage to signal init
-	for row in c.execute('SELECT loc FROM allac WHERE obsiter = ?', (iters,)):
+	if actype="":
+		acq=""
+		title="Locations of all aircraft for sale"
+	else:
+		acq=" AND type = "+actype
+		title="Locations of "+actype+" for sale"
+	for row in c.execute('SELECT loc FROM allac WHERE obsiter = ??', (iters,acq)):
 		try:
 			lat,lon=loc_dict[row[0]]
-		except KeyError:
+		except KeyError: #Probably "Airborne"
 			continue
 		locations.append((lat,lon))
 		lat_tot+=lat
@@ -366,11 +379,13 @@ def maplocations(conn):
 	pts=len(locations)
 	center=(lat_tot/pts,lon_tot/pts)
 	
-	mapper(locations, (latmin,lonmin), (latmax,lonmax))
+	mapper(locations, (latmin,lonmin), (latmax,lonmax), title)
 
 def plotdates(prices,title,ylbl):
 	print("Plotting figure for: "+title)
 	fig, ax = plt.subplots()
+	formatter=DateFormatter('%Y-%m-%d %H:%M')
+	plt.gcf().axes[0].xaxis.set_major_formatter(formatter)
 	ax.plot([i[0] for i in prices], [i[1] for i in prices], 'o-')
 	fig.autofmt_xdate()
 	plt.title(title,fontsize=12)
@@ -398,9 +413,7 @@ def main(argv):
 		print(syntaxstring)
 		sys.exit(2)
 	conn = sqlite3.connect('/mnt/data/XPLANE10/XSDK/forsale.db')
-	avg=0
 	tot=0
-	low=0
 	fromdate=""
 	todate=""
 	for opt, arg in opts:
@@ -412,7 +425,8 @@ def main(argv):
 		elif opt=='-n':
 			tot=1
 		elif opt=='-m':
-			maplocations(conn)
+			maptype,map=gettype(arg)
+			maplocations(conn,maptype)
 		elif opt in ("-f", "--from"):
 			fromdate=arg
 		elif opt in ("-t", "--to"):
