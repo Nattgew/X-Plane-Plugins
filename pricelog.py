@@ -5,7 +5,7 @@ import math
 import os, re, fileinput, csv
 import locale, time
 import sys, getopt
-import regions
+import regions, actypes
 import sqlite3
 from mpl_toolkits.basemap import Basemap
 import matplotlib.pyplot as plt
@@ -321,7 +321,7 @@ def gettotals(conn,fr,to):
 		totals.append((qtime,total))
 	return totals
 
-def getaverages(actype,fr,to):
+def getaverages(conn,actype,fr,to):
 	c=getdbcon(conn)
 	averages=[]
 	print("Finding averages for: "+actype+"...")
@@ -379,7 +379,7 @@ def plotdates(prices,title,ylbl):
 	plt.show()
 
 def gettype(icao):
-	icaodict=types.getdict()
+	icaodict=actypes.getdict()
 	try:
 		actype=icaodict[icao]
 		success=1
@@ -433,11 +433,11 @@ def main(argv):
 		plotdates(totals,"Aircraft for sale","Aircraft")
 	
 	if avg==1:
-		averages=getaverages(avgtype,fromdate,todate)
+		averages=getaverages(conn,avgtype,fromdate,todate)
 		plotdates(averages,"Average price for "+avgtype,"Price")
 	
 	if low==1:
-		lows=getlows(lowtype,fromdate,todate)
+		lows=getlows(conn,lowtype,fromdate,todate)
 		plotdates(lows,"Lowest price for "+lowtype,"Price")
 	
 	# We can also close the connection if we are done with it.
