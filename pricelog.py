@@ -312,10 +312,11 @@ def mapper(points, mincoords, maxcoords): # Put the points on a map, color by di
 def gettotals(conn,fr,to):
 	c=getdbcon(conn)
 	totals=[]
-	print("Findind totals for "+str(iters)+" queries...")
-	for query in c.execute('SELECT qtime FROM queries WHERE obsiter = ? AND qtime BETWEEN ? AND ?', (i+1,fr,to)):
-		qtime=query[0]
-		c.execute('SELECT COUNT(*) FROM allac WHERE obsiter = ?', (i+1,))
+	print("Finding total aircraft for sale from "+fr+" to "+to+"...")
+	for query in c.execute('SELECT * FROM queries WHERE qtime BETWEEN ? AND ?', (fr,to)):
+		qtime=query[1]
+		print("Reading query "+str(query[0])+" from "+qtime)
+		c.execute('SELECT COUNT(*) FROM allac WHERE obsiter = ?', (query[0],))
 		total=int(c.fetchone()[0])
 		totals.append((qtime,total))
 	return totals
@@ -323,12 +324,12 @@ def gettotals(conn,fr,to):
 def getaverages(actype,fr,to):
 	c=getdbcon(conn)
 	averages=[]
-	print("Findind averages for "+actype+" in "+str(iters)+" queries...")
-	for query in c.execute('SELECT qtime FROM queries WHERE obsiter = ? AND qtime BETWEEN ? AND ?', (i+1,fr,to)):
+	print("Finding averages for: "+actype+"...")
+	for query in c.execute('SELECT * FROM queries WHERE qtime BETWEEN ? AND ?', (fr,to)):
 		numforsale=0
 		totalprice=0
-		qtime=query[0]
-		for sale in c.execute('SELECT price FROM allac WHERE obsiter = ? AND type = ?', (i+1,actype)):
+		qtime=query[1]
+		for sale in c.execute('SELECT price FROM allac WHERE obsiter = ? AND type = ?', (query[0],actype)):
 			totalprice+=int(sale[0])
 			numforsale+=1
 		if numforsale>0:
@@ -390,19 +391,18 @@ def gettype(icao):
 
 def main(argv):
 	
-	conn = sqlite3.connect('/mnt/data/XPLANE10/XSDK/forsale.db')
-	avg=0
-	tot=0
-	low=0
-	fromdate=""
-	todate=""
-		
 	syntaxstring='pricelog.py -unm -a <aircraft icao> -f <YYYY-MM-DD> -t <YYYY-MM-DD>'
 	try:
 		opts, args = getopt.getopt(argv,"unma:l:f:t:",["average=","lowest=","from=","to="])
 	except getopt.GetoptError:
 		print(syntaxstring)
 		sys.exit(2)
+	conn = sqlite3.connect('/mnt/data/XPLANE10/XSDK/forsale.db')
+	avg=0
+	tot=0
+	low=0
+	fromdate=""
+	todate=""
 	for opt, arg in opts:
 		if opt=='-h':
 			print(syntaxstring)
@@ -422,9 +422,9 @@ def main(argv):
 		elif opt in ("-l", "--lowest"):
 			lowtype,low=gettype(arg)
 	if fromdate=="":
-		fromdate=="0000-01-01"
+		fromdate="0000-01-01"
 	if todate=="":
-		todate=="9999-12-31"
+		todate="9999-12-31"
 	
 	if tot==1:
 		totals=gettotals(conn,fromdate,todate)
