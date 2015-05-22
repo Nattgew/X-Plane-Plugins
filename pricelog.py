@@ -295,14 +295,17 @@ def mapper(points, mincoords, maxcoords, title): # Put the points on a map, colo
 	else: # Center map on area
 		width=maxcoords[1]-mincoords[1]
 		height=maxcoords[0]-mincoords[0]
-		m = Basemap(projection='lcc', resolution=None, llcrnrlon=mincoords[1]+0.1*width, llcrnrlat=mincoords[0]+0.1*height, urcrnrlon=maxcoords[1]+0.1*width, urcrnrlat=maxcoords[0]+0.1*height)
+		m = Basemap(projection='cyl', resolution=None, llcrnrlon=mincoords[1]-0.1*width, llcrnrlat=mincoords[0]-0.1*height, urcrnrlon=maxcoords[1]+0.1*width, urcrnrlat=maxcoords[0]+0.1*height)
 		verts = list(zip([0.,1.,1.,10.,10.,9.,6.,1.,1.,4.,1.,0.,-1.,-4.,-1.,-1.,-5.,-9.,-10.,-10.,-1.,-1.,0.],[9.,8.,3.,-1.,-2.,-2.,0.,0.,-5.,-8.,-8.,-9.,-8.,-8.,-5.,0.,0.,-2.,-2.,-1.,3.,8.,9.])) #Supposed to be an airplane
 		mk=(verts,0)
-		ptsize=5
+		ptsize=50
+	verts = list(zip([0.,1.,1.,10.,10.,9.,6.,1.,1.,4.,1.,0.,-1.,-4.,-1.,-1.,-5.,-9.,-10.,-10.,-1.,-1.,0.],[9.,8.,3.,-1.,-2.,-2.,0.,0.,-5.,-8.,-8.,-9.,-8.,-8.,-5.,0.,0.,-2.,-2.,-1.,3.,8.,9.])) #Supposed to be an airplane
+	mk=(verts,0)
+	ptsize=50
 	m.shadedrelief()
 	x, y = m([i[1] for i in points], [i[0] for i in points])
 	c='b'
-	m.scatter(x,y,markersize=ptsize,marker=mk,markerfacecolor=b)
+	m.scatter(x,y,s=ptsize,marker=mk,c=c)
 	plt.title(title,fontsize=12)
 	plt.show()
 
@@ -354,13 +357,14 @@ def maplocations(conn,actype):
 	lon_tot=0
 	iters=getmaxiter(conn)
 	latmax,lonmax,latmin,lonmin=100,200,100,200 #garbage to signal init
-	if actype="":
-		acq=""
+	q1="SELECT loc FROM allac WHERE obsiter = "+str(iters)
+	if actype=="":
 		title="Locations of all aircraft for sale"
 	else:
-		acq=" AND type = "+actype
+		q1+=" AND type = '"+actype+"'"
 		title="Locations of "+actype+" for sale"
-	for row in c.execute('SELECT loc FROM allac WHERE obsiter = ??', (iters,acq)):
+#	print("Running query: "+q1)
+	for row in c.execute(q1):
 		try:
 			lat,lon=loc_dict[row[0]]
 		except KeyError: #Probably "Airborne"
@@ -370,16 +374,16 @@ def maplocations(conn,actype):
 		lon_tot+=lon
 		if lat<latmin or abs(latmin)>90:
 			latmin=lat
-		elif lat>latmax or abs(latmax)>90:
+		if lat>latmax or abs(latmax)>90:
 			latmax=lat
 		if lon<lonmin or abs(lonmin)>180:
 			lonmin=lon
-		elif lon>lonmax or abs(lonmax)>180:
+		if lon>lonmax or abs(lonmax)>180:
 			lonmax=lon
 	pts=len(locations)
-	center=(lat_tot/pts,lon_tot/pts)
-	
-	mapper(locations, (latmin,lonmin), (latmax,lonmax), title)
+	if pts>0:
+		center=(lat_tot/pts,lon_tot/pts)
+		mapper(locations, (latmin,lonmin), (latmax,lonmax), title)
 
 def plotdates(prices,title,ylbl):
 	print("Plotting figure for: "+title)
@@ -387,6 +391,7 @@ def plotdates(prices,title,ylbl):
 	formatter=DateFormatter('%Y-%m-%d %H:%M')
 	plt.gcf().axes[0].xaxis.set_major_formatter(formatter)
 	ax.plot([i[0] for i in prices], [i[1] for i in prices], 'o-')
+#ValueError: could not convert string to float: '2015-05-20 00:16'
 	fig.autofmt_xdate()
 	plt.title(title,fontsize=12)
 	plt.xlabel("Date")
@@ -396,7 +401,10 @@ def plotdates(prices,title,ylbl):
 def gettype(icao):
 	icaodict=actypes.getdict()
 	try:
-		actype=icaodict[icao]
+		if icao!="":
+			actype=icaodict[icao]
+		else:
+			actype=""
 		success=1
 	except (KeyError,IndexError) as e:
 		print("Name for code "+icao+" not found!")
@@ -408,12 +416,14 @@ def main(argv):
 	
 	syntaxstring='pricelog.py -unm -a <aircraft icao> -f <YYYY-MM-DD> -t <YYYY-MM-DD>'
 	try:
-		opts, args = getopt.getopt(argv,"unma:l:f:t:",["average=","lowest=","from=","to="])
+		opts, args = getopt.getopt(argv,"unm:a:l:f:t:",["map=","average=","lowest=","from=","to="])
 	except getopt.GetoptError:
 		print(syntaxstring)
 		sys.exit(2)
 	conn = sqlite3.connect('/mnt/data/XPLANE10/XSDK/forsale.db')
 	tot=0
+	avg=0
+	low=0
 	fromdate=""
 	todate=""
 	for opt, arg in opts:
@@ -424,8 +434,8 @@ def main(argv):
 			acforsale(conn)
 		elif opt=='-n':
 			tot=1
-		elif opt=='-m':
-			maptype,map=gettype(arg)
+		elif opt in ("-m", "--map"):
+			maptype,domap=gettype(arg)
 			maplocations(conn,maptype)
 		elif opt in ("-f", "--from"):
 			fromdate=arg
