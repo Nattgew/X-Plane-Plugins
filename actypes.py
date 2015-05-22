@@ -112,7 +112,7 @@ def getdict():
 	'AC50': 'Aero Design AC500C',
 	'LJ24': 'Learjet 24B',
 	'LJ24i': 'Learjet 24B - Tip Tanks',
-	'': 'Supermarine Walrus MK 1',
+	'WALR': 'Supermarine Walrus MK 1',
 	'NORS': 'Noorduyn Norseman',
 	'AC68': 'Aero Design AC680S',
 	'PA46': 'Piper PA-46 Meridian',
