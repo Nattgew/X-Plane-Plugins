@@ -39,11 +39,11 @@ def builddset(airports, loc_dict): #Create dataset (list of coordinates) from ai
 		lon_tot+=tup[1]
 		if tup[0]<latmin or abs(latmin)>90:
 			latmin=tup[0]
-		elif tup[0]>latmax or abs(latmax)>90:
+		if tup[0]>latmax or abs(latmax)>90:
 			latmax=tup[0]
 		if tup[1]<lonmin or abs(lonmin)>180:
 			lonmin=tup[1]
-		elif tup[1]>lonmax or abs(lonmax)>180:
+		if tup[1]>lonmax or abs(lonmax)>180:
 			lonmax=tup[1]
 	pts=len(dataset)
 	center=(lat_tot/pts,lon_tot/pts)
@@ -150,7 +150,7 @@ def mapper(divs, mincoords, maxcoords): # Put the points on a map, color by divi
 	else: # Center map on area
 		width=maxcoords[1]-mincoords[1]
 		height=maxcoords[0]-mincoords[0]
-		m = Basemap(projection='lcc', resolution=None, llcrnrlon=mincoords[1]+0.1*width, llcrnrlat=mincoords[0]+0.1*height, urcrnrlon=maxcoords[1]+0.1*width, urcrnrlat=maxcoords[0]+0.1*height)
+		m = Basemap(projection='cyl', resolution=None, llcrnrlon=mincoords[1]+0.1*width, llcrnrlat=mincoords[0]+0.1*height, urcrnrlon=maxcoords[1]+0.1*width, urcrnrlat=maxcoords[0]+0.1*height)
 		# m = Basemap(width=35000000, height=22000000, projection='lcc', resolution=None, lat_0=1.0, lon_0=1.0)
 	m.shadedrelief()
 	# m.drawlsmask(land_color='#F5F6CE',ocean_color='#CEECF5',lakes=True)
@@ -210,6 +210,7 @@ print(" ")
 print("Dividing airports...")
 divlist=divvy(dataset,seeds)
 print("Mapping results...")
-mapper(divlist,(latmin,lonmin),(latmax,lonmax))
+if len(divlist)>0:
+	mapper(divlist,(latmin,lonmin),(latmax,lonmax))
 	
 # http://machinelearningmastery.com/tutorial-to-implement-k-nearest-neighbors-in-python-from-scratch/
