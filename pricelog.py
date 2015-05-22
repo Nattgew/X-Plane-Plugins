@@ -2,11 +2,10 @@
 from xml.dom import minidom
 import urllib.request
 import math
-import os, re, fileinput, csv
+import os, re, fileinput, csv, sqlite3
 import locale, time
 import sys, getopt
 import regions, actypes
-import sqlite3
 from mpl_toolkits.basemap import Basemap
 from matplotlib.dates import DateFormatter
 import matplotlib.pyplot as plt
@@ -87,25 +86,6 @@ def dudewheresmyairplane():
 		chk = plane.getElementsByTagName("TimeLast100hr")[0].firstChild.nodeValue
 		#planes[reg]=(loc,eng,chk)
 		print(reg+" at "+loc+"  tot: "+eng+"  last: "+chk)
-
-def getseats(model):
-	if model=="Pilatus PC-12":
-		seats=10
-	elif model=="Bombardier Challenger 300":
-		seats=8
-	elif model=="Ilyushin Il-14":
-		seats=32
-	elif model=="Beechcraft 1900D":
-		seats=19
-	elif model=="Alenia C-27J Spartan (IRIS)" or model=="Alenia C-27J Spartan":
-		seats=48
-	elif model=="Saab 340B":
-		seats=34
-	elif model=="Cessna 208":
-		seats=13
-	else:
-		seats=0
-	return seats
 
 def jobsfrom(apts,price,pax):
 	#High paying jobs from airports
@@ -290,18 +270,18 @@ def mapper(points, mincoords, maxcoords, title): # Put the points on a map, colo
 	print("Mapping points...")
 	if maxcoords[1]-mincoords[1]>180 or maxcoords[0]-mincoords[0]>60: # World with center aligned
 		m = Basemap(projection='hammer',lon_0=(maxcoords[1]+mincoords[1])/2)
-		mk='o'
-		ptsize=2
+		
 	else: # Center map on area
 		width=maxcoords[1]-mincoords[1]
 		height=maxcoords[0]-mincoords[0]
 		m = Basemap(projection='cyl', resolution=None, llcrnrlon=mincoords[1]-0.1*width, llcrnrlat=mincoords[0]-0.1*height, urcrnrlon=maxcoords[1]+0.1*width, urcrnrlat=maxcoords[0]+0.1*height)
+	if len(points) < 30: #Use awesome airplane symbol
 		verts = list(zip([0.,1.,1.,10.,10.,9.,6.,1.,1.,4.,1.,0.,-1.,-4.,-1.,-1.,-5.,-9.,-10.,-10.,-1.,-1.,0.],[9.,8.,3.,-1.,-2.,-2.,0.,0.,-5.,-8.,-8.,-9.,-8.,-8.,-5.,0.,0.,-2.,-2.,-1.,3.,8.,9.])) #Supposed to be an airplane
 		mk=(verts,0)
 		ptsize=50
-	verts = list(zip([0.,1.,1.,10.,10.,9.,6.,1.,1.,4.,1.,0.,-1.,-4.,-1.,-1.,-5.,-9.,-10.,-10.,-1.,-1.,0.],[9.,8.,3.,-1.,-2.,-2.,0.,0.,-5.,-8.,-8.,-9.,-8.,-8.,-5.,0.,0.,-2.,-2.,-1.,3.,8.,9.])) #Supposed to be an airplane
-	mk=(verts,0)
-	ptsize=50
+	else: #Use boring but more compact dots
+		mk='o'
+		ptsize=2
 	m.shadedrelief()
 	x, y = m([i[1] for i in points], [i[0] for i in points])
 	c='b'
@@ -342,6 +322,7 @@ def getlows(conn,actype,fr,to):
 	print("Finding low low prices for: "+actype+"...")
 	for query in c.execute('SELECT * FROM queries WHERE qtime BETWEEN ? AND ?', (fr,to)):
 		c.execute('SELECT price FROM allac WHERE obsiter = ? AND type = ? ORDER BY price', (query[0],actype))
+		#'SELECT price FROM allac WHERE sto > ? AND s sfrom < ?', (fr,to)
 		price=c.fetchone()
 		if price is not None:
 			lows.append((query[1],int(price[0])))
@@ -384,14 +365,15 @@ def maplocations(conn,actype):
 	if pts>0:
 		center=(lat_tot/pts,lon_tot/pts)
 		mapper(locations, (latmin,lonmin), (latmax,lonmax), title)
+	else:
+		print("No locations found for: "+actype)
 
 def plotdates(prices,title,ylbl):
 	print("Plotting figure for: "+title)
 	fig, ax = plt.subplots()
 	formatter=DateFormatter('%Y-%m-%d %H:%M')
-	plt.gcf().axes[0].xaxis.set_major_formatter(formatter)
+	ax.xaxis.set_major_formatter(formatter)
 	ax.plot([i[0] for i in prices], [i[1] for i in prices], 'o-')
-#ValueError: could not convert string to float: '2015-05-20 00:16'
 	fig.autofmt_xdate()
 	plt.title(title,fontsize=12)
 	plt.xlabel("Date")
@@ -414,7 +396,7 @@ def gettype(icao):
 
 def main(argv):
 	
-	syntaxstring='pricelog.py -unm -a <aircraft icao> -f <YYYY-MM-DD> -t <YYYY-MM-DD>'
+	syntaxstring='pricelog.py -un -m <aircraft icao> -a <aircraft icao> -f <YYYY-MM-DD> -t <YYYY-MM-DD>'
 	try:
 		opts, args = getopt.getopt(argv,"unm:a:l:f:t:",["map=","average=","lowest=","from=","to="])
 	except getopt.GetoptError:
