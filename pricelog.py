@@ -5,7 +5,7 @@ import math
 import os, re, fileinput, csv, sqlite3
 import locale, time
 import sys, getopt
-import regions, actypes
+import dicts
 from mpl_toolkits.basemap import Basemap
 from matplotlib.dates import DateFormatter
 import matplotlib.pyplot as plt
@@ -270,7 +270,6 @@ def mapper(points, mincoords, maxcoords, title): # Put the points on a map, colo
 	print("Mapping points...")
 	if maxcoords[1]-mincoords[1]>180 or maxcoords[0]-mincoords[0]>60: # World with center aligned
 		m = Basemap(projection='hammer',lon_0=(maxcoords[1]+mincoords[1])/2)
-		
 	else: # Center map on area
 		width=maxcoords[1]-mincoords[1]
 		height=maxcoords[0]-mincoords[0]
@@ -294,11 +293,10 @@ def gettotals(conn,fr,to):
 	totals=[]
 	print("Finding total aircraft for sale from "+fr+" to "+to+"...")
 	for query in c.execute('SELECT * FROM queries WHERE qtime BETWEEN ? AND ?', (fr,to)):
-		qtime=query[1]
-		print("Reading query "+str(query[0])+" from "+qtime)
+		print("Reading query "+str(query[0])+" from "+query[1])
 		c.execute('SELECT COUNT(*) FROM allac WHERE obsiter = ?', (query[0],))
 		total=int(c.fetchone()[0])
-		totals.append((qtime,total))
+		totals.append((query[1],total))
 	return totals
 
 def getaverages(conn,actype,fr,to):
@@ -326,8 +324,28 @@ def getlows(conn,actype,fr,to):
 		price=c.fetchone()
 		if price is not None:
 			lows.append((query[1],int(price[0])))
-	return averages
+	return lows
 
+def getlistings(conn,actype,lo,hi):
+	c=getdbcon(conn)
+	rdict=dicts.getregiondict()
+	listings=[]
+	print("Finding sell times for: "+actype+", "+str(lo)+" to "+str(hi)+"...")
+	for query in c.execute('SELECT * FROM queries'):
+	#serial real, type text, loc text, locname text, hours real, price real, obsiter real
+		for sale in c.execute('SELECT * FROM allac WHERE obsiter = ? AND type = ? AND price BETWEEN ? AND ?', (query[0],actype,lo,hi)):
+			region=rdict(sale[2])
+			match=0
+			for i in range(len(listings)):
+				if sale[0]==listings[i][0] and region==listings[i][1] and sale[5]==listings[i][2]:
+					listings[i][4]=query[0]
+					match=1
+					break
+			if match=0:
+				listings.append((sale[0],region,int(sale[5]),query[0],query[0]))
+				
+	return listings
+	
 def maplocations(conn,actype):
 	c=getdbcon(conn)
 	print("Building airport location dictionary from csv...")
@@ -368,12 +386,15 @@ def maplocations(conn,actype):
 	else:
 		print("No locations found for: "+actype)
 
-def plotdates(prices,title,ylbl):
+def plotdates(data,title,ylbl):
 	print("Plotting figure for: "+title)
 	fig, ax = plt.subplots()
 	formatter=DateFormatter('%Y-%m-%d %H:%M')
 	ax.xaxis.set_major_formatter(formatter)
-	ax.plot([i[0] for i in prices], [i[1] for i in prices], 'o-')
+	print("Attempting to plot the following dates:")
+	for date in [i[0] for i in data]:
+		print(date)
+	ax.plot([i[0] for i in data], [i[1] for i in data], 'o-')
 	fig.autofmt_xdate()
 	plt.title(title,fontsize=12)
 	plt.xlabel("Date")
@@ -381,7 +402,7 @@ def plotdates(prices,title,ylbl):
 	plt.show()
 
 def gettype(icao):
-	icaodict=actypes.getdict()
+	icaodict=dicts.getactypedict()
 	try:
 		if icao!="":
 			actype=icaodict[icao]
@@ -396,9 +417,9 @@ def gettype(icao):
 
 def main(argv):
 	
-	syntaxstring='pricelog.py -un -m <aircraft icao> -a <aircraft icao> -f <YYYY-MM-DD> -t <YYYY-MM-DD>'
+	syntaxstring='pricelog.py -un -dmac <aircraft icao> -ft <YYYY-MM-DD> -lh <price>'
 	try:
-		opts, args = getopt.getopt(argv,"unm:a:l:f:t:",["map=","average=","lowest=","from=","to="])
+		opts, args = getopt.getopt(argv,"hund:m:a:c:f:t:l:i:",["duration=","map=","average=","cheapest=","from=","to=","low=","high="])
 	except getopt.GetoptError:
 		print(syntaxstring)
 		sys.exit(2)
@@ -406,8 +427,11 @@ def main(argv):
 	tot=0
 	avg=0
 	low=0
-	fromdate=""
-	todate=""
+	dur=0
+	lowprice=0
+	highprice=99999999
+	fromdate="0000-01-01"
+	todate="9999-12-31"
 	for opt, arg in opts:
 		if opt=='-h':
 			print(syntaxstring)
@@ -416,6 +440,8 @@ def main(argv):
 			acforsale(conn)
 		elif opt=='-n':
 			tot=1
+		elif opt in ("-d", "--duration"):
+			durtype,dur=gettype(arg)
 		elif opt in ("-m", "--map"):
 			maptype,domap=gettype(arg)
 			maplocations(conn,maptype)
@@ -425,12 +451,12 @@ def main(argv):
 			todate=arg
 		elif opt in ("-a", "--average"):
 			avgtype,avg=gettype(arg)
-		elif opt in ("-l", "--lowest"):
+		elif opt in ("-c", "--cheapest"):
 			lowtype,low=gettype(arg)
-	if fromdate=="":
-		fromdate="0000-01-01"
-	if todate=="":
-		todate="9999-12-31"
+		elif opt in ("-l", "--low"):
+			lowprice=arg
+		elif opt in ("-i", "--high"):
+			highprice=arg
 	
 	if tot==1:
 		totals=gettotals(conn,fromdate,todate)
@@ -445,6 +471,15 @@ def main(argv):
 	if low==1:
 		lows=getlows(conn,lowtype,fromdate,todate)
 		plotdates(lows,"Lowest price for "+lowtype,"Price")
+	
+	if dur==1:
+		listings=getlistings(conn,durtype,lowprice,highprice)
+		durations=[]
+		for listing in listings:
+			duration=listings[4]-listings[3]
+			durations.append((listings[2],duration))
+			print(str(listings[2])+": "str(duration))
+		plotdates(durations,"Time to sell for"+durtype,"Days")
 	
 	# We can also close the connection if we are done with it.
 	# Just be sure any changes have been committed or they will be lost. FOREVER
