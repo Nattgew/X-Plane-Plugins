@@ -53,7 +53,7 @@ def getdbcon(conn):
 	c = conn.cursor()
 	c.execute("select count(*) from sqlite_master where type = 'table';")
 	exist=c.fetchone()
-	print("Found " + str(exist[0]) + " tables...")
+	#print("Found " + str(exist[0]) + " tables...")
 	if  exist[0]== 0:
 		print("Creating tables...")
 		c.execute('''CREATE TABLE allac
@@ -68,7 +68,7 @@ def getmaxiter(conn):
 	c = conn.cursor()
 	c.execute('SELECT iter FROM queries ORDER BY iter DESC;')
 	count=c.fetchone()
-	print("Found "+str(count)+" previous queries")
+	#print("Found "+str(count)+" previous queries")
 	if count is not None:
 		current=int(count[0])
 	else:
@@ -312,6 +312,7 @@ def getaverages(conn,actype,fr,to):
 		if numforsale>0:
 			avg=totalprice/numforsale
 			averages.append((query[1],avg))
+			print("Average is "+str(avg))
 	return averages
 
 def getlows(conn,actype,fr,to):
@@ -341,7 +342,7 @@ def getlistings(conn,actype,lo,hi):
 					listings[i][4]=query[0]
 					match=1
 					break
-			if match=0:
+			if match==0:
 				listings.append((sale[0],region,int(sale[5]),query[0],query[0]))
 				
 	return listings
@@ -391,7 +392,7 @@ def plotdates(data,title,ylbl):
 	fig, ax = plt.subplots()
 	formatter=DateFormatter('%Y-%m-%d %H:%M')
 	ax.xaxis.set_major_formatter(formatter)
-	print("Attempting to plot the following dates:")
+	print("Attempting to plot the following "+str(len(data))+" dates:")
 	for date in [i[0] for i in data]:
 		print(date)
 	ax.plot([i[0] for i in data], [i[1] for i in data], 'o-')
@@ -478,8 +479,8 @@ def main(argv):
 		for listing in listings:
 			duration=listings[4]-listings[3]
 			durations.append((listings[2],duration))
-			print(str(listings[2])+": "str(duration))
-		plotdates(durations,"Time to sell for"+durtype,"Days")
+			print(str(listings[2])+": "+str(duration))
+		plotdates(durations,"Time to sell for "+durtype,"Days")
 	
 	# We can also close the connection if we are done with it.
 	# Just be sure any changes have been committed or they will be lost. FOREVER
