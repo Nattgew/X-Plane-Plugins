@@ -1,0 +1,24 @@
+Faster Sim Time
+
+This is a Python plugin that uses Sandy Barbour's Python Interface.
+ 
+Tested on 64-bit Arch Linux running X-Plane 10.36, Python Interface 2.73.06.
+ 
+This plugin will toggle the sim speed between 32x and 1x. This is the same sim speed that Ctrl+T toggles up to 6x (which is separate from ground speed). It is subject to the same limitations, so it will only run as fast as the hardware allows.
+ 
+When set to 32x, a small window will be displayed to show the actual speed that the sim is achieving.
+
+The idea of this plugin is to allow the sim to run as fast as possible. In built-up areas, my hardware/settings are a bit slow even at 1x, but in other settings, such as a clear day over the ocean, I can get above 10x. Lower settings may allow higher speeds.
+ 
+To Do:
+Make it easier to change what speed is used.
+ 
+Notes:
+To change the max speed, just change the "self.MAX_SPEED=32" line towards the top to the value you want. Reload the plugins or restart X-Plane to make it take effect.
+ 
+about:
+The "X-Speed" plugin available here supports Windows, Mac, and Linux, but is unfortunately only 32-bit at this time. Right now I'm not trying to provide all functionality of that plugin, but just he basic ability to go over the default 6x acceleration.
+ 
+
+
+* Initial upload
