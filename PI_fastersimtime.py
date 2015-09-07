@@ -15,6 +15,7 @@ class PythonInterface:
 		
 		self.timeactual_ref=XPLMFindDataRef("sim/time/sim_speed_actual")
 		self.timerequest_ref=XPLMFindDataRef("sim/time/sim_speed")
+		self.MAX_SPEED=32
 		winPosX=800
 		winPosY=1000
 		win_w=100
@@ -46,7 +47,7 @@ class PythonInterface:
 				self.simtime=1
 				XPLMUnregisterFlightLoopCallback(self, self.gameLoopCB, 0)
 			else:
-				self.simtime=32
+				self.simtime=self.MAX_SPEED
 				XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 0.25, 0)
 			XPLMSetDatai(self.timerequest_ref, self.simtime)
 		return 0
