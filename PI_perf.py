@@ -61,7 +61,7 @@ class getaircraft:
 			self.ceiling=25
 			self.maxcabin=10000
 			self.agl=1000
-		elif desc=="['DeHavilland Dash 8 Q400']" or acf_icao=="DH8D":
+		elif desc[0:13]=="['Dash 8 Q400" or acf_icao=="DH8D"
 			self.name="DH8D"
 			self.setEW(self.name,12071)
 			self.flaps=(0.25,0.5,0.75,1.0) #FIX ME 5 10 15 35
@@ -100,6 +100,13 @@ class getaircraft:
 			self.setEW(self.name,15880)
 			self.ceiling=30
 			self.agl=1500
+		elif desc[0:15]=="['Boeing 757-20" or acf_icao=="B752":
+			self.name="B752"
+			self.ceiling=42
+		elif desc[0:15]=="['Bombardier Ca" or acf_icao=="CRJ2":
+			self.name="CRJ2"
+			self.ceiling=41
+			self.setEW(self.name,9892)
 		else:
 			if acf_icao!="": #I guess we'll trust it
 				self.name=acf_icao
@@ -300,7 +307,7 @@ class PythonInterface:
 	def build_dict(self): #return dictionary of airport altitudes
 		alt_dict = {}
 		dir2=os.path.join('Resources','default scenery','default apt dat','Earth nav data','apt.dat')
-		dir1=os.path.join('Custom Scenery','zzzz_FSE_Airports','Earth nav data','apt.dat')
+		dir1=os.path.join('Custom Scenery','x_Prefab_Fse_Airports','Earth nav data','apt.dat')
 		for line in fileinput.input([dir1,dir2]): # I am forever indebted to Padraic Cunningham for this code
 			params=line.split()
 			try:
@@ -347,7 +354,7 @@ class PythonInterface:
 			alt,climb=self.getFL(dalt,alt_ind,aphdg)
 			hdginit=self.getHDG(aphdg)
 			if self.aircraft.name=="C27J":
-				XPLMSetDataf(self.ap_spd_ref, 160)
+				XPLMSetDataf(self.ap_spd_ref, 130)
 		else: #If gear up, set AP for descent to destination
 			alt=dalt
 			hdginit=aphdg
@@ -454,7 +461,7 @@ class PythonInterface:
 			speed=180
 			gph=75
 		elif self.aircraft.name=="C27J":
-			general_fl=int(dist/10+2)
+			general_fl=int(dist/8+2)
 			climb=3000
 			speed=275
 			gph=400
@@ -666,8 +673,9 @@ class PythonInterface:
 				XPLMGetDatavf(self.TH_ref, TH, 0, self.aircraft.num_eng)
 				XPLMGetDatavf(self.PWR_ref, PW, 0, self.aircraft.num_eng)
 				tsfc=3600*FF[0]/(TH[0]/self.Nlb)
-				bsfc=3600*FF[0]/(PWR[0])
+				bsfc=3600*FF[0]/(PW[0])
 				pwr=" T: "+str(round(tsfc,2))+"  B: "+str(round(bsfc,2))
+				TOP_str=""
 			else:
 				torque_ftlb=self.Nlb*self.mft*TRQ[0]
 				pwr=str(round(torque_ftlb,1))+" ftlb"
