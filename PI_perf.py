@@ -61,7 +61,7 @@ class getaircraft:
 			self.ceiling=25
 			self.maxcabin=10000
 			self.agl=1000
-		elif desc[0:13]=="['Dash 8 Q400" or acf_icao=="DH8D"
+		elif desc[0:13]=="['Dash 8 Q400" or acf_icao=="DH8D":
 			self.name="DH8D"
 			self.setEW(self.name,12071)
 			self.flaps=(0.25,0.5,0.75,1.0) #FIX ME 5 10 15 35
