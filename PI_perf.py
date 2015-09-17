@@ -103,10 +103,11 @@ class getaircraft:
 		elif desc[0:15]=="['Boeing 757-20" or acf_icao=="B752":
 			self.name="B752"
 			self.ceiling=42
+			#self.flaps=(0,.1,.3,.5,.6,.8,1) #0,1,5,15,20,25,30 FIX ME
 		elif desc[0:15]=="['Bombardier Ca" or acf_icao=="CRJ2":
 			self.name="CRJ2"
 			self.ceiling=41
-			self.setEW(self.name,9892)
+			self.setEW(self.name,9298)
 		else:
 			if acf_icao!="": #I guess we'll trust it
 				self.name=acf_icao
@@ -818,6 +819,30 @@ class PythonInterface:
 			dist2_ih, dist2_il = self.get_index(dist2_i, len(dist2))
 			wnd_dist=self.interp2(dist2[dist2_ih], dist2[dist2_il], tod3[dist2_ih], tod3[dist2_il], dist2[dist2_ih], dist2[dist2_il], 30, 0, wgt_dist, hwind)
 			ldr="  LDR: "+str((int(wnd_dist)/100)*100)+" ft"
+		elif AC=="B752":
+			Tgd=-self.getdelISA(elev, -delISA) #Assume ISA difference is same at ground, find T
+			P=self.getPress(elev, SL)
+			DA=self.getDA(P,Tgd)
+			wgts=tuple(range(155,210,5))
+			PA=tuple(range(0,8000,2000))
+			ldrs=((3800,4100,4300,4400,4700), #flaps 30
+				(4000,4200,4400,4600,4800),  #160k
+				(4100,4300,4500,4600,4900),
+				(4200,4400,4600,4750,5200),  #170k
+				(4300,4500,4750,4900,5200),
+				(4400,4700,4850,5100,5400),  #180k
+				(4500,4700,5000,5250,5500),
+				(4700,4850,5200,5300,5600),  #190k
+				(4750,5000,5250,5450,5750),
+				(4800,5100,5400,5600,5800),  #200k
+				(4950,5200,5500,5700,6000),
+				(5150,5750,5600,5800,6300))  #210k
+			wgt_i=(wgt-155000)/2000
+			wgt_ih, wgt_il = self.get_index(wgt_i, len(wgts))
+			PA_i=PA/2000
+			PA_ih, PA_il = self.get_index(PA_i, len(PA))
+			ldist=self.interp2(ldrs[wgt_ih][PA_il], ldrs[wgt_il][PA_il], ldrs[wgt_ih][PA_ih], ldrs[wgt_il][PA_ih], wgt[wgt_ih], wgt[wgt_il], PA[PA_ih], PA[PA_il], wgt, PA)
+			ldr="  Vref: "+str(int(round(ldist)))+" kias"
 		else:
 			ldr=""
 		return ldr
@@ -875,7 +900,6 @@ class PythonInterface:
 			dist2_ih, dist2_il = self.get_index(dist2_i, len(dist2))
 			wnd_dist=self.interp2(dist2[dist2_ih], dist2[dist2_il], tod3[dist2_ih], tod3[dist2_il], dist2[dist2_ih], dist2[dist2_il], 30, 0, wgt_dist, hwind)
 			TOD="  TOD: "+str((int(wnd_dist)/100)*100)+" ft"
-			#TOD=""
 		elif AC=="PC12":
 			dis=tuple(range(-40,31,10))
 			alts=tuple(range(0,10001,2000))
@@ -975,7 +999,60 @@ class PythonInterface:
 			wgts=(27558,38581)
 			vapps=(73,76)
 			vapp=self.interp(vapps[1], vapps[0], wgts[1], wgts[0], wgt)
-			Vref="  Vref: "+str(int(round(vapp)))+" kias"
+			Vref="  Vref: "+str(int(round(vapp)))+" kias"'
+		elif AC=="B752":
+			wgts=tuple(range(160,230,2))
+			flaps=(0,1,5,15,20,25,30)
+			ias=((227,188,178,171,165,147,144), #230k
+				(227,186,176,171,164,146,144),
+				(225,185,176,169,164,146,143),
+				(224,185,175,168,162,144,143),
+				(223,183,174,168,162,143,142),
+				(223,183,174,167,161,143,140),  #220k
+				(221,182,172,167,161,142,140),
+				(220,182,172,165,160,142,139),
+				(218,181,171,165,158,140,139),
+				(218,181,171,164,158,140,138),
+				(217,179,169,162,157,139,137),  #210k
+				(216,178,169,162,157,138,137),
+				(214,178,168,161,155,138,135),
+				(214,176,167,161,155,137,135),
+				(213,175,167,160,154,137,134),
+				(211,175,165,158,153,135,134),  #200k
+				(210,174,165,158,153,135,133),
+				(209,174,164,157,151,134,131),
+				(207,172,162,157,151,133,131),
+				(206,171,162,155,151,133,130),
+				(206,171,161,154,150,131,129),  #190k
+				(204,169,160,154,150,131,129),
+				(203,168,160,153,148,130,127),
+				(202,168,158,153,147,129,127),
+				(200,167,157,165,147,129,126),
+				(199,165,157,150,146,127,126),  #180k
+				(199,165,155,150,146,127,125),
+				(197,164,154,148,143,126,124),
+				(196,162,154,147,143,125,124),
+				(195,162,153,147,141,125,122),
+				(193,161,151,146,140,124,121),  #170k
+				(192,160,151,144,140,124,121),
+				(192,158,150,144,139,122,120),
+				(190,158,148,143,137,121,118),
+				(189,157,148,141,137,121,118),
+				(188,157,147,141,136,120,117))  #160k
+			flap_i=-1
+			if flaps==0:
+				flap_i=0
+			else:
+				for i in range(5): #Reference correct flaps setting
+					if flaps == self.aircraft.flaps[i]:
+						flap_i=i
+			if flap_i==-1:
+				V1=""
+			else:
+				wgt_i=(wgt-160000)/2000
+				wgt_ih, wgt_il = self.get_index(wgt_i, len(wgts))
+				vr=self.interp(ias[wgt_ih][flap_i], ias[wgt_il][flap_i], wgts[wgt_ih], wgts[wgt_il], wgt)
+				Vref="  Vref: "+str(int(round(vr)))+" kias"
 		else:
 			Vref=""
 		return Vref
@@ -1103,6 +1180,25 @@ class PythonInterface:
 			bestCC=str(int(round(cc)))+" kias"
 		elif AC=="IL14":
 			bestCC="119 kias 2400/1050"
+		elif AC=="B752":
+			#M0.43-M0.47 to 16k, <M0.82 (?)
+			#300 kias to FL180, M0.68 to FL240, M0.80 above (Atlantic Sun)
+			#290 kias to FL180, 300 kias to FL270 or 500-1000 fpm (DALVA)
+			if alt<10000:
+				CC="250 kias"
+			elif DA<18000:
+				CC="300 kias"
+			elif DA<24000:
+				CC="M0.68"
+			else:
+				CC="M0.80"
+			bestCC=CC
+		elif AC=="CRJ2":
+			if alt<10000:
+				CC="250 kias"
+			else:
+				CC="280 kias"
+			bestCC=CC
 		else:
 			bestCC="N/A"
 		return bestCC
@@ -1129,9 +1225,9 @@ class PythonInterface:
 			temps=(10,15,20)
 			wt_i=wgt/5000-24
 			dI_i=delISA/5-2
-			if dI_i < 0: #+10 and +20 are to be used for temps below/above those as well
+			if dI_i<0: #+10 and +20 are to be used for temps below/above those as well
 				dI_i=0
-			elif dI_i > 2:
+			elif dI_i>2:
 				dI_i=2
 			wt_ih, wt_il = self.get_index(wt_i, len(GW))
 			dI_ih, dI_il = self.get_index(dI_i, len(temps))
@@ -1248,6 +1344,10 @@ class PythonInterface:
 			bestCruise=str(int(round(bc)))+" kias"
 		elif AC=="IL14":
 			bestCruise="135-184 kias"
+		elif AC=="B752":
+			bestCruise="M0.80"
+		elif AC=="CRJ2":
+			bestCruise="M0.74"
 		else:
 			bestCruise="N/A"
 		return bestCruise
