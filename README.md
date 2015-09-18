@@ -14,7 +14,8 @@ Calculates performance info based on the POH for certain planes. Data shown:
 <li>Cruise climb speed</li>
 <li>Max/Optimum flight level (B738)</li>
 <li>Best cruise speed</li>
-<li>Max cruise power</li></ul>
+<li>Max cruise power</li>
+<ul><li>Max cruise speed</li></ul>
 
 The following are shown regardless of aircraft:
 
@@ -24,10 +25,6 @@ The following are shown regardless of aircraft:
 <li>Gross weight</li>
 <li>Distance to next waypoint</li>
 <li>Power setting</li></ul>
-
-Possible future info:
-
-<ul><li>Max cruise speed</li></ul>
 
 Aircraft currently available:
 
@@ -39,7 +36,9 @@ In work:
 <ul><li>B1900D</li>
 <li>CL300</li>
 <li>Il-14</li>
-<li>DH8D</li></ul>
+<li>DH8D</li>
+<li>CRJ-200</li>
+<li>757-200</li></ul>
 
 There is also an autopilot setting function. When a destination is displayed in the FMS, this function will set cruise altitude and initial heading (if gear down) or descent altitude and heading (if gear up) based on the distance, elevation, and direction of the destination. These values are specifically tuned if the aircraft type is recognized.
 
