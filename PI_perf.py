@@ -735,6 +735,7 @@ class PythonInterface:
 		try:
 			dalt=self.alt_dict[dest]
 		except (KeyError,IndexError) as e:
+			XPLMSpeakString("ERROR: "+dest+" not found")
 			dalt=0
 		return dalt
 	
