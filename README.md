@@ -15,7 +15,8 @@ Calculates performance info based on the POH for certain planes. Data shown:
 <li>Max/Optimum flight level (B738)</li>
 <li>Best cruise speed</li>
 <li>Max cruise power</li>
-<ul><li>Max cruise speed</li></ul>
+<li>Max cruise speed</li></ul>
+
 
 The following are shown regardless of aircraft:
 
@@ -25,6 +26,7 @@ The following are shown regardless of aircraft:
 <li>Gross weight</li>
 <li>Distance to next waypoint</li>
 <li>Power setting</li></ul>
+
 
 Aircraft currently available:
 
