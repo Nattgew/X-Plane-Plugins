@@ -18,8 +18,8 @@ class getaircraft:
 		num_eng_ref=XPLMFindDataRef("sim/aircraft/engine/acf_num_engines")
 		eng_type_ref=XPLMFindDataRef("sim/aircraft/prop/acf_en_type")
 		prop_type_ref=XPLMFindDataRef("sim/aircraft/prop/acf_prop_type")
-		self.acf_EW_ref=XPLMFindDataRef("sim/aircraft/weight/acf_m_empty")
-		self.acf_MTOW_ref=XPLMFindDataRef("sim/aircraft/weight/acf_m_max")
+		self.acf_EW_ref=XPLMFindDataRef("sim/aircraft/weight/acf_m_empty") #kg
+		self.acf_MTOW_ref=XPLMFindDataRef("sim/aircraft/weight/acf_m_max") #kg
 		
 		self.eng_type=[]
 		self.prop_type=[]
@@ -146,7 +146,7 @@ class PythonInterface:
 	
 	def get_flapi(self, flaps): #Reference correct flaps setting
 		flap_i=-1
-		for i in range(3):
+		for i in range(len(flaps)):
 			if math.abs(flaps-self.aircraft.flaps[i]) <= 0.01: #Damn floating point
 				flap_i=i
 		return flap_i
@@ -1017,96 +1017,87 @@ class PythonInterface:
 			#print 'Vref %.0f %.0f %.0f %.0f %.0f = %.0f' % (vapps[wgt_ih], vapps[wgt_il], GW[wgt_ih], GW[wgt_il], wgt, vapp)
 			Vref="  Vref: "+str(int(round(vapp)))+" kias"
 		elif AC=="DH8D":
-			flap_i=self.get_flapi(flaps)
-			if flap_i==-1:
-				V1=""
-			else:
-				wgts=tuple(range(39600,63801,1100),64500)
-				ias=((124,127,128,129,131,133,134,135,137,139,140,142,143,145,146,147,149,150,152,153,155,155,157,158),	#0 deg
-					(114,115,117,118,120,122,124,125,126,127,129,130,132,133,134,136,137,138,139,141,142,143,145,145),	#5
-					(108,108,109,110,112,113,115,116,117,118,120,121,122,124,125,126,127,129,130,131,132,134,136,136),	#10
-					(105,105,105,105,107,108,109,110,112,113,114,115,117,118,119,120,121,123,124,125,126,128,130,129),	#15
-					(101,101,101,101,102,103,104,106,107,108,109,110,112,113,114,115,116,117,118,119,120,122,122,123))	#35
-				wgt_i=(wgt-39600)/1100 if wgt<63800 else (wgt-63800)/700
-				wgt_ih, wgt_il = self.get_index(wgt_i, len(wgts))
-				vr=self.interp(ias[flap_i][wgt_ih], ias[flap_i][wgt_il], wgts[wgt_ih], wgts[wgt_il], wgt)
-				Vref="  Vref: "+str(int(round(vr)))+" kias"
+			flap_i=self.get_flapi(flaps)+1
+			wgts=tuple(range(39600,63801,1100),64500)
+			ias=((124,127,128,129,131,133,134,135,137,139,140,142,143,145,146,147,149,150,152,153,155,155,157,158),	#0 deg
+				(114,115,117,118,120,122,124,125,126,127,129,130,132,133,134,136,137,138,139,141,142,143,145,145),	#5
+				(108,108,109,110,112,113,115,116,117,118,120,121,122,124,125,126,127,129,130,131,132,134,136,136),	#10
+				(105,105,105,105,107,108,109,110,112,113,114,115,117,118,119,120,121,123,124,125,126,128,130,129),	#15
+				(101,101,101,101,102,103,104,106,107,108,109,110,112,113,114,115,116,117,118,119,120,122,122,123))	#35
+			wgt_i=(wgt-39600)/1100 if wgt<63800 else (wgt-63800)/700
+			wgt_ih, wgt_il = self.get_index(wgt_i, len(wgts))
+			vr=self.interp(ias[flap_i][wgt_ih], ias[flap_i][wgt_il], wgts[wgt_ih], wgts[wgt_il], wgt)
+			Vref="  Vref: "+str(int(round(vr)))+" kias"
 		elif AC=="IL14":
 			wgts=(27558,38581)
 			vapps=(73,76)
 			vapp=self.interp(vapps[1], vapps[0], wgts[1], wgts[0], wgt)
 			Vref="  Vref: "+str(int(round(vapp)))+" kias"
 		elif AC=="B752":
-			flap_i=self.get_flapi(flaps)
-			if flap_i==-1:
-				V1=""
-			else:
-				wgts=tuple(range(160,230,2))
-				flaps=(0,1,5,15,20,25,30)
-				ias=((227,188,178,171,165,147,144), #230k
-					(227,186,176,171,164,146,144),
-					(225,185,176,169,164,146,143),
-					(224,185,175,168,162,144,143),
-					(223,183,174,168,162,143,142),
-					(223,183,174,167,161,143,140),  #220k
-					(221,182,172,167,161,142,140),
-					(220,182,172,165,160,142,139),
-					(218,181,171,165,158,140,139),
-					(218,181,171,164,158,140,138),
-					(217,179,169,162,157,139,137),  #210k
-					(216,178,169,162,157,138,137),
-					(214,178,168,161,155,138,135),
-					(214,176,167,161,155,137,135),
-					(213,175,167,160,154,137,134),
-					(211,175,165,158,153,135,134),  #200k
-					(210,174,165,158,153,135,133),
-					(209,174,164,157,151,134,131),
-					(207,172,162,157,151,133,131),
-					(206,171,162,155,151,133,130),
-					(206,171,161,154,150,131,129),  #190k
-					(204,169,160,154,150,131,129),
-					(203,168,160,153,148,130,127),
-					(202,168,158,153,147,129,127),
-					(200,167,157,165,147,129,126),
-					(199,165,157,150,146,127,126),  #180k
-					(199,165,155,150,146,127,125),
-					(197,164,154,148,143,126,124),
-					(196,162,154,147,143,125,124),
-					(195,162,153,147,141,125,122),
-					(193,161,151,146,140,124,121),  #170k
-					(192,160,151,144,140,124,121),
-					(192,158,150,144,139,122,120),
-					(190,158,148,143,137,121,118),
-					(189,157,148,141,137,121,118),
-					(188,157,147,141,136,120,117))  #160k
-				wgt_i=35-(wgt-160000)/2000
-				wgt_il, wgt_ih = self.get_index(wgt_i, len(wgts))
-				vr=self.interp(ias[wgt_ih][flap_i], ias[wgt_il][flap_i], wgts[wgt_ih], wgts[wgt_il], wgt)
-				Vref="  Vref: "+str(int(round(vr)))+" kias"
+			flap_i=self.get_flapi(flaps)+1
+			wgts=tuple(range(160,230,2))
+			#flaps 0,1,5,15,20,25,30
+			ias=((227,188,178,171,165,147,144), #230k
+				(227,186,176,171,164,146,144),
+				(225,185,176,169,164,146,143),
+				(224,185,175,168,162,144,143),
+				(223,183,174,168,162,143,142),
+				(223,183,174,167,161,143,140),  #220k
+				(221,182,172,167,161,142,140),
+				(220,182,172,165,160,142,139),
+				(218,181,171,165,158,140,139),
+				(218,181,171,164,158,140,138),
+				(217,179,169,162,157,139,137),  #210k
+				(216,178,169,162,157,138,137),
+				(214,178,168,161,155,138,135),
+				(214,176,167,161,155,137,135),
+				(213,175,167,160,154,137,134),
+				(211,175,165,158,153,135,134),  #200k
+				(210,174,165,158,153,135,133),
+				(209,174,164,157,151,134,131),
+				(207,172,162,157,151,133,131),
+				(206,171,162,155,151,133,130),
+				(206,171,161,154,150,131,129),  #190k
+				(204,169,160,154,150,131,129),
+				(203,168,160,153,148,130,127),
+				(202,168,158,153,147,129,127),
+				(200,167,157,165,147,129,126),
+				(199,165,157,150,146,127,126),  #180k
+				(199,165,155,150,146,127,125),
+				(197,164,154,148,143,126,124),
+				(196,162,154,147,143,125,124),
+				(195,162,153,147,141,125,122),
+				(193,161,151,146,140,124,121),  #170k
+				(192,160,151,144,140,124,121),
+				(192,158,150,144,139,122,120),
+				(190,158,148,143,137,121,118),
+				(189,157,148,141,137,121,118),
+				(188,157,147,141,136,120,117))  #160k
+			wgt_i=35-(wgt-160000)/2000
+			wgt_il, wgt_ih = self.get_index(wgt_i, len(wgts))
+			vr=self.interp(ias[wgt_ih][flap_i], ias[wgt_il][flap_i], wgts[wgt_ih], wgts[wgt_il], wgt)
+			Vref="  Vref: "+str(int(round(vr)))+" kias"
 		elif AC=="CRJ2": #Vapp = Vref + 15 kias
-			flap_i=self.get_flapi(flaps)
-			if flap_i==-1:
-				V1=""
+			flap_i=self.get_flapi(flaps)+1
+			wgts=(34,37,40,44,47,51)
+			#Flaps 0 8 20 30 45
+			ias=((151,137,133,129,121), #34k
+				(157,144,139,135,127), #37k
+				(162,149,144,140,132), #40k
+				(168,156,150,146,138), #44k
+				(173,160,155,151,143), #47k
+				(179,167,161,157,149)) #51k
+			if wgt<40000:
+				wgt_i=(wgt-34000)/3000
+			elif wgt<44000:
+				wgt_i=2+(wgt-40000)/4000
+			elif wgt<47000:
+				wgt_i=3+(wgt-44000)/3000
 			else:
-				wgts=(34,37,40,44,47,51)
-				#Flaps 0 8 20 30 45
-				ias=((151,137,133,129,121), #34k
-					(157,144,139,135,127), #37k
-					(162,149,144,140,132), #40k
-					(168,156,150,146,138), #44k
-					(173,160,155,151,143), #47k
-					(179,167,161,157,149)) #51k
-				if wgt<40000:
-					wgt_i=(wgt-34000)/3000
-				elif wgt<44000:
-					wgt_i=2+(wgt-40000)/4000
-				elif wgt<47000:
-					wgt_i=3+(wgt-44000)/3000
-				else:
-					wgt_i=4+(wgt-47000)/4000
-				wgt_ih, wgt_il = self.get_index(wgt_i, len(wgts))
-				vr=self.interp(ias[wgt_ih][flap_i], ias[wgt_il][flap_i], wgts[wgt_ih], wgts[wgt_il], wgt)
-				Vref="  Vref: "+str(int(round(vr)))+" kias"
+				wgt_i=4+(wgt-47000)/4000
+			wgt_ih, wgt_il = self.get_index(wgt_i, len(wgts))
+			vr=self.interp(ias[wgt_ih][flap_i], ias[wgt_il][flap_i], wgts[wgt_ih], wgts[wgt_il], wgt)
+			Vref="  Vref: "+str(int(round(vr)))+" kias"
 		else:
 			Vref=""
 		return Vref
@@ -1114,7 +1105,7 @@ class PythonInterface:
 	def getV1(self, flaps, wgt, DA, T, AC): #Get V1 speed
 		if AC=="B738":
 			flap_i=self.get_flapi(flaps)
-			if flap_i==-1:
+			if flap_i<0 or flap_i>2:
 				V1=""
 			else:
 				GW=tuple(range(90,181,10))
@@ -1156,8 +1147,8 @@ class PythonInterface:
 					V1="  V1: "+str(int(round(v1f)))+" kias"
 		elif AC=="PC12":
 			flap_i=self.get_flapi(flaps)
-			if flap_i==-1:
-				V1="  V1: Check Flaps"
+			if flap_i<0 or flap_i>1:
+				V1=""
 			else:
 				GW=(6400,7300,8200,9100,10000,10450)
 				vrs=((63,67,71,75,79,81),	# flaps 15
@@ -1171,7 +1162,7 @@ class PythonInterface:
 				V1="  V1: "+str(int(round(vr)))+" kias"
 		elif AC=="DH8D":
 			flap_i=self.get_flapi(flaps)
-			if flap_i==-1:
+			if flap_i<0 or flap_i>2:
 				V1=""
 			else:
 				wgts=tuple(range(39600,63801,1100),64500)
@@ -1189,7 +1180,7 @@ class PythonInterface:
 			V1="  V1: "+str(int(round(vr)))+" kias"
 		elif AC=="CRJ2":
 			flap_i=self.get_flapi(flaps)
-			if flap_i==-1:
+			if flap_i<0 or flap_i>1:
 				V1=""
 			else:
 				wgts=(34,37,40,44,47,51)
@@ -1209,7 +1200,7 @@ class PythonInterface:
 					temp_i=4
 				else:
 					temp_i=math.ceil(T/10-1)
-				if flaps==1: #Flaps 8  V2,Vr,V1
+				if flaps==0: #Flaps 8  V2,Vr,V1
 					speed=(((155,148,148),(150,143,140),(144,136,135),(138,127,125),(133,122,120),(127,115,111)), #-40 to 10
 					((155,149,149),(150,143,141),(144,137,135),(138,128,126),(133,122,121),(127,115,112)), #11-20
 					((155,150,150),(150,144,143),(144,138,137),(138,129,128),(133,123,122),(127,116,114)), #21-30
@@ -1224,8 +1215,8 @@ class PythonInterface:
 				vr=self.interp(speed[temp_i][wgt_ih][2], speed[temp_i][wgt_il][2], wgts[wgt_ih], wgts[wgt_il], wgt)
 				V1="  V1: "+str(int(round(vr)))+" kias"
 		elif AC=="B752":
-			flap_i=self.get_flapi(flaps)+1
-			if flap_i==0:
+			flap_i=self.get_flapi(flaps)
+			if flap_i<0 or flap_i>3:
 				V1=""
 			else:
 				wgts=tuple(range(160,260,20))
