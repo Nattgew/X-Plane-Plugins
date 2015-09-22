@@ -92,7 +92,7 @@ class getaircraft:
 			self.agl=1500
 		elif desc[0:15]=="['Ilushin IL-14" or acf_icao=="IL14":
 			self.name="IL14"
-			self.setEW(self.name,12500)
+			self.setEW(self.name,5000)
 			self.ceiling=24
 			self.agl=1500
 		elif desc[0:15]=="['C-27J Spartan" or acf_icao=="C27J":
@@ -108,7 +108,7 @@ class getaircraft:
 			self.name="CRJ2"
 			self.ceiling=41
 			self.flaps=(0,0.2,0.5,0.75,1) #0,8,20,30,45 FIX ME
-			self.setEW(self.name,9298)
+			self.setEW(self.name,13880)
 		else:
 			if acf_icao!="": #I guess we'll trust it
 				self.name=acf_icao
@@ -144,10 +144,10 @@ class PythonInterface:
 			fhi=1
 		return (fhi, flo)
 	
-	def get_flapi(self, flaps)
+	def get_flapi(self, flaps): #Reference correct flaps setting
 		flap_i=-1
-		for i in range(3): #Reference correct flaps setting
-			if flaps == self.aircraft.flaps[i]:
+		for i in range(3):
+			if math.abs(flaps-self.aircraft.flaps[i]) <= 0.01: #Damn floating point
 				flap_i=i
 		return flap_i
 	
