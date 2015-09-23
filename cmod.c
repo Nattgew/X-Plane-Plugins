@@ -641,7 +641,7 @@ struct gotAC getshortac(XPLMDataRef desc_ref, XPLMDataRef icao_ref) {
 	ibuffer[5]='\0';
 	if (strcmp(buffer, "Boeing 737-80")==0 || strcmp(ibuffer, "B738")==0) {
 		strncpy(thisAC.AC,"B738",4);
-		thisAC.has3D=1;
+		thisAC.has3D=0;
 	} else if (strcmp(buffer, "Pilatus PC-12")==0 || strcmp(buffer, "Pilatus PC12")==0 || strcmp(ibuffer, "PC12")==0) {
 		strncpy(thisAC.AC,"PC12",4);
 		thisAC.has3D=1;
@@ -680,6 +680,24 @@ struct gotAC getshortac(XPLMDataRef desc_ref, XPLMDataRef icao_ref) {
 		thisAC.has3D=1;
 	} else if (strcmp(buffer, "Bombardier Ca")==0 || strcmp(ibuffer, "CRJ2")==0) {
 		strncpy(thisAC.AC,"CRJ2",4);
+		thisAC.has3D=1;
+	} else if (strcmp(buffer, "Embraer ERJ-1")==0 || strcmp(ibuffer, "E140")==0) {
+		strncpy(thisAC.AC,"E140",4);
+		thisAC.has3D=1;
+	} else if (strcmp(buffer, "Lockheed SR-7")==0 || strcmp(ibuffer, "SR71")==0) {
+		strncpy(thisAC.AC,"SR71",4);
+		thisAC.has3D=1;
+	} else if (strcmp(buffer, "Lockheed F-22")==0 || strcmp(ibuffer, "F22")==0) {
+		strncpy(thisAC.AC,"F22",4);
+		thisAC.has3D=1;
+	} else if (strcmp(buffer, "Douglas KC-10")==0 || strcmp(ibuffer, "DC10")==0) {
+		strncpy(thisAC.AC,"DC10",4);
+		thisAC.has3D=1;
+	} else if (strcmp(buffer, "McDonnell Dou")==0 || strcmp(ibuffer, "F4")==0) {
+		strncpy(thisAC.AC,"F4",4);
+		thisAC.has3D=1;
+	} else if (strcmp(buffer, "Columbia 400")==0 || strcmp(ibuffer, "COL4")==0) {
+		strncpy(thisAC.AC,"COL4",4);
 		thisAC.has3D=1;
 	} else {
 		strncpy(acf_descb,thisAC.AC,4);
