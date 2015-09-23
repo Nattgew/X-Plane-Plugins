@@ -109,6 +109,11 @@ class getaircraft:
 			self.ceiling=41
 			self.flaps=(0.25,0.5,0.75,1) #8,20,30,45
 			self.setEW(self.name,13880)
+		elif desc[0:15]=="['Embraer ERJ-1" or acf_icao=="E140":
+			self.name="E140"
+			self.ceiling=37
+			self.flaps=(0.25,0.5,0.75,1) #FIX ME
+			self.setEW(self.name,9600) #8500 E135, 9600 E145
 		else:
 			if acf_icao!="": #I guess we'll trust it
 				self.name=acf_icao
@@ -861,7 +866,7 @@ class PythonInterface:
 			wgt_ih, wgt_il = self.get_index(wgt_i, len(wgts))
 			PA_i=DA/2000
 			PA_ih, PA_il = self.get_index(PA_i, len(PA))
-			ldist=self.interp2(ldrs[wgt_ih][PA_il], ldrs[wgt_il][PA_il], ldrs[wgt_ih][PA_ih], ldrs[wgt_il][PA_ih], wgt[wgt_ih], wgt[wgt_il], PA[PA_ih], PA[PA_il], wgt/1000, PA)
+			ldist=self.interp2(ldrs[wgt_ih][PA_il], ldrs[wgt_il][PA_il], ldrs[wgt_ih][PA_ih], ldrs[wgt_il][PA_ih], wgts[wgt_ih], wgts[wgt_il], PA[PA_ih], PA[PA_il], wgt/1000, PA)
 			ldr="  Vref: "+str(int(round(ldist)))+" kias"
 		elif AC=="CRJ2":
 			Tgd=-self.getdelISA(elev, -delISA) #Assume ISA difference is same at ground, find T
@@ -888,7 +893,7 @@ class PythonInterface:
 			PA_i=DA/2000
 			PA_ih, PA_il = self.get_index(PA_i, len(PA))
 			print("wgt_l/h="+str(wgt_il)+"/"+str(wgt_ih)+"  PA_l/h="+str(PA_il)+"/"+str(PA_ih))
-			ldist=self.interp2(ldrs[wgt_ih][PA_il], ldrs[wgt_il][PA_il], ldrs[wgt_ih][PA_ih], ldrs[wgt_il][PA_ih], wgt[wgt_ih], wgt[wgt_il], PA[PA_ih], PA[PA_il], wgt/1000, PA)
+			ldist=self.interp2(ldrs[wgt_ih][PA_il], ldrs[wgt_il][PA_il], ldrs[wgt_ih][PA_ih], ldrs[wgt_il][PA_ih], wgts[wgt_ih], wgts[wgt_il], PA[PA_ih], PA[PA_il], wgt/1000, PA)
 			ldr="  Vref: "+str(int(round(ldist)))+" kias"
 		else:
 			ldr=""
