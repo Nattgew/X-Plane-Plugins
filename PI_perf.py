@@ -41,7 +41,7 @@ class getaircraft:
 		elif desc=="['Pilatus PC-12']" or desc=="['Pilatus PC12']" or acf_icao=="PC12":
 			self.name="PC12"
 			self.setEW(self.name,1895)
-			self.flaps=(0.3,0.7,1) #15 30 40
+			self.flaps=(0.3,0.7,1) #15 30 40    (0.333333,0.666667,1) Carenado
 			self.ceiling=30
 			self.maxcabin=10000
 			self.agl=1000
@@ -64,7 +64,7 @@ class getaircraft:
 		elif desc[0:13]=="['Dash 8 Q400" or acf_icao=="DH8D":
 			self.name="DH8D"
 			self.setEW(self.name,12071)
-			self.flaps=(0.25,0.5,0.75,1) #FIX ME 5 10 15 35
+			self.flaps=(0.25,0.5,0.75,1) #5 10 15 35
 			self.ceiling=27
 			self.agl=1500
 		elif desc=="['L-1049G Constellation']" or acf_icao=="CONI":
@@ -103,11 +103,11 @@ class getaircraft:
 		elif desc[0:15]=="['Boeing 757-20" or acf_icao=="B752":
 			self.name="B752"
 			self.ceiling=42
-			#self.flaps=(0,.1,.3,.5,.6,.8,1) #0,1,5,15,20,25,30 FIX ME
+			self.flaps=(0.166667,0.333333,.5,0.666667,0.833333,1) #1,5,15,20,25,30
 		elif desc[0:15]=="['Bombardier Ca" or acf_icao=="CRJ2":
 			self.name="CRJ2"
 			self.ceiling=41
-			self.flaps=(0,0.2,0.5,0.75,1) #0,8,20,30,45 FIX ME
+			self.flaps=(0.25,0.5,0.75,1) #8,20,30,45
 			self.setEW(self.name,13880)
 		else:
 			if acf_icao!="": #I guess we'll trust it
@@ -146,8 +146,8 @@ class PythonInterface:
 	
 	def get_flapi(self, flaps): #Reference correct flaps setting
 		flap_i=-1
-		for i in range(len(flaps)):
-			if math.abs(flaps-self.aircraft.flaps[i]) <= 0.01: #Damn floating point
+		for i in range(len(self.aircraft.flaps)):
+			if abs(flaps-self.aircraft.flaps[i]) <= 0.01: #Damn floating point
 				flap_i=i
 		return flap_i
 	
@@ -177,8 +177,8 @@ class PythonInterface:
 			result=y2
 		else:
 			result=(y2-y1)/(x2-x1)*(xi-x1)+y1
-		#print "Interp "+str(y2)+", "+str(y1)+", "+str(x2)+", "+str(x1)+", "+str(round(xi))+" = "+str(round(result))
-		#print "Interp result: "+str(result)
+		print "Interp "+str(y2)+", "+str(y1)+", "+str(x2)+", "+str(x1)+", "+str(round(xi))+" = "+str(round(result))
+		print "Interp result: "+str(result)
 		return result
 	
 	def interp2(self, y1, y2, y3, y4, x1, x2, x3, x4, xi1, xi2): #Interpolate between two interpolations
@@ -477,7 +477,8 @@ class PythonInterface:
 		elif self.aircraft.name=="CRJ2": #MTOW 24,041 kg
 			flimit=math.pow(0.74,(wgt/1000-20))+25.75 #Just a swag
 			general_fl=int(dist/10)
-			general_fl=flimit = if general_fl>flimit
+			if general_fl>flimit:
+				general_fl=flimit
 			climb=2500
 			speed=400
 			gph=350
@@ -862,7 +863,7 @@ class PythonInterface:
 			PA_ih, PA_il = self.get_index(PA_i, len(PA))
 			ldist=self.interp2(ldrs[wgt_ih][PA_il], ldrs[wgt_il][PA_il], ldrs[wgt_ih][PA_ih], ldrs[wgt_il][PA_ih], wgt[wgt_ih], wgt[wgt_il], PA[PA_ih], PA[PA_il], wgt/1000, PA)
 			ldr="  Vref: "+str(int(round(ldist)))+" kias"
-		elif AC="CRJ2":
+		elif AC=="CRJ2":
 			Tgd=-self.getdelISA(elev, -delISA) #Assume ISA difference is same at ground, find T
 			P=self.getPress(elev, SL)
 			DA=self.getDA(P,Tgd)
@@ -886,6 +887,7 @@ class PythonInterface:
 			wgt_ih, wgt_il = self.get_index(wgt_i, len(wgts))
 			PA_i=DA/2000
 			PA_ih, PA_il = self.get_index(PA_i, len(PA))
+			print("wgt_l/h="+str(wgt_il)+"/"+str(wgt_ih)+"  PA_l/h="+str(PA_il)+"/"+str(PA_ih))
 			ldist=self.interp2(ldrs[wgt_ih][PA_il], ldrs[wgt_il][PA_il], ldrs[wgt_ih][PA_ih], ldrs[wgt_il][PA_ih], wgt[wgt_ih], wgt[wgt_il], PA[PA_ih], PA[PA_il], wgt/1000, PA)
 			ldr="  Vref: "+str(int(round(ldist)))+" kias"
 		else:
@@ -1196,10 +1198,10 @@ class PythonInterface:
 				wgt_ih, wgt_il = self.get_index(wgt_i, len(wgts))
 				if T<0:
 					temp_i=0
-				elif T>40
+				elif T>40:
 					temp_i=4
 				else:
-					temp_i=math.ceil(T/10-1)
+					temp_i=int(math.ceil(T/10-1))
 				if flaps==0: #Flaps 8  V2,Vr,V1
 					speed=(((155,148,148),(150,143,140),(144,136,135),(138,127,125),(133,122,120),(127,115,111)), #-40 to 10
 					((155,149,149),(150,143,141),(144,137,135),(138,128,126),(133,122,121),(127,115,112)), #11-20
@@ -1212,7 +1214,7 @@ class PythonInterface:
 					((143,141,141),(138,133,133),(133,129,127),(127,121,117),(122,115,111),(117,109,105)),
 					((143,142,142),(138,134,134),(133,130,128),(127,123,119),(122,116,113),(117,111,107)),
 					((143,142,142),(138,134,134),(133,130,128),(127,123,119),(122,116,113),(117,111,107)))
-				vr=self.interp(speed[temp_i][wgt_ih][2], speed[temp_i][wgt_il][2], wgts[wgt_ih], wgts[wgt_il], wgt)
+				vr=self.interp(speed[temp_i][wgt_ih][2], speed[temp_i][wgt_il][2], wgts[wgt_ih], wgts[wgt_il], wgt/1000)
 				V1="  V1: "+str(int(round(vr)))+" kias"
 		elif AC=="B752":
 			flap_i=self.get_flapi(flaps)
@@ -1234,7 +1236,7 @@ class PythonInterface:
 					speed=(((131,136,144),(142,146,152),(153,156,161),(163,166,169),(172,175,177),(181,183,184)),
 						((120,125,132),(131,135,140),(141,144,148),(150,153,155),(158,161,162),(166,169,169)),
 						((114,119,125),(124,128,133),(133,137,140),(142,145,147),(150,153,153),(158,160,160)),
-						((108,113,119),(117,121,126),(126,129,133),(135,137,140),(142,144,146),(,0,0,0)))
+						((108,113,119),(117,121,126),(126,129,133),(135,137,140),(142,144,146),(0,0,0)))
 				elif DA<11000 and (T<5 or 5<T<30 and 13025-137.5*T<DA or 30<T<40 and 14900-200*T<DA or 40<T<50 and 17700-270*T<DA or 50<T<60 and 19700-310*T<DA or T>60 and 22100-350*T<DA): #D
 					speed=(((134,138,144),(145,148,152),(156,158,161),(165,167,169),(175,176,177),(0,0,0)),
 						((123,127,132),(134,137,140),(143,146,148),(152,154,156),(161,162,163),(0,0,0)),
