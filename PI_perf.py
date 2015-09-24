@@ -866,8 +866,8 @@ class PythonInterface:
 			wgt_ih, wgt_il = self.get_index(wgt_i, len(wgts))
 			PA_i=DA/2000
 			PA_ih, PA_il = self.get_index(PA_i, len(PA))
-			ldist=self.interp2(ldrs[wgt_ih][PA_il], ldrs[wgt_il][PA_il], ldrs[wgt_ih][PA_ih], ldrs[wgt_il][PA_ih], wgts[wgt_ih], wgts[wgt_il], PA[PA_ih], PA[PA_il], wgt/1000, PA)
-			ldr="  Vref: "+str(int(round(ldist)))+" kias"
+			ldist=self.interp2(ldrs[wgt_ih][PA_il], ldrs[wgt_il][PA_il], ldrs[wgt_ih][PA_ih], ldrs[wgt_il][PA_ih], wgts[wgt_ih], wgts[wgt_il], PA[PA_ih], PA[PA_il], wgt/1000, DA)
+			ldr="  LDR: "+str(int(round(ldist)))+" ft"
 		elif AC=="CRJ2":
 			Tgd=-self.getdelISA(elev, -delISA) #Assume ISA difference is same at ground, find T
 			P=self.getPress(elev, SL)
@@ -893,8 +893,8 @@ class PythonInterface:
 			PA_i=DA/2000
 			PA_ih, PA_il = self.get_index(PA_i, len(PA))
 			print("wgt_l/h="+str(wgt_il)+"/"+str(wgt_ih)+"  PA_l/h="+str(PA_il)+"/"+str(PA_ih))
-			ldist=self.interp2(ldrs[wgt_ih][PA_il], ldrs[wgt_il][PA_il], ldrs[wgt_ih][PA_ih], ldrs[wgt_il][PA_ih], wgts[wgt_ih], wgts[wgt_il], PA[PA_ih], PA[PA_il], wgt/1000, PA)
-			ldr="  Vref: "+str(int(round(ldist)))+" kias"
+			ldist=self.interp2(ldrs[wgt_ih][PA_il], ldrs[wgt_il][PA_il], ldrs[wgt_ih][PA_ih], ldrs[wgt_il][PA_ih], wgts[wgt_ih], wgts[wgt_il], PA[PA_ih], PA[PA_il], wgt/1000, DA)
+			ldr="  LDR: "+str(int(round(ldist)))+" ft"
 		else:
 			ldr=""
 		return ldr
@@ -1082,7 +1082,7 @@ class PythonInterface:
 				(188,157,147,141,136,120,117))  #160k
 			wgt_i=35-(wgt-160000)/2000
 			wgt_il, wgt_ih = self.get_index(wgt_i, len(wgts))
-			vr=self.interp(ias[wgt_ih][flap_i], ias[wgt_il][flap_i], wgts[wgt_ih], wgts[wgt_il], wgt)
+			vr=self.interp(ias[wgt_ih][flap_i], ias[wgt_il][flap_i], wgts[wgt_ih], wgts[wgt_il], wgt/1000)
 			Vref="  Vref: "+str(int(round(vr)))+" kias"
 		elif AC=="CRJ2": #Vapp = Vref + 15 kias
 			flap_i=self.get_flapi(flaps)+1
@@ -1103,7 +1103,7 @@ class PythonInterface:
 			else:
 				wgt_i=4+(wgt-47000)/4000
 			wgt_ih, wgt_il = self.get_index(wgt_i, len(wgts))
-			vr=self.interp(ias[wgt_ih][flap_i], ias[wgt_il][flap_i], wgts[wgt_ih], wgts[wgt_il], wgt)
+			vr=self.interp(ias[wgt_ih][flap_i], ias[wgt_il][flap_i], wgts[wgt_ih], wgts[wgt_il], wgt/1000)
 			Vref="  Vref: "+str(int(round(vr)))+" kias"
 		else:
 			Vref=""
@@ -1259,7 +1259,7 @@ class PythonInterface:
 				if speed[flaps_i][wgt_ih][0]==0 or speed[flaps_i][wgt_il][0]==0:
 					return "Excds Lmts"
 				else:
-					vr=self.interp(speed[flaps_i][wgt_ih][0], speed[flaps_i][wgt_il][0], wgts[wgt_ih], wgts[wgt_il], wgt)
+					vr=self.interp(speed[flaps_i][wgt_ih][0], speed[flaps_i][wgt_il][0], wgts[wgt_ih], wgts[wgt_il], wgt/1000)
 					V1="  V1: "+str(int(round(vr)))+" kias"
 		else:
 			V1=""
