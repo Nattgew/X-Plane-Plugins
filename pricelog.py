@@ -10,12 +10,15 @@ from mpl_toolkits.basemap import Basemap
 from matplotlib.dates import DateFormatter
 import matplotlib.pyplot as plt
 
-def fserequest(rqst,tagname):
+def getkey():
 	file='/mnt/data/XPLANE10/XSDK/mykey.txt'
 	with open(file, 'r') as f:
 		mykey = f.readline()
 	mykey=mykey.strip()
-	data = urllib.request.urlopen('http://server.fseconomy.net/data?userkey='+mykey+'&format=xml&'+rqst)
+	return mykey
+
+def fserequest(rqst,tagname):
+	data = urllib.request.urlopen('http://server.fseconomy.net/data?userkey='+getkey()+'&format=xml&'+rqst)
 	print("Parsing data...")
 	xmldoc = minidom.parse(data)
 	error = xmldoc.getElementsByTagName('Error')
@@ -48,6 +51,23 @@ def acforsale(conn):
 		c.execute('INSERT INTO allac VALUES (?,?,?,?,?,?,?);',row)
 	conn.commit()
 
+def logpaymonth(conn,year,month):
+	print("Sending requrest for payment listing...")
+	payments = fserequest('query=payments&search=monthyear&readaccesskey='+getkey()+'&month='+month+'&year='+year)
+	print("Recording data...")
+	c=getpaydbcon(conn)
+	for payment in payments:
+		date = payment.getElementsByTagName("Date")[0].firstChild.nodeValue
+		to = payment.getElementsByTagName("To")[0].firstChild.nodeValue
+		fr = payment.getElementsByTagName("From")[0].firstChild.nodeValue
+		amt = float(payment.getElementsByTagName("Amount")[0].firstChild.nodeValue)
+		rsn = payment.getElementsByTagName("Reason")[0].firstChild.nodeValue
+		loc = payment.getElementsByTagName("Location")[0].firstChild.nodeValue
+		ac = payment.getElementsByTagName("Aircraft")[0].firstChild.nodeValue
+		row=(date, to, fr, amt, rsn, loc, ac)
+		c.execute('INSERT INTO payments VALUES (?,?,?,?,?,?,?);',row)
+	conn.commit()
+
 def getdbcon(conn):
 	print("Initializing database cursor...")
 	c = conn.cursor()
@@ -60,7 +80,19 @@ def getdbcon(conn):
 			 (serial real, type text, loc text, locname text, hours real, price real, obsiter real)''')
 		c.execute('''CREATE TABLE queries
 			 (obsiter real, qtime text)''')
-		# Save (commit) the changes
+		conn.commit()
+	return c
+	
+def getpaydbcon(conn):
+	print("Initializing payment database cursor...")
+	c = conn.cursor()
+	c.execute("select count(*) from sqlite_master where type = 'table';")
+	exist=c.fetchone()
+	#print("Found " + str(exist[0]) + " tables...")
+	if  exist[0]== 0:
+		print("Creating tables...")
+		c.execute('''CREATE TABLE payments
+			 (date text, to text, from text, amount real, reason text, location real, aircraft real)''')
 		conn.commit()
 	return c
 	
@@ -78,7 +110,7 @@ def getmaxiter(conn):
 def dudewheresmyairplane():
 	#planes={}
 	print("Sending request for aircraft list...")
-	airplanes = fserequest('query=aircraft&search=key&readaccesskey='+mykey,'Aircraft')
+	airplanes = fserequest('query=aircraft&search=key&readaccesskey='+getkey(),'Aircraft')
 	for plane in airplanes:
 		loc = plane.getElementsByTagName("Location")[0].firstChild.nodeValue
 		reg = plane.getElementsByTagName("Registration")[0].firstChild.nodeValue
@@ -87,8 +119,7 @@ def dudewheresmyairplane():
 		#planes[reg]=(loc,eng,chk)
 		print(reg+" at "+loc+"  tot: "+eng+"  last: "+chk)
 
-def jobsfrom(apts,price,pax):
-	#High paying jobs from airports
+def jobsfrom(apts,price,pax): #High paying jobs from airports
 	jobs=[]
 	print("Sending request for jobs from "+apts+"...")
 	assignments = fserequest('query=icao&search=jobsfrom&icaos='+apts,'Assignment')
@@ -98,8 +129,7 @@ def jobsfrom(apts,price,pax):
 		totalfrom+=1
 	return jobs
 
-def jobsto(apts,price,pax):
-	#High paying jobs to airports
+def jobsto(apts,price,pax): #High paying jobs to airports
 	jobs=[]
 	print("Sending request for jobs to "+apts+"...")
 	assignments = fserequest('query=icao&search=jobsto&icaos='+apts,'Assignment')
@@ -126,15 +156,13 @@ def jobstest(assignment,jobs,price,pax):
 			#	print (amt+" "+typ+" @"+loc+"-"+arr+" $"+str(int(pay))+" "+exp)
 	return jobs
 
-def paxto(apts,minpax,maxpax):
-	#Pax jobs to airports (incl green jobs)
+def paxto(apts,minpax,maxpax): #Pax jobs to airports (incl green jobs)
 	print("Sending request incl pax jobs to "+apts+"...")
 	assignments = fserequest('query=icao&search=jobsto&icaos='+apts,'Assignment')
 	jobs=paxtest(assignments,minpax,maxpax,"to")
 	return jobs
 
-def paxfrom(apts,minpax,maxpax):
-	#Pax jobs from airports (incl green jobs)
+def paxfrom(apts,minpax,maxpax): #Pax jobs from airports (incl green jobs)
 	print("Sending request incl pax jobs from "+apts+"...")
 	assignments = fserequest('query=icao&search=jobsfrom&icaos='+apts,'Assignment')
 	jobs=paxtest(assignments,minpax,maxpax,"from")
@@ -402,6 +430,51 @@ def plotdates(data,title,ylbl):
 	plt.ylabel(ylbl)
 	plt.show()
 
+def plotpayments(conn,fdate,tdate):
+	c=getpaydbcon(conn)
+	rentexp=0
+	rentinc=0
+	assnmtexp=0
+	assnmtinc=0
+	pltfees=0
+	addcrewfee=0
+	gndcrewfee=0
+	bkgfee=0
+	ref100=0
+	refjet=0
+	mxexp=0
+	eqinstl=0
+	acsold=0
+	acbought=0
+	fboref100=0
+	fborefjet=0
+	fbogndcrew=0
+	fborepinc=0
+	fborepexp=0
+	fboeqpexp=0
+	fboeqpinc=0
+	ptrentinc=0
+	ptrentexp=0
+	fbosell=0
+	fbobuy=0
+	wsbuy100=0
+	wssell100=0
+	wsbuyjet=0
+	wsselljet=0
+	wsbuybld=0
+	wssellbld=0
+	wsbuysupp=0
+	wssellsupp=0
+	grpay=0
+	fromdate=fdate+" 00:01"
+	todate=tdate+" 23:59"
+	print("Tallying payments from"+str(fdate[0])+"-"+str(fdate[1])+" to "+str(tdate[0])+"-"+str(tdate[1])+"...")
+	#(date text, to text, from text, amount real, reason text, location real, aircraft real)
+	for payment in c.execute('SELECT * FROM payments WHERE date BETWEEN ? AND ? AND reason = "Rental of aircraft"', (fromdate,todate)):
+		rentexp+=payment[3]
+				
+	return listings
+
 def gettype(icao):
 	icaodict=dicts.getactypedict()
 	try:
@@ -429,6 +502,8 @@ def main(argv):
 	avg=0
 	low=0
 	dur=0
+	pay=0
+	ppay=0
 	lowprice=0
 	highprice=99999999
 	fromdate="0000-01-01"
@@ -458,6 +533,10 @@ def main(argv):
 			lowprice=arg
 		elif opt in ("-i", "--high"):
 			highprice=arg
+		elif opt in ("-p", "--payments"):
+			pay=1
+		elif opt in ("-q", "--plotpayments"):
+			ppay=1
 	
 	if tot==1:
 		totals=gettotals(conn,fromdate,todate)
@@ -481,6 +560,23 @@ def main(argv):
 			durations.append((listings[2],duration))
 			print(str(listings[2])+": "+str(duration))
 		plotdates(durations,"Time to sell for "+durtype,"Days")
+	
+	if pay==1:
+		conn2=sqlite3.connect('/mnt/data/XPLANE10/XSDK/payments.db')
+		year=fromdate.split('-', 2)[0]
+		month=fromdate.split('-', 2)[1]
+		logpaymonth(conn,year,month)
+	
+	if ppay==1:
+		fyear=fromdate.split('-', 2)[0]
+		fmonth=fromdate.split('-', 2)[1]
+		fday=fromdate.split('-', 2)[2]
+		tyear=todate.split('-', 2)[0]
+		tmonth=todate.split('-', 2)[1]
+		tday=todate.split('-', 2)[2]
+		fdate=(fyear,fmonth,fday)
+		tdate=(tyear,tmonth,tday)
+		plotpayments(conn,fdate,tdate)
 	
 	# We can also close the connection if we are done with it.
 	# Just be sure any changes have been committed or they will be lost. FOREVER
