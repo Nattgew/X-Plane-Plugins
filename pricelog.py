@@ -218,7 +218,7 @@ def printjobs(jobs,rev):
 	else:
 		list=reversed(jobs)
 	for job in jobs:
-		print(job[2]+" "+job[3]+" "+job[0]+"-"+job[1]+" $"+str(int(job[4]))+" "+str(distbwt(job[0],job[1]])+" "+job[5])
+		print(job[2]+" "+job[3]+" "+job[0]+"-"+job[1]+" $"+str(int(job[4]))+" "+str(distbwt(job[0],job[1]))+" "+job[5])
 
 def cosinedist(lat1,lon1,lat2,lon2):
 	phi1 = math.radians(lat1)
@@ -280,7 +280,7 @@ def nearby(icao,rad):
 	clat,clon=loc_dict[icao]
 	for apt,coords in loc_dict.items():
 		if apt!=icao:
-			#print("Dist from "+str(clat)+" "+str(clon)+" to "+str(coords[0])+" "+str(coords[1]])
+			#print("Dist from "+str(clat)+" "+str(clon)+" to "+str(coords[0])+" "+str(coords[1]))
 			dist=cosinedist(clat,clon,coords[0],coords[1])
 			if dist<rad:
 				if near=="":
