@@ -486,7 +486,7 @@ def plotpayments(conn,fdate,tdate):
 	while fdate <= todate:
 		fromdate=fdate+" 00:01"
 		todate=fdate+" 23:59"
-		if i>0 then:
+		if i>0:
 			for var in allthat:
 				var.add([fdate,var[i-1][1]])
 			# In case my understanding of variables has a fatal flaw
@@ -628,7 +628,7 @@ def sumpayments(conn,fdate,tdate):
 	wssell100=[0,"100LL sold"]
 	wsselljet=[0,"JetA sold"]
 	wssellbld=[0,"Building materials sold"]
-	wssellsupp=[0,"Supplies sold"]]
+	wssellsupp=[0,"Supplies sold"]
 	
 	#Expenses
 	rentexp=[0,"Rental expense"]
@@ -944,6 +944,7 @@ def main(argv):
 		year=fromdate.split('-', 2)[0]
 		month=fromdate.split('-', 2)[1]
 		logpaymonth(conn,year,month)
+		conn2.close()
 	
 	if ppay==1:
 		# fyear=fromdate.split('-', 2)[0]
