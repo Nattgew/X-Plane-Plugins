@@ -114,30 +114,30 @@ class getaircraft:
 			self.ceiling=37
 			self.flaps=(0.25,0.5,0.75,1) #FIX ME
 			self.setEW(self.name,9600) #8500 E135, 9600 E145
-		elif desc[0:15]="['Antonov AN-2" or acf_icao=="AN2":
+		elif desc[0:15]=="['Antonov AN-2" or acf_icao=="AN2":
 			self.name="AN2"
 			self.ceiling=14.75
 			self.setEW(self.name,2170)
-		elif desc[0:15]="['King Air C90" or acf_icao=="C90B":
+		elif desc[0:15]=="['King Air C90" or acf_icao=="C90B":
 			self.name="C90B"
 			self.ceiling=28.45
 			self.setEW(self.name,1576)
-		elif desc[0:15]="['The biggest a" or acf_icao=="B744":
+		elif desc[0:15]=="['The biggest a" or acf_icao=="B744":
 			self.name="B744"
 			self.ceiling=45
-		elif desc[0:15]="['Lockheed SR-7" or acf_icao=="SR71":
+		elif desc[0:15]=="['Lockheed SR-7" or acf_icao=="SR71":
 			self.name="SR71"
 			self.ceiling=85
-		elif desc[0:15]="['Lockheed F-22" or acf_icao=="F22":
+		elif desc[0:15]=="['Lockheed F-22" or acf_icao=="F22":
 			self.name="F22"
 			self.ceiling=60
-		elif desc[0:15]="['Douglas KC-10" or acf_icao=="DC10":
+		elif desc[0:15]=="['Douglas KC-10" or acf_icao=="DC10":
 			self.name="DC10"
 			self.ceiling=42
-		elif desc[0:15]="['Douglas F-4" or acf_icao=="F4":
+		elif desc[0:15]=="['Douglas F-4" or acf_icao=="F4":
 			self.name="F4"
 			self.ceiling=60
-		elif desc[0:15]="['Columbia 400" or acf_icao=="COL4":
+		elif desc[0:15]=="['Columbia 400" or acf_icao=="COL4":
 			self.name="COL4"
 			self.ceiling=25
 			self.setEW(self.name,500)
