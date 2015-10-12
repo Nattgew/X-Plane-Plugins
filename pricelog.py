@@ -59,6 +59,7 @@ def acforsale(conn):
 		row=(serial, actype, loc, locname, hours, price, count)
 		c.execute('INSERT INTO allac VALUES (?,?,?,?,?,?,?);',row)
 	conn.commit()
+	pass
 
 def logpaymonth(conn,year,month):
 	print("Sending requrest for payment listing...")
@@ -82,6 +83,7 @@ def logpaymonth(conn,year,month):
 		row=(pdate, to, fr, amt, rsn, loc, ac, pid)
 		c.execute('INSERT INTO payments VALUES (?,?,?,?,?,?,?,?);',row)
 	conn.commit()
+	pass
 
 def getdbcon(conn):
 	print("Initializing database cursor...")
@@ -134,6 +136,7 @@ def dudewheresmyairplane():
 		chk = plane.getElementsByTagName("TimeLast100hr")[0].firstChild.nodeValue
 		#planes[reg]=(loc,eng,chk)
 		print(reg+" at "+loc+"  tot: "+eng+"  last: "+chk)
+	pass
 
 def jobsfrom(apts,price,pax): #High paying jobs from airports
 	jobs=[]
@@ -226,6 +229,7 @@ def printjobs(jobs,rev):
 		list=reversed(jobs)
 	for job in jobs:
 		print(job[2]+" "+job[3]+" "+job[0]+"-"+job[1]+" $"+str(int(job[4]))+" "+str(distbwt(job[0],job[1]))+" "+job[5])
+	pass
 
 def cosinedist(lat1,lon1,lat2,lon2):
 	phi1 = math.radians(lat1)
@@ -309,6 +313,7 @@ def bigjobs(apts,dir):
 		total+=len(jobs)
 	word="from near" if dir==0 else "to"
 	print("Found these "+str(total)+" big jobs "+word+" those airports:")
+	pass
 	
 def mapper(points, mincoords, maxcoords, title): # Put the points on a map, color by division
 	print("Mapping points...")
@@ -331,6 +336,7 @@ def mapper(points, mincoords, maxcoords, title): # Put the points on a map, colo
 	m.scatter(x,y,s=ptsize,marker=mk,c=c)
 	plt.title(title,fontsize=12)
 	plt.show()
+	pass
 
 def gettotals(conn,actype,fr,to):
 	c=getdbcon(conn)
@@ -392,21 +398,25 @@ def getlows(conn,actype,fr,to):
 
 def getlistings(conn,actype,lo,hi):
 	c=getdbcon(conn)
+	d=getdbcon(conn)
 	rdict=dicts.getregiondict()
 	listings=[]
 	print("Finding sell times for: "+actype+", "+str(lo)+" to "+str(hi)+"...")
-	for query in c.execute('SELECT * FROM queries'):
+	for query in c.execute('SELECT obsiter FROM queries'):
 	#serial real, type text, loc text, locname text, hours real, price real, obsiter real
-		for sale in c.execute('SELECT * FROM allac WHERE obsiter = ? AND type = ? AND price BETWEEN ? AND ?', (query[0],actype,lo,hi)):
+		for sale in d.execute('SELECT * FROM allac WHERE obsiter = ? AND type = ? AND price BETWEEN ? AND ?', (query[0],actype,lo,hi)):
 			region=rdict(sale[2])
 			match=0
 			for i in range(len(listings)):
-				if sale[0]==listings[i][0] and region==listings[i][1] and sale[5]==listings[i][2]:
-					listings[i][4]=query[0]
-					match=1
+				if sale[0]==listings[i][0]:
+					if region==listings[i][1] and sale[5]==listings[i][2]:
+						listings[i][4]=query[0] #Update "to" date in current list
+						match=1
+					else:
+						listings.remove(listings[i]) #Price/region changed, remove old listing and will append a new one
 					break
 			if match==0:
-				listings.append((sale[0],region,int(sale[5]),query[0],query[0]))
+				listings.append([sale[0],region,int(sale[5]),query[0],query[0]]) #SN, region, price, first iter, last iter
 				
 	return listings
 	
@@ -420,7 +430,7 @@ def maplocations(conn,actype):
 	lon_tot=0
 	iters=getmaxiter(conn)
 	latmax,lonmax,latmin,lonmin=100,200,100,200 #garbage to signal init
-	q1="SELECT loc FROM allac WHERE obsiter = "+str(iters)
+	q1="SELECT loc FROM allac WHERE obsiter = "+str(iters) #To allow adding to query
 	if actype=="":
 		title="Locations of all aircraft for sale"
 	else:
@@ -449,8 +459,9 @@ def maplocations(conn,actype):
 		mapper(locations, (latmin,lonmin), (latmax,lonmax), title)
 	else:
 		print("No locations found for: "+actype)
+	pass
 
-def plotdates(data,title,ylbl):
+def plotdates(dlist,title,ylbl):
 	print("Plotting figure for: "+title)
 	fig, ax = plt.subplots()
 	formatter=DateFormatter('%Y-%m-%d %H:%M')
@@ -458,7 +469,8 @@ def plotdates(data,title,ylbl):
 	#print("Attempting to plot the following "+str(len(data))+" dates:")
 	#for pdate in [i[0] for i in data]:
 	#	print(pdate)
-	ax.plot([date2num(i[0]) for i in data], [i[1] for i in data], 'o-')
+	for data in dlist:
+		ax.plot([date2num(i[0]) for i in data], [i[1] for i in data], 'o-')
 	formatter=DateFormatter('%Y-%m-%d')
 	ax.xaxis.set_major_formatter(formatter)
 	fig.autofmt_xdate()
@@ -467,6 +479,7 @@ def plotdates(data,title,ylbl):
 	plt.ylabel(ylbl)
 	plt.show()
 #	plt.xlim([date2num(date(fyear,fmonth,fday)),date2num(date(tyear,tmonth,tday))])
+	pass
 
 def plotpayments(conn,fromdate,todate):
 	c=getpaydbcon(conn)
@@ -575,29 +588,32 @@ def plotpayments(conn,fromdate,todate):
 		fdate += delta
 		i += 1
 	
-	title="Money Stuff"
-	ylbl="Money"
-	print("Plotting figure for: "+title)
-	fig, ax = plt.subplots()
-	#for data in allthat:
-		#print("Attempting to plot the following "+str(len(data))+" dates:")
-		#for pdate in [i[0] for i in data]:
-			#print(pdate)
-	plots=["","",""]
-	j=0
-	for data in [refjet, addcrewfee, gndcrewfee]:
-		plots[j],=ax.plot([date2num(i[0]) for i in data], [i[1] for i in data], '-')
-		j+=1
-	plt.legend(plots,['JetA', 'Addnl Crew', 'Gnd Crew'],loc=2)
-	formatter=DateFormatter('%Y-%m-%d')
-	ax.xaxis.set_major_formatter(formatter)
-	fig.autofmt_xdate()
-	#ax.fmt_xdata=formatter
-	plt.title(title,fontsize=12)
-	plt.xlabel("Date")
-	plt.ylabel(ylbl)
-	plt.xlim([date2num(date(fyear,fmonth,fday)),date2num(date(tyear,tmonth,tday))])
-	plt.show()
+	plotdates([refjet, addcrewfee, gndcrewfee],"Money","Money")
+	
+	# title="Money Stuff"
+	# ylbl="Money"
+	# print("Plotting figure for: "+title)
+	# fig, ax = plt.subplots()
+	# #for data in allthat:
+		# #print("Attempting to plot the following "+str(len(data))+" dates:")
+		# #for pdate in [i[0] for i in data]:
+			# #print(pdate)
+	# plots=["","",""]
+	# j=0
+	# for data in [refjet, addcrewfee, gndcrewfee]:
+		# plots[j],=ax.plot([date2num(i[0]) for i in data], [i[1] for i in data], '-')
+		# j+=1
+	# plt.legend(plots,['JetA', 'Addnl Crew', 'Gnd Crew'],loc=2)
+	# formatter=DateFormatter('%Y-%m-%d')
+	# ax.xaxis.set_major_formatter(formatter)
+	# fig.autofmt_xdate()
+	# #ax.fmt_xdata=formatter
+	# plt.title(title,fontsize=12)
+	# plt.xlabel("Date")
+	# plt.ylabel(ylbl)
+	# plt.xlim([date2num(date(fyear,fmonth,fday)),date2num(date(tyear,tmonth,tday))])
+	# plt.show()
+	pass
 
 def sumpayments(conn,fdate,tdate):
 	c=getpaydbcon(conn)
@@ -824,7 +840,124 @@ def sumpayments(conn,fdate,tdate):
 		esizes.append(expo)
 	pieplot(rsizes,rlabels,"Revenues")
 	pieplot(esizes,elabels,"Expenses")
+	pass
 
+def sumacpayments(conn,fdate,tdate):
+	c=getpaydbcon(conn)
+	d=getpaydbcon(conn)
+	#Income
+	rentinc=[[],"Rental income"]
+	assnmtinc=[[],"Assignment income"]
+	acsold=[[],"Aircraft sold"]
+	fboref100=[[],"100LL pumped"]
+	fborefjet=[[],"JetA pumped"]
+	fbogndcrew=[[],"Ground crew income"]
+	fborepinc=[[],"Repair income"]
+	fboeqpinc=[[],"Eqp instl income"]
+	ptrentinc=[[],"PT rent income"]
+	fbosell=[[],"FBO sold"]
+	wssell100=[[],"100LL sold"]
+	wsselljet=[[],"JetA sold"]
+	wssellbld=[[],"Building materials sold"]
+	wssellsupp=[[],"Supplies sold"]
+	grpay=[[],"Group payment"]
+	
+	#Expenses
+	rentexp=[[],"Rental expense"]
+	assnmtexp=[[],"Assignment expense"]
+	pltfee=[[],"Pilot fees"]
+	addcrewfee=[[],"Additional crew fee"]
+	gndcrewfee=[[],"Ground crew fee"]
+	bkgfee=[[],"Booking fee"]
+	ref100=[[],"100LL pumped"]
+	refjet=[[],"JetA pumped"]
+	mxexp=[[],"Maintenance"]
+	eqinstl=[[],"Equipment installed"]
+	acbought=[[],"Aircraft bought"]
+	fborepexp=[[],"FBO repair cost"]
+	fboeqpexp=[[],"FBO eqp instl"]
+	fbobuy=[[],"FBO bought"]
+	wsbuy100=[[],"100LL bought"]
+	wsbuyjet=[[],"JetA bought"]
+	wsbuysupp=[[],"Supplies"]
+	wsbuybld=[[],"Building materials"]
+
+	items=[rentinc,assnmtinc,acsold,fboref100,fborefjet,fbogndcrew,fborepinc,fboeqpinc,ptrentinc,fbosell,wssell100,wsselljet,wssellbld,wssellsupp,grpay,rentexp,assnmtexp,pltfee,addcrewfee,gndcrewfee,bkgfee,ref100,refjet,mxexp,eqinstl,acbought,fborepexp,fboeqpexp,fbobuy,wsbuy100,wsbuyjet,wsbuybld,wsbuysupp]
+	
+	user=getname()
+	fromdate=fdate+" 00:01"
+	todate=tdate+" 23:59"
+	ac=[]
+	print("Tallying payments from"+str(fdate[0])+"-"+str(fdate[1])+" to "+str(tdate[0])+"-"+str(tdate[1])+"...")
+	#(date text, payto text, payfrom text, amount real, reason text, location text, aircraft text)
+	for dac in c.execute('SELECT DISTINCT aircraft FROM payments WHERE date BETWEEN ? AND ? AND payto = ? AND reason = "Pay for assignment"',(fromdate,todate,user)):
+		ac.append([0,dac[0]])
+		for var in items:
+			var[0].append(0)
+		for payment in d.execute('SELECT * FROM payments WHERE date BETWEEN ? AND ? AND aircraft = ?',(fromdate,todate,dac[0])):
+			if payment[4]=="Rental of aircraft":
+				if payment[2]!=user:
+					rent[0][i]+=payment[3]
+				else:
+					rent[0][i]-=payment[3]
+			elif payment[4]=="Pay for assignment":
+				if payment[2]!=user:
+					assnmtinc[0][i]+=payment[3]
+			elif payment[4]=="Crew fee":
+				addcrewfee[0][i]-=payment[3]
+			elif payment[4]=="FBO ground crew fee":
+				if payment[2]==user:
+					gndcrewfee[0][i]-=payment[3]
+			elif payment[4]=="Booking Fee":
+				bkgfee[0][i]-=payment[3]
+			elif payment[4]=="Refuelling with JetA":
+				if payment[2]==user:
+					refjet[0][i]-=payment[3]
+			elif payment[4]=="Refuelling with 100LL":
+				if payment[2]==user:
+					ref100[0][i]-=payment[3]
+			elif payment[4]=="Aircraft maintenance":
+				if payment[2]==user:
+					mxexp[0][i]-=payment[3]
+			elif payment[4]=="Aircraft sale":
+				if payment[2]!=user:
+					acbuy[0][i]+=payment[3]
+				else:
+					acbuy[0][i]-=payment[3]
+			elif payment[4]=="Pilot fee":
+				if payment[2]!=user:
+					pltfee[0][i]+=payment[3]
+				else:
+					pltfee[0]-=payment[3]
+			elif payment[4]=="Installation of equipment in aircraft":
+				if payment[2]==user:
+					eqinstl[0][i]-=payment[3]
+			else:
+				print("No category (for aircraft) found for "+payment[4])
+
+	for i in range(len(ac)): #Sum up all categories for each aircraft
+		for var in items:
+			ac[i][0]+=var[0][i]
+		i+=1
+	gtot=0
+	for thisac in ac: #Sum up all aircraft
+		gtot+=thisac[0]
+	other=0
+	labels=[]
+	sizes=[]
+	for this ac in ac:
+		thisac[0]=thisac[0]/gtot*100
+		if thisac[0]>5:
+			labels.append(thisac[1])
+			sizes.append(thisac[0])
+		else:
+			other+=thisac[0]
+	if other>0.1:
+		sizes.append(other)
+		labels.append("Other")
+
+	pieplot(sizes,labels,"Aircraft Income")
+	pass
 
 def pieplot(ssizes, slabels, stitle):
 	# The slices will be ordered and plotted counter-clockwise.
@@ -838,6 +971,7 @@ def pieplot(ssizes, slabels, stitle):
 	plt.axis('equal') # Set aspect ratio to be equal so that pie is drawn as a circle.
 	plt.title(stitle)
 	plt.show()
+	pass
 
 def gettype(icao):
 	icaodict=dicts.getactypedict()
@@ -881,7 +1015,7 @@ def main(argv):
 			acforsale(conn)
 		elif opt=='-n':
 			totals=gettotals(conn,"None",fromdate,todate)
-			plotdates(totals,"Aircraft for sale","Aircraft")
+			plotdates([totals],"Aircraft for sale","Aircraft")
 		elif opt in ("-d", "--duration"):
 			durtype,dur=gettype(arg)
 		elif opt in ("-m", "--map"):
@@ -913,15 +1047,15 @@ def main(argv):
 
 	if tot==1:
 		totals=gettotals(conn,tottype,fromdate,todate)
-		plotdates(totals,"Number of "+tottype+" for sale","Aircraft")
+		plotdates([totals],"Number of "+tottype+" for sale","Aircraft")
 	
 	if avg==1:
 		averages=getaverages(conn,avgtype,fromdate,todate)
-		plotdates(averages,"Average price for "+avgtype,"Price")
+		plotdates([averages],"Average price for "+avgtype,"Price")
 	
 	if low==1:
 		lows=getlows(conn,lowtype,fromdate,todate)
-		plotdates(lows,"Lowest price for "+lowtype,"Price")
+		plotdates([lows],"Lowest price for "+lowtype,"Price")
 	
 	if dur==1:
 		listings=getlistings(conn,durtype,lowprice,highprice)
@@ -930,7 +1064,7 @@ def main(argv):
 			duration=listings[4]-listings[3]
 			durations.append((listings[2],duration))
 			print(str(listings[2])+": "+str(duration))
-		plotdates(durations,"Time to sell for "+durtype,"Days")
+		plotdates([durations],"Time to sell for "+durtype,"Days")
 	
 	if pay==1:
 		year=fromdate.split('-', 2)[0]
