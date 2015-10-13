@@ -699,6 +699,9 @@ struct gotAC getshortac(XPLMDataRef desc_ref, XPLMDataRef icao_ref) {
 	} else if (strcmp(buffer, "Columbia 400")==0 || strcmp(ibuffer, "COL4")==0) {
 		strncpy(thisAC.AC,"COL4",4);
 		thisAC.has3D=1;
+	} else if (strcmp(buffer, "Dornier Do 32")==0 || strcmp(ibuffer, "D328")==0) {
+		strncpy(thisAC.AC,"D328",4);
+		thisAC.has3D=1;
 	} else {
 		strncpy(acf_descb,thisAC.AC,4);
 		thisAC.has3D=0;
