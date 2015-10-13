@@ -38,7 +38,7 @@ def fserequest(rqst,tagname):
 		tags = xmldoc.getElementsByTagName(tagname)
 	return tags
 
-def acforsale(conn):
+def acforsale(conn): #Log aircraft currently for sale
 	print("Sending request for sales listing...")
 	airplanes = fserequest('query=aircraft&search=forsale','Aircraft')
 	print("Recording data...")
@@ -47,8 +47,8 @@ def acforsale(conn):
 	count+=1
 	now=time.strftime("%Y-%m-%d %H:%M", time.gmtime())
 	row=(count, now)
-	c.execute('INSERT INTO queries VALUES (?,?);',row)
-	for airplane in airplanes:
+	c.execute('INSERT INTO queries VALUES (?,?);',row) #Record date/time of this query
+	for airplane in airplanes: #Record aircraft for sale
 		actype = airplane.getElementsByTagName("MakeModel")[0].firstChild.nodeValue
 		serial = int(airplane.getElementsByTagName("SerialNumber")[0].firstChild.nodeValue)
 		aframetime = airplane.getElementsByTagName("AirframeTime")[0].firstChild.nodeValue
@@ -59,9 +59,8 @@ def acforsale(conn):
 		row=(serial, actype, loc, locname, hours, price, count)
 		c.execute('INSERT INTO allac VALUES (?,?,?,?,?,?,?);',row)
 	conn.commit()
-	pass
-
-def logpaymonth(conn,year,month):
+	
+def logpaymonth(conn,year,month): #Log a month of payments
 	print("Sending requrest for payment listing...")
 	payments = fserequest('query=payments&search=monthyear&readaccesskey='+getkey()+'&month='+month+'&year='+year,'Payment')
 	c=getpaydbcon(conn)
@@ -83,30 +82,29 @@ def logpaymonth(conn,year,month):
 		row=(pdate, to, fr, amt, rsn, loc, ac, pid)
 		c.execute('INSERT INTO payments VALUES (?,?,?,?,?,?,?,?);',row)
 	conn.commit()
-	pass
-
-def getdbcon(conn):
+	
+def getdbcon(conn): #Get cursor for aircraft sale database
 	print("Initializing database cursor...")
 	c = conn.cursor()
 	c.execute("select count(*) from sqlite_master where type = 'table';")
 	exist=c.fetchone()
 	#print("Found " + str(exist[0]) + " tables...")
-	if  exist[0]== 0:
+	if  exist[0]==0: #Table does not exist, create table
 		print("Creating tables...")
 		c.execute('''CREATE TABLE allac
-			 (serial real, type text, loc text, locname text, hours real, price real, iter real)''')
+			 (serial real, type text, loc text, locname text, hours real, price real, obsiter real)''')
 		c.execute('''CREATE TABLE queries
 			 (obsiter real, qtime text)''')
 		conn.commit()
 	return c
 	
-def getpaydbcon(conn):
+def getpaydbcon(conn): #Get cursor for payment database
 	print("Initializing payment database cursor...")
 	c = conn.cursor()
 	c.execute("select count(*) from sqlite_master where type = 'table';")
 	exist=c.fetchone()
 	#print("Found " + str(exist[0]) + " tables...")
-	if  exist[0]== 0:
+	if  exist[0]==0: #Table does not exist, create table
 		print("Creating tables...")
 		c.execute('''CREATE TABLE payments
 			 (date text, payto text, payfrom text, amount real, reason text, location text, aircraft text, pid real)''')
@@ -114,7 +112,7 @@ def getpaydbcon(conn):
 		conn.commit()
 	return c
 	
-def getmaxiter(conn):
+def getmaxiter(conn): #Return the number of latest query, which is the number of queries
 	c = conn.cursor()
 	c.execute('SELECT iter FROM queries ORDER BY iter DESC;')
 	count=c.fetchone()
@@ -125,7 +123,7 @@ def getmaxiter(conn):
 		current=0
 	return current
 
-def dudewheresmyairplane():
+def dudewheresmyairplane(): #Print list of owned planes
 	#planes={}
 	print("Sending request for aircraft list...")
 	airplanes = fserequest('query=aircraft&search=key&readaccesskey='+getkey(),'Aircraft')
@@ -136,8 +134,7 @@ def dudewheresmyairplane():
 		chk = plane.getElementsByTagName("TimeLast100hr")[0].firstChild.nodeValue
 		#planes[reg]=(loc,eng,chk)
 		print(reg+" at "+loc+"  tot: "+eng+"  last: "+chk)
-	pass
-
+	
 def jobsfrom(apts,price,pax): #High paying jobs from airports
 	jobs=[]
 	print("Sending request for jobs from "+apts+"...")
@@ -158,7 +155,7 @@ def jobsto(apts,price,pax): #High paying jobs to airports
 		totalto+=1
 	return jobs
 
-def jobstest(assignment,jobs,price,pax):
+def jobstest(assignment,jobs,price,pax): #Only add job to array if meeting minumum pax and pay values
 	pay = float(assignment.getElementsByTagName("Pay")[0].firstChild.nodeValue)
 	if pay>price:
 		amt = assignment.getElementsByTagName("Amount")[0].firstChild.nodeValue
@@ -187,7 +184,7 @@ def paxfrom(apts,minpax,maxpax): #Pax jobs from airports (incl green jobs)
 	jobs=paxtest(assignments,minpax,maxpax,"from")
 	return jobs
 
-def paxtest(assignments,minpax,maxpax,tofrom):
+def paxtest(assignments,minpax,maxpax,tofrom): #Return assignments meeting min and max pax requirements
 	candidates=[]
 	apts={}
 	jobs=[]
@@ -222,16 +219,15 @@ def paxtest(assignments,minpax,maxpax,tofrom):
 			jobs.append(option)
 	return jobs
 
-def printjobs(jobs,rev):
+def printjobs(jobs,rev): #Print the list of jobs
 	if rev==1:
 		list=jobs
 	else:
 		list=reversed(jobs)
 	for job in jobs:
 		print(job[2]+" "+job[3]+" "+job[0]+"-"+job[1]+" $"+str(int(job[4]))+" "+str(distbwt(job[0],job[1]))+" "+job[5])
-	pass
-
-def cosinedist(lat1,lon1,lat2,lon2):
+	
+def cosinedist(lat1,lon1,lat2,lon2): #Use haversine to find distance between coordinates
 	phi1 = math.radians(lat1)
 	phi2 = math.radians(lat2)
 	dellamb = math.radians(lon2-lon1)
@@ -240,7 +236,7 @@ def cosinedist(lat1,lon1,lat2,lon2):
 	d = math.acos( math.sin(phi1)*math.sin(phi2) + math.cos(phi1)*math.cos(phi2) * math.cos(dellamb) ) * R
 	return int(round(d))
 
-def inithdg(lat1,lon1,lat2,lon2):
+def inithdg(lat1,lon1,lat2,lon2): #Find heading between coordinates
 	phi1 = math.radians(lat1)
 	phi2 = math.radians(lat2)
 	lamb1 = math.radians(lon1)
@@ -252,19 +248,19 @@ def inithdg(lat1,lon1,lat2,lon2):
 		brng+=360
 	return brng
 
-def dirbwt(icaofrom,icaoto):
+def dirbwt(icaofrom,icaoto): #Find bearing from one airport to another
 	lat1,lon1=loc_dict[icaofrom]
 	lat2,lon2=loc_dict[icaoto]
 	hdg=inithdg(lat1,lon1,lat2,lon2)
 	return hdg
 
-def distbwt(icaofrom,icaoto):
+def distbwt(icaofrom,icaoto): #Find distance from one airport to another
 	lat1,lon1=loc_dict[icaofrom]
 	lat2,lon2=loc_dict[icaoto]
 	dist=cosinedist(lat1,lon1,lat2,lon2)
 	return dist
 
-def build_csv(): #return dictionary of airport locations, using FSE csv file
+def build_latlon_csv(): #return dictionary of airport coordinates, using FSE csv file
 	loc_dict = {}
 	file='/mnt/data/XPLANE10/XSDK/icaodata.csv'
 	with open(file, 'r') as f:
@@ -274,18 +270,31 @@ def build_csv(): #return dictionary of airport locations, using FSE csv file
 		if has_header:
 			next(reader)  # skip header row
 		for row in reader:
-			loc_dict[row[0]]=(float(row[1]),float(row[2]))
+			loc_dict[row[0]]=(float(row[1]),float(row[2])) #Code = lat, lon
 	return loc_dict
 
-def chgdir(hdg,delt):
+def build_ctry_csv(): #return dictionary of airport countries, using FSE csv file
+	loc_dict = {}
+	file='/mnt/data/XPLANE10/XSDK/icaodata.csv'
+	with open(file, 'r') as f:
+		has_header = csv.Sniffer().has_header(f.read(1024))
+		f.seek(0)  # rewind
+		reader = csv.reader(f)
+		if has_header:
+			next(reader)  # skip header row
+		for row in reader:
+			loc_dict[row[0]]=row[8] #Code = Country
+	return loc_dict
+
+def chgdir(hdg,delt): #Add delta to heading and fix if passing 0 or 360
 	hdg+=delt
 	if hdg>360:
 		hdg-=360
-	elif hdg<0:
+	elif hdg<=0:
 		hdg+=360
 	return hdg
 
-def nearby(icao,rad):
+def nearby(icao,rad): #Find other airports within radius of given airport
 	#print("Looking for airports near "+icao)
 	near=""
 	clat,clon=loc_dict[icao]
@@ -301,7 +310,7 @@ def nearby(icao,rad):
 	#print(near)
 	return near
 
-def bigjobs(apts,dir):
+def bigjobs(apts,dir): #Find high paying jobs to/from airports
 	total=0
 	for airport in apts:
 		if dir==0:
@@ -313,8 +322,7 @@ def bigjobs(apts,dir):
 		total+=len(jobs)
 	word="from near" if dir==0 else "to"
 	print("Found these "+str(total)+" big jobs "+word+" those airports:")
-	pass
-	
+		
 def mapper(points, mincoords, maxcoords, title): # Put the points on a map, color by division
 	print("Mapping points...")
 	if maxcoords[1]-mincoords[1]>180 or maxcoords[0]-mincoords[0]>60: # World with center aligned
@@ -336,9 +344,8 @@ def mapper(points, mincoords, maxcoords, title): # Put the points on a map, colo
 	m.scatter(x,y,s=ptsize,marker=mk,c=c)
 	plt.title(title,fontsize=12)
 	plt.show()
-	pass
-
-def gettotals(conn,actype,fr,to):
+	
+def gettotals(conn,actype,fr,to): #Return list of total aircraft for sale at each query time
 	c=getdbcon(conn)
 	d=getdbcon(conn)
 	totals=[]
@@ -353,28 +360,28 @@ def gettotals(conn,actype,fr,to):
 		totals.append((getdtime(query[1]),total))
 	return totals
 
-def getaverages(conn,actype,fr,to):
+def getaverages(conn,actype,fr,to): #Return list of average prices for aircraft in each query time
 	c=getdbcon(conn)
 	d=getdbcon(conn)
 	averages=[]
-	fr=fr+" 00:01"
+	fr=fr+" 00:01" #Add times to match the values in table
 	to=to+" 23:59"
 	print("Finding averages for: "+actype+" from "+fr+" to "+to+"...")
 	for query in c.execute('SELECT * FROM queries WHERE qtime BETWEEN ? AND ?', (fr,to)):
-		print("Matched query "+str(query[0])+":"+query[1])
+		#print("Matched query "+str(query[0])+":"+query[1])
 		numforsale=0
 		totalprice=0
 		for sale in d.execute('SELECT price FROM allac WHERE obsiter = ? AND type = ?', (query[0],actype)):
-			print("Matched sale for "+str(sale[0]))
+			#print("Matched sale for "+str(sale[0]))
 			totalprice+=int(sale[0])
 			numforsale+=1
 		if numforsale>0:
 			avg=totalprice/numforsale
 			averages.append((getdtime(query[1]),avg))
-			print("Average is "+str(avg))
+			#print("Average is "+str(avg))
 	return averages
 
-def getdtime(strin):
+def getdtime(strin): #Return datetime for the Y-M-D H:M input
 	adate,atime=strin.split()
 	year=int(adate.split('-', 2)[0])
 	month=int(adate.split('-', 2)[1])
@@ -383,7 +390,7 @@ def getdtime(strin):
 	mnt=int(atime.split(':')[1])
 	return datetime(year,month,day,hour,mnt)
 
-def getlows(conn,actype,fr,to):
+def getlows(conn,actype,fr,to): #Return list of lowest price for aircraft in each query
 	c=getdbcon(conn)
 	d=getdbcon(conn)
 	lows=[]
@@ -396,16 +403,18 @@ def getlows(conn,actype,fr,to):
 			lows.append((getdtime(query[1]),price))
 	return lows
 
-def getlistings(conn,actype,lo,hi):
+def getlistings(conn,actype,lo,hi): #Return list of time for aircraft to sell
 	c=getdbcon(conn)
 	d=getdbcon(conn)
+	cdict=build_ctry_csv()
 	rdict=dicts.getregiondict()
 	listings=[]
 	print("Finding sell times for: "+actype+", "+str(lo)+" to "+str(hi)+"...")
-	for query in c.execute('SELECT iter FROM queries'):
+	for query in c.execute('SELECT obsiter FROM queries'):
 	#serial real, type text, loc text, locname text, hours real, price real, obsiter real
 		for sale in d.execute('SELECT * FROM allac WHERE obsiter = ? AND type = ? AND price BETWEEN ? AND ?', (query[0],actype,lo,hi)):
-			region=rdict[sale[2]]
+			country=cdict[sale[2]]
+			region=rdict(country)
 			match=0
 			for i in range(len(listings)):
 				if sale[0]==listings[i][0]:
@@ -420,10 +429,10 @@ def getlistings(conn,actype,lo,hi):
 				
 	return listings
 	
-def maplocations(conn,actype):
+def maplocations(conn,actype): #Map locations of aircraft type for sale
 	c=getdbcon(conn)
 	print("Building airport location dictionary from csv...")
-	loc_dict=build_csv()
+	loc_dict=build_latlon_csv()
 	print("Creating locations list...")
 	locations=[]
 	lat_tot=0
@@ -459,9 +468,8 @@ def maplocations(conn,actype):
 		mapper(locations, (latmin,lonmin), (latmax,lonmax), title)
 	else:
 		print("No locations found for: "+actype)
-	pass
-
-def plotdates(dlist,title,ylbl):
+	
+def plotdates(dlist,title,ylbl): #Plot a list of data vs. dates
 	print("Plotting figure for: "+title)
 	fig, ax = plt.subplots()
 	formatter=DateFormatter('%Y-%m-%d %H:%M')
@@ -479,9 +487,8 @@ def plotdates(dlist,title,ylbl):
 	plt.ylabel(ylbl)
 	plt.show()
 #	plt.xlim([date2num(date(fyear,fmonth,fday)),date2num(date(tyear,tmonth,tday))])
-	pass
-
-def plotpayments(conn,fromdate,todate):
+	
+def plotpayments(conn,fromdate,todate): #Plot payment totals per category
 	c=getpaydbcon(conn)
 	user=getname()
 	delta=timedelta(days=1)
@@ -613,9 +620,8 @@ def plotpayments(conn,fromdate,todate):
 	# plt.ylabel(ylbl)
 	# plt.xlim([date2num(date(fyear,fmonth,fday)),date2num(date(tyear,tmonth,tday))])
 	# plt.show()
-	pass
-
-def sumpayments(conn,fdate,tdate):
+	
+def sumpayments(conn,fdate,tdate): #Plot portion of income/expense per category
 	c=getpaydbcon(conn)
 	#Income
 	rentinc=[0,"Rental income"]
@@ -737,7 +743,7 @@ def sumpayments(conn,fdate,tdate):
 		else:
 			print("No category found for "+payment[4])
 
-	#Income nets
+	#Income nets per category
 	rent=[rentinc[0]-rentexp[0],"Rental"]
 	assnmt=[assnmtinc[0]-assnmtexp[0],"Assignments"]
 	ac=[acsold[0]-acbought[0],"Aircraft"]
@@ -761,10 +767,10 @@ def sumpayments(conn,fdate,tdate):
 	#pltfee
 	
 	incnet=[]
-	expnet=[ref100, refjet, bkgfee, gndcrewfee, addcrewfee, pltfee, mxexp]
+	expnet=[ref100, refjet, bkgfee, gndcrewfee, addcrewfee, pltfee, mxexp] #Always negative
 	netinc=0
 	netexp=ref100[0]+refjet[0]+bkgfee[0]+gndcrewfee[0]+addcrewfee[0]+pltfee[0]+mxexp[0]
-	for net in incnets:
+	for net in incnets: #Test if category represents an expense or income
 		if net[0]>0:
 			incnet.append(net)
 			netinc+=net[0]
@@ -777,7 +783,7 @@ def sumpayments(conn,fdate,tdate):
 	rsizes=[]
 	elabels=[]
 	esizes=[]
-	for net in incnet:
+	for net in incnet: #Create list of labels/sizes for plot, collect small ones into "other"
 		net[0]=net[0]/netinc*100
 		if net[0]>5:
 			rlabels.append(net[1])
@@ -840,9 +846,8 @@ def sumpayments(conn,fdate,tdate):
 		esizes.append(expo)
 	pieplot(rsizes,rlabels,"Revenues")
 	pieplot(esizes,elabels,"Expenses")
-	pass
-
-def sumacpayments(conn,fdate,tdate):
+	
+def sumacpayments(conn,fdate,tdate): #Plot revenue portion by aircraft
 	c=getpaydbcon(conn)
 	d=getpaydbcon(conn)
 	#Income
@@ -945,7 +950,7 @@ def sumacpayments(conn,fdate,tdate):
 	other=0
 	labels=[]
 	sizes=[]
-	for thisac in ac:
+	for this ac in ac:
 		thisac[0]=thisac[0]/gtot*100
 		if thisac[0]>5:
 			labels.append(thisac[1])
@@ -957,9 +962,8 @@ def sumacpayments(conn,fdate,tdate):
 		labels.append("Other")
 
 	pieplot(sizes,labels,"Aircraft Income")
-	pass
-
-def pieplot(ssizes, slabels, stitle):
+	
+def pieplot(ssizes, slabels, stitle): #Create a pie plot
 	# The slices will be ordered and plotted counter-clockwise.
 	#labels = 'Frogs', 'Hogs', 'Dogs', 'Logs'
 	#sizes = [15, 30, 45, 10]
@@ -971,9 +975,8 @@ def pieplot(ssizes, slabels, stitle):
 	plt.axis('equal') # Set aspect ratio to be equal so that pie is drawn as a circle.
 	plt.title(stitle)
 	plt.show()
-	pass
-
-def gettype(icao):
+	
+def gettype(icao): #Return name of aircraft type or error if not found
 	icaodict=dicts.getactypedict()
 	try:
 		if icao!="":
@@ -987,15 +990,16 @@ def gettype(icao):
 		success=0
 	return actype, success
 
-def main(argv):
+def main(argv): #This is where the magic happens
 	
 	syntaxstring='pricelog.py -un -dmac <aircraft icao> -ft <YYYY-MM-DD> -lh <price>'
 	try:
-		opts, args = getopt.getopt(argv,"hund:m:a:c:f:t:l:i:pqsg:",["duration=","map=","average=","cheapest=","from=","to=","low=","high=","total="])
+		opts, args = getopt.getopt(argv,"hund:m:a:c:f:t:l:i:pqsg:v:",["duration=","map=","average=","cheapest=","from=","to=","low=","high=","total=","percbyac="])
 	except getopt.GetoptError:
 		print(syntaxstring)
 		sys.exit(2)
-	conn = sqlite3.connect('/mnt/data/XPLANE10/XSDK/forsale.db')
+	print("Opening database...")
+	conn=sqlite3.connect('/mnt/data/XPLANE10/XSDK/forsale.db')
 	tot=0
 	avg=0
 	low=0
@@ -1003,6 +1007,7 @@ def main(argv):
 	pay=0
 	ppay=0
 	spay=0
+	stot=0
 	lowprice=0
 	highprice=99999999
 	fromdate="0000-01-01"
@@ -1041,8 +1046,10 @@ def main(argv):
 			spay=1
 		elif opt in ("-g", "--total"):
 			tottype,tot=gettype(arg)
+		elif opt in ("-v", "--percbyac"):
+			sumtype,stot=gettype(arg)
 
-	if pay+ppay+spay>0:
+	if pay+ppay+spay+stot>0:
 		conn2=sqlite3.connect('/mnt/data/XPLANE10/XSDK/payments.db')
 
 	if tot==1:
@@ -1077,6 +1084,9 @@ def main(argv):
 
 	if spay==1:
 		sumpayments(conn2,fromdate,todate)
+	
+	if stot==1:
+		sumacpayments(conn2,fromdate,todate)
 
 	# We can also close the connection if we are done with it.
 	# Just be sure any changes have been committed or they will be lost. FOREVER
