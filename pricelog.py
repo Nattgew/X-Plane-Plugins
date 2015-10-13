@@ -26,8 +26,12 @@ def getname():
 	myname=myname.strip()
 	return myname
 
-def fserequest(rqst,tagname):
-	data = urllib.request.urlopen('http://server.fseconomy.net/data?userkey='+getkey()+'&format=xml&'+rqst)
+def fserequest(ra,rqst,tagname):
+	if ra==1:
+		rakey="&readaccesskey="+getkey()
+	else:
+		rakey=""
+	data = urllib.request.urlopen('http://server.fseconomy.net/data?userkey='+getkey()+rakey'&format=xml&'+rqst)
 	print("Parsing data...")
 	xmldoc = minidom.parse(data)
 	error = xmldoc.getElementsByTagName('Error')
@@ -40,7 +44,7 @@ def fserequest(rqst,tagname):
 
 def acforsale(conn): #Log aircraft currently for sale
 	print("Sending request for sales listing...")
-	airplanes = fserequest('query=aircraft&search=forsale','Aircraft')
+	airplanes = fserequest(0,'query=aircraft&search=forsale','Aircraft')
 	print("Recording data...")
 	c=getdbcon(conn)
 	count=getmaxiter(conn)
@@ -62,7 +66,7 @@ def acforsale(conn): #Log aircraft currently for sale
 	
 def logpaymonth(conn,year,month): #Log a month of payments
 	print("Sending requrest for payment listing...")
-	payments = fserequest('query=payments&search=monthyear&readaccesskey='+getkey()+'&month='+month+'&year='+year,'Payment')
+	payments = fserequest(1,'query=payments&search=monthyear&month='+month+'&year='+year,'Payment')
 	c=getpaydbcon(conn)
 	print("Recording data...")
 	for payment in payments:
@@ -126,7 +130,7 @@ def getmaxiter(conn): #Return the number of latest query, which is the number of
 def dudewheresmyairplane(): #Print list of owned planes
 	#planes={}
 	print("Sending request for aircraft list...")
-	airplanes = fserequest('query=aircraft&search=key&readaccesskey='+getkey(),'Aircraft')
+	airplanes = fserequest(1,'query=aircraft&search=key','Aircraft')
 	for plane in airplanes:
 		loc = plane.getElementsByTagName("Location")[0].firstChild.nodeValue
 		reg = plane.getElementsByTagName("Registration")[0].firstChild.nodeValue
@@ -138,7 +142,7 @@ def dudewheresmyairplane(): #Print list of owned planes
 def jobsfrom(apts,price,pax): #High paying jobs from airports
 	jobs=[]
 	print("Sending request for jobs from "+apts+"...")
-	assignments = fserequest('query=icao&search=jobsfrom&icaos='+apts,'Assignment')
+	assignments = fserequest(0,'query=icao&search=jobsfrom&icaos='+apts,'Assignment')
 	for assignment in assignments:
 		jobs=jobstest(assignment,jobs,price,pax)
 		global totalfrom
@@ -148,7 +152,7 @@ def jobsfrom(apts,price,pax): #High paying jobs from airports
 def jobsto(apts,price,pax): #High paying jobs to airports
 	jobs=[]
 	print("Sending request for jobs to "+apts+"...")
-	assignments = fserequest('query=icao&search=jobsto&icaos='+apts,'Assignment')
+	assignments = fserequest(0,'query=icao&search=jobsto&icaos='+apts,'Assignment')
 	for assignment in assignments:
 		jobs=jobstest(assignment,jobs,price,pax)
 		global totalto
@@ -174,13 +178,13 @@ def jobstest(assignment,jobs,price,pax): #Only add job to array if meeting minum
 
 def paxto(apts,minpax,maxpax): #Pax jobs to airports (incl green jobs)
 	print("Sending request incl pax jobs to "+apts+"...")
-	assignments = fserequest('query=icao&search=jobsto&icaos='+apts,'Assignment')
+	assignments = fserequest(0,'query=icao&search=jobsto&icaos='+apts,'Assignment')
 	jobs=paxtest(assignments,minpax,maxpax,"to")
 	return jobs
 
 def paxfrom(apts,minpax,maxpax): #Pax jobs from airports (incl green jobs)
 	print("Sending request incl pax jobs from "+apts+"...")
-	assignments = fserequest('query=icao&search=jobsfrom&icaos='+apts,'Assignment')
+	assignments = fserequest(0,'query=icao&search=jobsfrom&icaos='+apts,'Assignment')
 	jobs=paxtest(assignments,minpax,maxpax,"from")
 	return jobs
 
@@ -227,12 +231,12 @@ def printjobs(jobs,rev): #Print the list of jobs
 	for job in jobs:
 		print(job[2]+" "+job[3]+" "+job[0]+"-"+job[1]+" $"+str(int(job[4]))+" "+str(distbwt(job[0],job[1]))+" "+job[5])
 	
-def cosinedist(lat1,lon1,lat2,lon2): #Use haversine to find distance between coordinates
+def cosinedist(lat1,lon1,lat2,lon2): #Use cosine to find distance between coordinates
 	phi1 = math.radians(lat1)
 	phi2 = math.radians(lat2)
 	dellamb = math.radians(lon2-lon1)
-	R = 3440.06479 # Nm
-	# gives d in Nm
+	R = 3440.06479 # Nmi
+	# gives d in Nmi
 	d = math.acos( math.sin(phi1)*math.sin(phi2) + math.cos(phi1)*math.cos(phi2) * math.cos(dellamb) ) * R
 	return int(round(d))
 
@@ -323,7 +327,7 @@ def bigjobs(apts,dir): #Find high paying jobs to/from airports
 	word="from near" if dir==0 else "to"
 	print("Found these "+str(total)+" big jobs "+word+" those airports:")
 		
-def mapper(points, mincoords, maxcoords, title): # Put the points on a map, color by division
+def mapper(what, points, mincoords, maxcoords, title): # Put the points on a map, color by division
 	print("Mapping points...")
 	if maxcoords[1]-mincoords[1]>180 or maxcoords[0]-mincoords[0]>60: # World with center aligned
 		m = Basemap(projection='hammer', resolution='c', lon_0=(maxcoords[1]+mincoords[1])/2)
@@ -331,17 +335,44 @@ def mapper(points, mincoords, maxcoords, title): # Put the points on a map, colo
 		width=maxcoords[1]-mincoords[1]
 		height=maxcoords[0]-mincoords[0]
 		m = Basemap(projection='cyl', resolution='c', llcrnrlon=mincoords[1]-0.1*width, llcrnrlat=mincoords[0]-0.1*height, urcrnrlon=maxcoords[1]+0.1*width, urcrnrlat=maxcoords[0]+0.1*height)
-	if len(points) < 30: #Use awesome airplane symbol
-		verts = list(zip([0.,1.,1.,10.,10.,9.,6.,1.,1.,4.,1.,0.,-1.,-4.,-1.,-1.,-5.,-9.,-10.,-10.,-1.,-1.,0.],[9.,8.,3.,-1.,-2.,-2.,0.,0.,-5.,-8.,-8.,-9.,-8.,-8.,-5.,0.,0.,-2.,-2.,-1.,3.,8.,9.])) #Supposed to be an airplane
-		mk=(verts,0)
-		ptsize=50
-	else: #Use boring but more compact dots
-		mk='o'
-		ptsize=2
-	m.shadedrelief()
-	x, y = m([i[1] for i in points], [i[0] for i in points])
-	c='b'
-	m.scatter(x,y,s=ptsize,marker=mk,c=c)
+	if what=="ac":
+		if len(points) < 30: #Use awesome airplane symbol
+			verts = list(zip([0.,1.,1.,10.,10.,9.,6.,1.,1.,4.,1.,0.,-1.,-4.,-1.,-1.,-5.,-9.,-10.,-10.,-1.,-1.,0.],[9.,8.,3.,-1.,-2.,-2.,0.,0.,-5.,-8.,-8.,-9.,-8.,-8.,-5.,0.,0.,-2.,-2.,-1.,3.,8.,9.])) #Supposed to be an airplane
+			mk=(verts,0)
+			ptsize=50
+		else: #Use boring but more compact dots
+			mk='o'
+			ptsize=2
+		m.shadedrelief()
+		x, y = m([i[1] for i in points], [i[0] for i in points])
+		c='b'
+		m.scatter(x,y,s=ptsize,marker=mk,c=c)
+	elif what=="fuel":
+		max=0
+		for loc in points:
+			thous=int(round(loc[2])) #Size of point will be based on fuel amount
+			if thous>max:
+				max=thous
+			loc[2]=thous
+		pts=[] #rows=thous, columns=colors, contents=list of points
+		for i in range(max+1):
+			pts.append([[][][]]) #Add a new empty row
+			for loc in points:
+				if loc[2]==i+1:
+					pts[i][loc[3]].append((loc[0],loc[1]))
+		for i in range(max+1):
+			sz=(i+1)*2
+			if pts[i]!=[[][][]]:
+				for j in range(3):
+					if pts[i][j]!=[]:
+						x, y = m([k[1] for k in pts[i][j]], [k[0] for k in pts[i][j]])
+						if j==0:
+							c='o'
+						elif j==1:
+							c='b'
+						else:
+							c='k'
+						m.scatter(x,y,s=sz,marker='o',c=c)
 	plt.title(title,fontsize=12)
 	plt.show()
 	
@@ -397,11 +428,58 @@ def getlows(conn,actype,fr,to): #Return list of lowest price for aircraft in eac
 	print("Finding low low prices for: "+actype+"...")
 	for query in c.execute('SELECT * FROM queries WHERE qtime BETWEEN ? AND ?', (fr,to)):
 		d.execute('SELECT price FROM allac WHERE obsiter = ? AND type = ? ORDER BY price', (query[0],actype))
-		#'SELECT price FROM allac WHERE sto > ? AND s sfrom < ?', (fr,to)
 		price=d.fetchone()
 		if price is not None:
 			lows.append((getdtime(query[1]),price))
 	return lows
+
+def mapcommo(type):
+	if type=="fuel":
+		t1="JetA Fuel"
+		t2="100LL Fuel"
+	elif type=="mtrl":
+		t1="Supplies"
+		t2="Building materials"
+	else:
+		print("Commodity type "+type+" not recognized!")
+	if t1 is not None:
+		print("Sending request for commodities...")
+		commo = fserequest(0,'query=commodities&search=key','Commodity')
+		print("Sorting results...")
+		stuff = []
+		for item in commo: #Parse commodity info
+			typ = airplane.getElementsByTagName("Type")[0].firstChild.nodeValue
+			if typ==t1 or typ==t2:
+				loc = airplane.getElementsByTagName("Location")[0].firstChild.nodeValue
+				amt = airplane.getElementsByTagName("Amount")[0].firstChild.nodeValue
+				stuff.append((loc,typ,amt))
+		if stuff!=[]: #Add up quantity per location
+			qty=[] #List to hold quantities
+			for item in stuff:
+				match=-1
+				i=-1
+				for prev in qty:
+					i+=1
+					if item[0]==qty[0]: #Test if the location has already been added
+						match=1
+						break
+				if match==-1: #If not added, then add new location/quantity
+					if item[1]==t1:
+						idx=0
+					else: #t2
+						idx=1
+					qty.append([item[0],item[2].split(),idx])
+				else: #If added, then sum with other quantity
+					qty[i][1]+=item[2].split()
+					qty[i][2]=2 #Indicates a mix of t1 and t2
+			coords=getcoords(qty[:][0])
+			if len(coords)==len(qty): #If not, there was some key error I guess
+				locations=[]
+				for i in range(len(coords)):
+					locations.append([locations[i][0],locations[i][1],qty[i][1],qty[i][2]])
+				mapper(type, locations, (latmin,lonmin), (latmax,lonmax), title)
+		else:
+			print("No "+type+" found!")
 
 def getlistings(conn,actype,lo,hi): #Return list of time for aircraft to sell
 	c=getdbcon(conn)
@@ -428,30 +506,34 @@ def getlistings(conn,actype,lo,hi): #Return list of time for aircraft to sell
 				listings.append([sale[0],region,int(sale[5]),query[0],query[0]]) #SN, region, price, first iter, last iter
 				
 	return listings
-	
-def maplocations(conn,actype): #Map locations of aircraft type for sale
+
+def mapaclocations(conn, actype): #Map locations of aircraft type for sale
 	c=getdbcon(conn)
-	print("Building airport location dictionary from csv...")
-	loc_dict=build_latlon_csv()
-	print("Creating locations list...")
-	locations=[]
-	lat_tot=0
-	lon_tot=0
 	iters=getmaxiter(conn)
-	latmax,lonmax,latmin,lonmin=100,200,100,200 #garbage to signal init
 	q1="SELECT loc FROM allac WHERE obsiter = "+str(iters) #To allow adding to query
 	if actype=="":
 		title="Locations of all aircraft for sale"
 	else:
 		q1+=" AND type = '"+actype+"'"
 		title="Locations of "+actype+" for sale"
+	locations=getcoords(c.execute(q1))
+	mapper(what, locations, (latmin,lonmin), (latmax,lonmax), title)
+	
+def getcoords(data): #Get coordinates for a list of airports
+	print("Building airport location dictionary from csv...")
+	loc_dict=build_latlon_csv()
+	print("Creating locations list...")
+	locations=[]
+	lat_tot=0
+	lon_tot=0
+	latmax,lonmax,latmin,lonmin=100,200,100,200 #garbage to signal init
 #	print("Running query: "+q1)
-	for row in c.execute(q1):
+	for row in data:
 		try:
 			lat,lon=loc_dict[row[0]]
 		except KeyError: #Probably "Airborne"
 			continue
-		locations.append((lat,lon))
+		locations.append([lat,lon])
 		lat_tot+=lat
 		lon_tot+=lon
 		if lat<latmin or abs(latmin)>90:
@@ -464,10 +546,11 @@ def maplocations(conn,actype): #Map locations of aircraft type for sale
 			lonmax=lon
 	pts=len(locations)
 	if pts>0:
-		center=(lat_tot/pts,lon_tot/pts)
-		mapper(locations, (latmin,lonmin), (latmax,lonmax), title)
+		#center=(lat_tot/pts,lon_tot/pts)
+		pass
 	else:
-		print("No locations found for: "+actype)
+		print("No locations found!")
+	return locations
 	
 def plotdates(dlist,title,ylbl): #Plot a list of data vs. dates
 	print("Plotting figure for: "+title)
@@ -777,75 +860,75 @@ def sumpayments(conn,fdate,tdate): #Plot portion of income/expense per category
 		else:
 			expnet.append(net)
 			netexp+=net[0]
-	revo=0
-	expo=0
-	rlabels=[]
-	rsizes=[]
-	elabels=[]
-	esizes=[]
-	for net in incnet: #Create list of labels/sizes for plot, collect small ones into "other"
-		net[0]=net[0]/netinc*100
-		if net[0]>5:
-			rlabels.append(net[1])
-			rsizes.append(net[0])
-		else:
-			revo+=net[0]
-	for net in expnet:
-		net[0]=net[0]/netexp*100
-		if net[0]>5:
-			elabels.append(net[1])
-			esizes.append(net[0])
-		else:
-			expo+=net[0]
-	if revo>0.1:
-		rsizes.append(revo)
-		rlabels.append("Other")
-	if expo>0.1:
-		esizes.append(expo)
-		elabels.append("Other")
-
-	pieplot(rsizes,rlabels,"Income sources")
-	pieplot(esizes,elabels,"Expense sources")
+	# revo=0
+	# expo=0
+	# rlabels=[]
+	# rsizes=[]
+	# elabels=[]
+	# esizes=[]
+	# for net in incnet: #Create list of labels/sizes for plot, collect small ones into "other"
+		# net[0]=net[0]/netinc*100
+		# if net[0]>5:
+			# rlabels.append(net[1])
+			# rsizes.append(net[0])
+		# else:
+			# revo+=net[0]
+	# for net in expnet:
+		# net[0]=net[0]/netexp*100
+		# if net[0]>5:
+			# elabels.append(net[1])
+			# esizes.append(net[0])
+		# else:
+			# expo+=net[0]
+	# if revo>0.1:
+		# rsizes.append(revo)
+		# rlabels.append("Other")
+	# if expo>0.1:
+		# esizes.append(expo)
+		# elabels.append("Other")
+	#pieplot(data, total, min, stitle):
+	pieplot(incnet,netinc,5,"Income sources")
+	pieplot(expnet,netexp,5,"Expense sources")
 
 	#Totals income/expenses
 	revs=[rentinc, assnmtinc, acsold, fboref100, fborefjet, fbogndcrew, fborepinc, fboeqpinc, ptrentinc, fbosell, wssell100, wsselljet, wssellbld, wssellsupp]
 	exps=[rentexp, assnmtexp, pltfee, addcrewfee, gndcrewfee, bkgfee, ref100, refjet, mxexp, eqinstl, acbought, fborepexp, fboeqpexp, fbobuy, wsbuy100, wsbuyjet, wsbuybld, wsbuysupp]
-	rev=0
-	exp=0
-	for this in revs:
-		rev+=this[0]
-	for this in exps:
-		exp+=this[0]
-	for this in revs:
-		this[0]=this[0]/rev*100
-	for this in exps:
-		this[0]=this[0]/exp*100
-	revo=0
-	expo=0
-	rlabels=[]
-	rsizes=[]
-	elabels=[]
-	esizes=[]
-	for this in revs:
-		if this[0] < 5:
-			revo+=this[0]
-		else:
-			rlabels.append(this[1])
-			rsizes.append(this[0])
-	for this in exps:
-		if this[0] < 5:
-			expo+=this[0]
-		else:
-			elabels.append(this[1])
-			esizes.append(this[0])
-	if revo>0.1:
-		rlabels.append("Other")
-		rsizes.append(revo)
-	if expo>0.1:
-		elabels.append("Other")
-		esizes.append(expo)
-	pieplot(rsizes,rlabels,"Revenues")
-	pieplot(esizes,elabels,"Expenses")
+	# rev=0
+	# exp=0
+	# for this in revs:
+		# rev+=this[0]
+	# for this in exps:
+		# exp+=this[0]
+	# for this in revs:
+		# this[0]=this[0]/rev*100
+	# for this in exps:
+		# this[0]=this[0]/exp*100
+	# revo=0
+	# expo=0
+	# rlabels=[]
+	# rsizes=[]
+	# elabels=[]
+	# esizes=[]
+	# for this in revs:
+		# if this[0] < 5:
+			# revo+=this[0]
+		# else:
+			# rlabels.append(this[1])
+			# rsizes.append(this[0])
+	# for this in exps:
+		# if this[0] < 5:
+			# expo+=this[0]
+		# else:
+			# elabels.append(this[1])
+			# esizes.append(this[0])
+	# if revo>0.1:
+		# rlabels.append("Other")
+		# rsizes.append(revo)
+	# if expo>0.1:
+		# elabels.append("Other")
+		# esizes.append(expo)
+	pieplot(revs,None,5,"Revenues")
+	pieplot(exps,None,5,"Expenses")
 	
 def sumacpayments(conn,fdate,tdate): #Plot revenue portion by aircraft
 	c=getpaydbcon(conn)
@@ -944,33 +1027,47 @@ def sumacpayments(conn,fdate,tdate): #Plot revenue portion by aircraft
 		for var in items:
 			ac[i][0]+=var[0][i]
 		i+=1
-	gtot=0
-	for thisac in ac: #Sum up all aircraft
-		gtot+=thisac[0]
-	other=0
+	# gtot=0
+	# for thisac in ac: #Sum up all aircraft
+		# gtot+=thisac[0]
+	# other=0
+	# labels=[]
+	# sizes=[]
+	# for this ac in ac:
+		# thisac[0]=thisac[0]/gtot*100
+		# if thisac[0]>5:
+			# labels.append(thisac[1])
+			# sizes.append(thisac[0])
+		# else:
+			# other+=thisac[0]
+	# if other>0.1:
+		# sizes.append(other)
+		# labels.append("Other")
+
+	pieplot(ac,None,5,"Aircraft Income")
+	
+def pieplot(data, total, min, stitle): #Create a pie plot
 	labels=[]
 	sizes=[]
-	for this ac in ac:
-		thisac[0]=thisac[0]/gtot*100
-		if thisac[0]>5:
-			labels.append(thisac[1])
-			sizes.append(thisac[0])
-		else:
-			other+=thisac[0]
+	other=0
+	if total is None:
+		total=0
+		for cat in data:
+			total+=cat[0]
+	for cat in data: #Convert values to a percentage of total, separate smaller categories
+		cat[0]=cat[0]/total*100
+		if cat[0]>min:
+			labels.append(cat[1])
+			sizes.append(cat[0])
+		else
+			other+=cat[0]
 	if other>0.1:
 		sizes.append(other)
 		labels.append("Other")
-
-	pieplot(sizes,labels,"Aircraft Income")
-	
-def pieplot(ssizes, slabels, stitle): #Create a pie plot
 	# The slices will be ordered and plotted counter-clockwise.
-	#labels = 'Frogs', 'Hogs', 'Dogs', 'Logs'
-	#sizes = [15, 30, 45, 10]
-	#colors = ['yellowgreen', 'gold', 'lightskyblue', 'lightcoral']
-	rcolors = ['yellowgreen', 'gold', 'lightskyblue', 'lightcoral']
-	#explode = (0, 0.1, 0, 0) # only "explode" the 2nd slice (i.e. 'Hogs') # But I don't wanna explode...
-	plt.pie(ssizes, labels=slabels, #colors=rcolors,
+	colors = ['yellowgreen', 'gold', 'lightskyblue', 'lightcoral']
+	#explode = (0, 0.1, 0, 0) # only "explode" the 2nd slice # But I don't wanna explode...
+	plt.pie(ssizes, labels=slabels, #colors=colors,
 			autopct='%1.1f%%', shadow=True, startangle=90)
 	plt.axis('equal') # Set aspect ratio to be equal so that pie is drawn as a circle.
 	plt.title(stitle)
@@ -994,7 +1091,7 @@ def main(argv): #This is where the magic happens
 	
 	syntaxstring='pricelog.py -un -dmac <aircraft icao> -ft <YYYY-MM-DD> -lh <price>'
 	try:
-		opts, args = getopt.getopt(argv,"hund:m:a:c:f:t:l:i:pqsg:v:",["duration=","map=","average=","cheapest=","from=","to=","low=","high=","total=","percbyac="])
+		opts, args = getopt.getopt(argv,"hund:m:a:c:f:t:l:i:pqsg:v:e:",["duration=","map=","average=","cheapest=","from=","to=","low=","high=","total=","percbyac=","commodity="])
 	except getopt.GetoptError:
 		print(syntaxstring)
 		sys.exit(2)
@@ -1025,7 +1122,7 @@ def main(argv): #This is where the magic happens
 			durtype,dur=gettype(arg)
 		elif opt in ("-m", "--map"):
 			maptype,domap=gettype(arg)
-			maplocations(conn,maptype)
+			mapaclocations(conn,maptype)
 		elif opt in ("-f", "--from"):
 			fromdate=arg
 		elif opt in ("-t", "--to"):
@@ -1048,6 +1145,8 @@ def main(argv): #This is where the magic happens
 			tottype,tot=gettype(arg)
 		elif opt in ("-v", "--percbyac"):
 			sumtype,stot=gettype(arg)
+		elif opt in ("-e", "--commodity"):
+			mapcommo(arg)
 
 	if pay+ppay+spay+stot>0:
 		conn2=sqlite3.connect('/mnt/data/XPLANE10/XSDK/payments.db')
