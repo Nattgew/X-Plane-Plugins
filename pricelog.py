@@ -94,7 +94,7 @@ def getdbcon(conn):
 	if  exist[0]== 0:
 		print("Creating tables...")
 		c.execute('''CREATE TABLE allac
-			 (serial real, type text, loc text, locname text, hours real, price real, obsiter real)''')
+			 (serial real, type text, loc text, locname text, hours real, price real, iter real)''')
 		c.execute('''CREATE TABLE queries
 			 (obsiter real, qtime text)''')
 		conn.commit()
@@ -402,10 +402,10 @@ def getlistings(conn,actype,lo,hi):
 	rdict=dicts.getregiondict()
 	listings=[]
 	print("Finding sell times for: "+actype+", "+str(lo)+" to "+str(hi)+"...")
-	for query in c.execute('SELECT obsiter FROM queries'):
+	for query in c.execute('SELECT iter FROM queries'):
 	#serial real, type text, loc text, locname text, hours real, price real, obsiter real
 		for sale in d.execute('SELECT * FROM allac WHERE obsiter = ? AND type = ? AND price BETWEEN ? AND ?', (query[0],actype,lo,hi)):
-			region=rdict(sale[2])
+			region=rdict[sale[2]]
 			match=0
 			for i in range(len(listings)):
 				if sale[0]==listings[i][0]:
@@ -945,7 +945,7 @@ def sumacpayments(conn,fdate,tdate):
 	other=0
 	labels=[]
 	sizes=[]
-	for this ac in ac:
+	for thisac in ac:
 		thisac[0]=thisac[0]/gtot*100
 		if thisac[0]>5:
 			labels.append(thisac[1])
