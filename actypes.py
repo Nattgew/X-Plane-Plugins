@@ -173,6 +173,7 @@ def getdict():
 	'PC12': 'Pilatus PC-12',
 	'DHC6i': 'DeHavilland DHC-6 300 Twin Otter (Aerosoft Extended)',
 	'DHC6': 'DeHavilland DHC-6 Twin Otter',
-	'D195': 'Cessna 195'}
+	'C195': 'Cessna 195',
+	'C172': 'Cessna 172'}
 	return dict
 	
