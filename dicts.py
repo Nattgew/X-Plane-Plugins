@@ -174,7 +174,8 @@ def getactypedict():
 	"DHC6i": "DeHavilland DHC-6 300 Twin Otter (Aerosoft Extended)",
 	"DHC6": "DeHavilland DHC-6 Twin Otter",
 	"C195": "Cessna 195",
-	"C172": "Cessna 172"}
+	"C172": "Cessna 172 Skyhawk",
+	"C182": "Cessna 182 Skylane"}
 	return dict
 
 def getregiondict():
