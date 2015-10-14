@@ -66,7 +66,7 @@ def acforsale(conn): #Log aircraft currently for sale
 	conn.commit()
 	
 def logpaymonth(conn,year,month): #Log a month of payments
-	print("Sending requrest for payment listing...")
+	print("Sending request for payment listing...")
 	payments = fserequest(1,'query=payments&search=monthyear&month='+month+'&year='+year,'Payment')
 	c=getpaydbcon(conn)
 	print("Recording data...")
@@ -79,27 +79,88 @@ def logpaymonth(conn,year,month): #Log a month of payments
 		loc = payment.getElementsByTagName("Location")[0].firstChild.nodeValue
 		pid = int(payment.getElementsByTagName("Id")[0].firstChild.nodeValue)
 		#print("pdate="+pdate+"  to="+to+"  from="+fr+"  amount="+str(amt)+"  reason="+rsn+"  loc="+loc)
-		if rsn=="Monthly Interest" or rsn=="Fuel Delivered" or rsn=="Sale of wholesale JetA" or rsn=="Sale of wholesale 100LL" or rsn=="Sale of supplies" or rsn=="Sale of building materials" or rsn=="Transfer of supplies" or rsn=="Transfer of building materials" or rsn=="Group payment" or rsn=="FBO sale" or rsn=="Transfer of JetA" or rsn=="Transfer of 100LL": #Broken XML
+		if rsn in ("Monthly Interest", "Fuel Delivered", "Sale of wholesale JetA", "Sale of wholesale 100LL", "Sale of supplies", "Sale of building materials", "Transfer of supplies", "Transfer of building materials", "Group payment", "FBO sale", "Transfer of JetA", "Transfer of 100LL"): #Broken XML
 			ac = "null"
 		else:
 			ac = payment.getElementsByTagName("Aircraft")[0].firstChild.nodeValue
+		com = payment.getElementsByTagName("Comment")[0].firstChild.nodeValue
+		if com=="null":
+			com=""
 		pdate=pdate.replace('/','-')
-		row=(pdate, to, fr, amt, rsn, loc, ac, pid)
-		c.execute('INSERT INTO payments VALUES (?,?,?,?,?,?,?,?);',row)
+		row=(pdate, to, fr, amt, rsn, loc, ac, pid, com)
+		c.execute('INSERT INTO payments VALUES (?,?,?,?,?,?,?,?,?);',row)
 	conn.commit()
-	
+
+def logpaymonthcom(conn,year,month): #Add comments to a month of payments
+	print("Sending request for payment listing...")
+	payments = fserequest(1,'query=payments&search=monthyear&month='+month+'&year='+year,'Payment')
+	c=getpaydbcon(conn)
+	print("Recording data...")
+	for payment in payments:
+		pid = int(payment.getElementsByTagName("Id")[0].firstChild.nodeValue)
+		com = payment.getElementsByTagName("Comment")[0].firstChild.nodeValue
+		if com=="null":
+			com=""
+		c.execute('SELECT * FROM payments WHERE pid = ?',(pid,))
+		row=c.fetchone()
+		c.execute('UPDATE payments SET comment = ? WHERE pid = ?',(com, pid))
+	conn.commit()
+
+def loglogmonth(conn,year,month):
+	print("Sending request for logs...")
+	logs = fserequest(1,'query=flightlogs&search=monthyear&month='+month+'&year='+year,'Commodity')
+	c=getlogdbcon(conn)
+	print("Recording data...")
+	for log in logs:
+		id = int(payment.getElementsByTagName("Id")[0].firstChild.nodeValue)
+		typ = payment.getElementsByTagName("Type")[0].firstChild.nodeValue
+		tim = payment.getElementsByTagName("Time")[0].firstChild.nodeValue
+		dis = int(payment.getElementsByTagName("Distance")[0].firstChild.nodeValue)
+		#pilot
+		sn = int(payment.getElementsByTagName("SerialNumber")[0].firstChild.nodeValue)
+		ac = payment.getElementsByTagName("Aircraft")[0].firstChild.nodeValue
+		mo = payment.getElementsByTagName("MakeModel")[0].firstChild.nodeValue
+		if typ="flight":
+			fr = payment.getElementsByTagName("From")[0].firstChild.nodeValue
+			to = payment.getElementsByTagName("To")[0].firstChild.nodeValue
+		else: #More borked XML
+			fr=""
+			to=""
+		#total eng time
+		ft = payment.getElementsByTagName("FlightTime")[0].firstChild.nodeValue
+		#group name (broken)
+		inc = float(payment.getElementsByTagName("Income")[0].firstChild.nodeValue)
+		pf = float(payment.getElementsByTagName("PilotFee")[0].firstChild.nodeValue)
+		crw = float(payment.getElementsByTagName("CrewCost")[0].firstChild.nodeValue)
+		bf = float(payment.getElementsByTagName("BookingFee")[0].firstChild.nodeValue)
+		bo = float(payment.getElementsByTagName("Bonus")[0].firstChild.nodeValue)
+		fl = float(payment.getElementsByTagName("FuelCost")[0].firstChild.nodeValue)
+		gc = float(payment.getElementsByTagName("GCF")[0].firstChild.nodeValue)
+		rat = float(payment.getElementsByTagName("RentalPrice")[0].firstChild.nodeValue)
+		rtp = payment.getElementsByTagName("RentalType")[0].firstChild.nodeValue
+		rtt = payment.getElementsByTagName("RentalUnits")[0].firstChild.nodeValue
+		rtc = float(payment.getElementsByTagName("RentalCost")[0].firstChild.nodeValue)
+		tim=tim.replace('/','-')
+		row = (id, typ, tim, dis, sn, ac, mo, fr, to, ft, inc, pf, crw, bf, bo, fl, gc, rat, rtp, rtt, rtc)
+		c.execute('INSERT INTO logs VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);',row)
+	conn.commit()
+
 def getdbcon(conn): #Get cursor for aircraft sale database
 	print("Initializing database cursor...")
 	c = conn.cursor()
 	c.execute("select count(*) from sqlite_master where type = 'table';")
 	exist=c.fetchone()
 	#print("Found " + str(exist[0]) + " tables...")
-	if  exist[0]==0: #Table does not exist, create table
+	if exist[0]==0: #Table does not exist, create table
 		print("Creating tables...")
 		c.execute('''CREATE TABLE allac
-			 (serial real, type text, loc text, locname text, hours real, price real, obsiter real)''')
+			 (serial real, type text, loc text, locname text, hours real, price real, iter real)''')
 		c.execute('''CREATE TABLE queries
 			 (obsiter real, qtime text)''')
+		c.execute('''CREATE INDEX idx1 ON allac(iter)''') #FIX ME
+		c.execute('''CREATE INDEX idx2 ON queries(obsiter)''')
+		c.execute('''CREATE INDEX idx3 ON queries(qtime)''')
+		c.execute('''CREATE INDEX idx4 ON allac(type)''')
 		conn.commit()
 	return c
 	
@@ -108,15 +169,39 @@ def getpaydbcon(conn): #Get cursor for payment database
 	c = conn.cursor()
 	c.execute("select count(*) from sqlite_master where type = 'table';")
 	exist=c.fetchone()
-	#print("Found " + str(exist[0]) + " tables...")
-	if  exist[0]==0: #Table does not exist, create table
+	if exist[0]==0: #Table does not exist, create table
 		print("Creating tables...")
 		c.execute('''CREATE TABLE payments
-			 (date text, payto text, payfrom text, amount real, reason text, location text, aircraft text, pid real)''')
+			 (date text, payto text, payfrom text, amount real, reason text, location text, aircraft text, pid real, comment text)''')
 		c.execute('''CREATE INDEX idx1 ON payments(date)''')
 		conn.commit()
+	com=0 #Check if comments column exists, should only need this once
+	for col in c.execute('''PRAGMA table_info(payments)'''):
+		if col[0]=="comment":
+			com=1
+			break
+	if com==0:
+		c.execute('''ALTER TABLE payments ADD COLUMN comment text''')
+		conn.commit()
 	return c
-	
+
+def getlogdbcon(conn): #Get cursor for log database
+	print("Initializing log database cursor...")
+	c = conn.cursor()
+	c.execute("select count(*) from sqlite_master where type = 'table';")
+	exist=c.fetchone()
+	if exist[0]==0: #Table does not exist, create table
+		print("Creating tables...")
+		c.execute('''CREATE TABLE logs
+			 (fid real, type text, time text, dist real, sn real, ac text, model text, dep text, arr text, fltime text, income real, pfee real, crew real, bkfee real, bonus real, fuel real, gndfee real, rprice real, rtype text, runits text, rcost real)''')
+		c.execute('''CREATE INDEX idx1 ON logs(date)''')
+		c.execute('''CREATE INDEX idx2 ON logs(type)''')
+		c.execute('''CREATE INDEX idx3 ON logs(dist)''')
+		c.execute('''CREATE INDEX idx4 ON logs(model)''')
+		c.execute('''CREATE INDEX idx5 ON logs(ac)''')
+		conn.commit()
+	return c
+
 def getmaxiter(conn): #Return the number of latest query, which is the number of queries
 	c = conn.cursor()
 	c.execute('SELECT iter FROM queries ORDER BY iter DESC;')
@@ -328,7 +413,7 @@ def bigjobs(apts,dir): #Find high paying jobs to/from airports
 	word="from near" if dir==0 else "to"
 	print("Found these "+str(total)+" big jobs "+word+" those airports:")
 		
-def mapper(what, points, mincoords, maxcoords, title): # Put the points on a map, color by division
+def mapper(what, points, mincoords, maxcoords, title): # Put the points on a map
 	print("Mapping points...")
 	if maxcoords[1]-mincoords[1]>180 or maxcoords[0]-mincoords[0]>60: # World with center aligned
 		m = Basemap(projection='hammer', resolution='c', lon_0=(maxcoords[1]+mincoords[1])/2)
@@ -361,19 +446,19 @@ def mapper(what, points, mincoords, maxcoords, title): # Put the points on a map
 			for loc in points:
 				if loc[2]==i+1:
 					pts[i][loc[3]].append((loc[0],loc[1]))
-		for i in range(max+1):
-			sz=(i+1)*2
-			if pts[i]!=[[],[],[]]:
+		for i in range(max+1): #Set size/color of points
+			sz=(i+1)*2 #Size based on amount
+			if pts[i]!=[[],[],[]]: #Check if any list has points
 				for j in range(3):
-					if pts[i][j]!=[]:
-						x, y = m([k[1] for k in pts[i][j]], [k[0] for k in pts[i][j]])
-						if j==0:
-							c='o'
+					if pts[i][j]!=[]: #Check if this list has any points
+						x, y = m([k[1] for k in pts[i][j]], [k[0] for k in pts[i][j]]) #Populate points
+						if j==0: #Set color
+							c='#cc9900'
 						elif j==1:
 							c='b'
 						else:
 							c='k'
-						m.scatter(x,y,s=sz,marker='o',c=c)
+						m.scatter(x,y,s=sz,marker='o',c=c) #Plot the points with these properties
 	plt.title(title,fontsize=12)
 	plt.show()
 	
@@ -399,18 +484,21 @@ def getaverages(conn,actype,fr,to): #Return list of average prices for aircraft 
 	fr=fr+" 00:01" #Add times to match the values in table
 	to=to+" 23:59"
 	print("Finding averages for: "+actype+" from "+fr+" to "+to+"...")
-	for query in c.execute('SELECT * FROM queries WHERE qtime BETWEEN ? AND ?', (fr,to)):
-		#print("Matched query "+str(query[0])+":"+query[1])
+	for query in c.execute('SELECT * FROM queries WHERE qtime BETWEEN ? AND ?', (fr,to)): #Find the queries in this time range
 		numforsale=0
 		totalprice=0
+		prices=[]
 		for sale in d.execute('SELECT price FROM allac WHERE obsiter = ? AND type = ?', (query[0],actype)):
-			#print("Matched sale for "+str(sale[0]))
 			totalprice+=int(sale[0])
+			prices.append(sale[0])
 			numforsale+=1
 		if numforsale>0:
 			avg=totalprice/numforsale
-			averages.append((getdtime(query[1]),avg))
-			#print("Average is "+str(avg))
+			ssprice=0
+			for price in prices:
+				ssprice+=pow(price-avg,2)
+			stdev=sqrt(ssprice/numforsale)
+			averages.append((getdtime(query[1]),avg,stdev))
 	return averages
 
 def getdtime(strin): #Return datetime for the Y-M-D H:M input
@@ -433,6 +521,103 @@ def getlows(conn,actype,fr,to): #Return list of lowest price for aircraft in eac
 		if price is not None:
 			lows.append((getdtime(query[1]),price))
 	return lows
+
+def plotfuelprices(conn): #Plot fuel prices over time
+	c=getdbcon(conn)
+	print("Getting flight logs...") #Thinking about a raw plot per payment, and average per day
+	#(date text, payto text, payfrom text, amount real, reason text, location text, aircraft text, pid real, comment text)
+	for log in c.execute('SELECT amount, comment FROM payments WHERE reason = "Refuelling with JetA"')):
+		#User ID: xxxxx Amount (gals): 428.9, $ per Gal: $3.75
+		gals=log[1].float(split(':',2)[1].split(',')) #Maybe do this when creating db?
+
+def getapstats(conn,actype): #Return something about airplane flight logs
+	#(fid real, type text, time text, dist real, sn real, ac text, model text, dep text, arr text, fltime text, income real, pfee real, crew real, bkfee real, bonus real, fuel real, gndfee real, rprice real, rtype text, runits text, rcost real)
+	#typ - flight, refuel
+	c=getdbcon(conn)
+	#Let's try total average gph, speed
+	gals=0
+	ftime=0
+	dist=0
+	#Ooh let's graph gph/speed vs distance too
+	tgals=[0,0,0,0,0,0,0,0] #dist <50 <100 <150 <200 <250 <300 <350 >400
+	tftime=[0,0,0,0,0,0,0,0]
+	tdist=[0,0,0,0,0,0,0,0]
+	tflts=[0,0,0,0,0,0,0,0] #and number of flights too
+	aspeed=[[],[],[],[],[],[],[],[]] #for standard deviation calc
+	agph=[[],[],[],[],[],[],[],[]]
+	print("Getting flight logs...")
+	for log in c.execute('SELECT dist, fltime, fuel FROM logs WHERE model = ? AND type = "flight" AND fuel > 0.0', (actype,)):
+		gal=log[2]/3.5
+		gals+=gal #For overall averages
+		dist+=log[0]
+		secs=logs[1].split(':')*3600+logs[1].split(':')[1]*60
+		ftime+=secs
+		bucket=floor(log[0]/50) #For averages per distance bucket
+		if bucket>7:
+			bucket=7
+		tgals[bucket]+=gal
+		tftime[bucket]+=secs
+		tdist[bucket]+=log[0]
+		tflts[bucket]+=1
+		hrs=secs/3600 #Store actual values for computing standard deviation
+		gph=gal/hrs
+		speed=log[0]/hrs
+		agph[bucket].append(gph)
+		aspeed[bucket].append(speed)
+	hrs=ftime/3600 #Print out the overall averages
+	speed=dist/hrs
+	gph=gals/hrs
+	print("Stats for "+actype)
+	print("-----------------------------------------")
+	print("Avg speed: "+speed+" kt")
+	print("Avg gph: "+gph+" gph")
+	dspeed=[]
+	dgph=[]
+	xax=[]
+	stdgph[]
+	stdspd=[]
+	for i in range(8):
+		hrs=tftime[i]/3600 #Compute values for the different buckets
+		speed=tdist[i]/hrs
+		gph=tgals[i]/hrs
+		dspeed.append(speed)
+		dgph.append(gph)
+		idx=(i+1)*50 #Generate stuff for x axis
+		val=idx-25
+		if idx<7:
+			lbl="<"+idx
+		else:
+			lbl=">"+idx
+		xax.append((val,lbl))
+		ssgph=0
+		ssspd=0
+		for j in range(tflts[i]): #Compute standard deviation
+			ssgph+=pow(aspeed[i][j]-speed,2)
+			ssspd+=pow(agph[i][j]-gph,2)
+		stdgph.append(sqrt(ssgph/tflts[i]))
+		stdspd.append(sqrt(ssspd/tflts[i]))
+	print("Plotting figure for "+actype+" stats...")
+	fig, ax = plt.subplots()
+	# ax.plot([i[0] for i in xax], [i[0] for i in dspeed], 'o-')
+	# ax.plot([i[0] for i in xax], [i[0] for i in dgph], 'o-')
+	ax.errorbar([i[0] for i in xax], [i[0] for i in dspeed], yerr=stdspd, fmt='--o')
+	ax.errorbar([i[0] for i in xax], [i[0] for i in dgph], yerr=stdgph, fmt='--o', c='#cc9900', ecolor='cc9900')
+	ax.set_xticklabels((i[1] for i in xax))
+	plt.title("Speed and gph for sector length",fontsize=12)
+	plt.xlabel("Length")
+	plt.ylabel("Speed/gph")
+	plt.show()
+	print("Plotting figure for "+actype+" distances...")
+	fig, ax = plt.subplots()
+	ind=(i[0]-25 for i in xax])
+	width=0.35
+	rects1 = ax.bar(ind, tflts, width, color='r')
+	ax.set_ylabel('Flights')
+	ax.set_title('Flights by sector length')
+	ax.set_xticks(ind+width)
+	ax.set_xticklabels( (i[1] for i in xax) )
+	ax.legend( (i[1] for i in xax) )
+	plt.show()
 
 def mapcommo(type):
 	if type=="fuel":
@@ -546,31 +731,30 @@ def getcoords(data): #Get coordinates for a list of airports
 		if lon>lonmax or abs(lonmax)>180:
 			lonmax=lon
 	pts=len(locations)
-	if pts>0:
-		#center=(lat_tot/pts,lon_tot/pts)
-		pass
-	else:
+	if pts==0:
 		print("No locations found!")
+	#else:
+		#center=(lat_tot/pts,lon_tot/pts)
 	return locations
 	
-def plotdates(dlist,title,ylbl): #Plot a list of data vs. dates
+def plotdates(dlist,title,ylbl,sym): #Plot a list of data vs. dates
 	print("Plotting figure for: "+title)
 	fig, ax = plt.subplots()
 	formatter=DateFormatter('%Y-%m-%d %H:%M')
 	ax.xaxis.set_major_formatter(formatter)
-	#print("Attempting to plot the following "+str(len(data))+" dates:")
-	#for pdate in [i[0] for i in data]:
-	#	print(pdate)
 	for data in dlist:
-		ax.plot([date2num(i[0]) for i in data], [i[1] for i in data], 'o-')
+		if len(data)==2:
+			ax.plot([date2num(i[0]) for i in data], [i[1] for i in data], sym)
+		else:
+			ax.errorbar([date2num(i[0]) for i in data], [i[1] for i in data], yerr=[i[2] for i in data], fmt=sym)
 	formatter=DateFormatter('%Y-%m-%d')
 	ax.xaxis.set_major_formatter(formatter)
 	fig.autofmt_xdate()
+	plt.xlim([date2num(min(dlist[0][0])),date2num(max(dlist[0][0]))])
 	plt.title(title,fontsize=12)
 	plt.xlabel("Date")
 	plt.ylabel(ylbl)
 	plt.show()
-#	plt.xlim([date2num(date(fyear,fmonth,fday)),date2num(date(tyear,tmonth,tday))])
 	
 def plotpayments(conn,fromdate,todate): #Plot payment totals per category
 	c=getpaydbcon(conn)
@@ -595,11 +779,8 @@ def plotpayments(conn,fromdate,todate): #Plot payment totals per category
 		if i>0:
 			dstring=fdate
 			for var in allthat:
-				#dstring=str(fdate.year)+"-"+str(fdate.month)+"-"+str(fdate.day)
 				var.append([dstring,var[i-1][1]])
-		#print("SELECT * FROM payments WHERE date BETWEEN "+fdateq+" AND "+tdateq)
 		for payment in c.execute('SELECT * FROM payments WHERE date BETWEEN ? AND ?',(fdateq,tdateq)):
-			#print("Found payment: "+payment[4])
 			if payment[4]=="Rental of aircraft":
 				if payment[2]!=user:
 					rentinc[i][1]+=payment[3]
@@ -679,31 +860,7 @@ def plotpayments(conn,fromdate,todate): #Plot payment totals per category
 		fdate += delta
 		i += 1
 	
-	plotdates([refjet, addcrewfee, gndcrewfee],"Money","Money")
-	
-	# title="Money Stuff"
-	# ylbl="Money"
-	# print("Plotting figure for: "+title)
-	# fig, ax = plt.subplots()
-	# #for data in allthat:
-		# #print("Attempting to plot the following "+str(len(data))+" dates:")
-		# #for pdate in [i[0] for i in data]:
-			# #print(pdate)
-	# plots=["","",""]
-	# j=0
-	# for data in [refjet, addcrewfee, gndcrewfee]:
-		# plots[j],=ax.plot([date2num(i[0]) for i in data], [i[1] for i in data], '-')
-		# j+=1
-	# plt.legend(plots,['JetA', 'Addnl Crew', 'Gnd Crew'],loc=2)
-	# formatter=DateFormatter('%Y-%m-%d')
-	# ax.xaxis.set_major_formatter(formatter)
-	# fig.autofmt_xdate()
-	# #ax.fmt_xdata=formatter
-	# plt.title(title,fontsize=12)
-	# plt.xlabel("Date")
-	# plt.ylabel(ylbl)
-	# plt.xlim([date2num(date(fyear,fmonth,fday)),date2num(date(tyear,tmonth,tday))])
-	# plt.show()
+	plotdates([refjet, addcrewfee, gndcrewfee],"Money","Money",'-')
 	
 def sumpayments(conn,fdate,tdate): #Plot portion of income/expense per category
 	c=getpaydbcon(conn)
@@ -841,15 +998,6 @@ def sumpayments(conn,fdate,tdate): #Plot portion of income/expense per category
 	bld=[wssellbld[0]-wsbuybld[0],"Building Mtrls"]
 	incnets=[rent, assnmt, ac, ws100, wsjet, fborep, fboeqp, ptrent, fbo, sup, bld]
 	
-	#Expense nets
-	#mxexp
-	#ref100
-	#refjet
-	#bkgfee
-	#gndcrewfee
-	#addcrewfee
-	#pltfee
-	
 	incnet=[]
 	expnet=[ref100, refjet, bkgfee, gndcrewfee, addcrewfee, pltfee, mxexp] #Always negative
 	netinc=0
@@ -861,73 +1009,12 @@ def sumpayments(conn,fdate,tdate): #Plot portion of income/expense per category
 		else:
 			expnet.append(net)
 			netexp+=net[0]
-	# revo=0
-	# expo=0
-	# rlabels=[]
-	# rsizes=[]
-	# elabels=[]
-	# esizes=[]
-	# for net in incnet: #Create list of labels/sizes for plot, collect small ones into "other"
-		# net[0]=net[0]/netinc*100
-		# if net[0]>5:
-			# rlabels.append(net[1])
-			# rsizes.append(net[0])
-		# else:
-			# revo+=net[0]
-	# for net in expnet:
-		# net[0]=net[0]/netexp*100
-		# if net[0]>5:
-			# elabels.append(net[1])
-			# esizes.append(net[0])
-		# else:
-			# expo+=net[0]
-	# if revo>0.1:
-		# rsizes.append(revo)
-		# rlabels.append("Other")
-	# if expo>0.1:
-		# esizes.append(expo)
-		# elabels.append("Other")
-	#pieplot(data, total, min, stitle):
 	pieplot(incnet,netinc,5,"Income sources")
 	pieplot(expnet,netexp,5,"Expense sources")
 
 	#Totals income/expenses
 	revs=[rentinc, assnmtinc, acsold, fboref100, fborefjet, fbogndcrew, fborepinc, fboeqpinc, ptrentinc, fbosell, wssell100, wsselljet, wssellbld, wssellsupp]
 	exps=[rentexp, assnmtexp, pltfee, addcrewfee, gndcrewfee, bkgfee, ref100, refjet, mxexp, eqinstl, acbought, fborepexp, fboeqpexp, fbobuy, wsbuy100, wsbuyjet, wsbuybld, wsbuysupp]
-	# rev=0
-	# exp=0
-	# for this in revs:
-		# rev+=this[0]
-	# for this in exps:
-		# exp+=this[0]
-	# for this in revs:
-		# this[0]=this[0]/rev*100
-	# for this in exps:
-		# this[0]=this[0]/exp*100
-	# revo=0
-	# expo=0
-	# rlabels=[]
-	# rsizes=[]
-	# elabels=[]
-	# esizes=[]
-	# for this in revs:
-		# if this[0] < 5:
-			# revo+=this[0]
-		# else:
-			# rlabels.append(this[1])
-			# rsizes.append(this[0])
-	# for this in exps:
-		# if this[0] < 5:
-			# expo+=this[0]
-		# else:
-			# elabels.append(this[1])
-			# esizes.append(this[0])
-	# if revo>0.1:
-		# rlabels.append("Other")
-		# rsizes.append(revo)
-	# if expo>0.1:
-		# elabels.append("Other")
-		# esizes.append(expo)
 	pieplot(revs,None,5,"Revenues")
 	pieplot(exps,None,5,"Expenses")
 	
@@ -937,23 +1024,8 @@ def sumacpayments(conn,fdate,tdate): #Plot revenue portion by aircraft
 	#Income
 	rent=[[],"Rental income"]
 	assnmtinc=[[],"Assignment income"]
-	acsold=[[],"Aircraft sold"]
-	fboref100=[[],"100LL pumped"]
-	fborefjet=[[],"JetA pumped"]
-	fbogndcrew=[[],"Ground crew income"]
-	fborepinc=[[],"Repair income"]
-	fboeqpinc=[[],"Eqp instl income"]
-	ptrentinc=[[],"PT rent income"]
-	fbosell=[[],"FBO sold"]
-	wssell100=[[],"100LL sold"]
-	wsselljet=[[],"JetA sold"]
-	wssellbld=[[],"Building materials sold"]
-	wssellsupp=[[],"Supplies sold"]
-	grpay=[[],"Group payment"]
-	
+		
 	#Expenses
-	rentexp=[[],"Rental expense"]
-	assnmtexp=[[],"Assignment expense"]
 	pltfee=[[],"Pilot fees"]
 	addcrewfee=[[],"Additional crew fee"]
 	gndcrewfee=[[],"Ground crew fee"]
@@ -963,15 +1035,8 @@ def sumacpayments(conn,fdate,tdate): #Plot revenue portion by aircraft
 	mxexp=[[],"Maintenance"]
 	eqinstl=[[],"Equipment installed"]
 	acbuy=[[],"Aircraft bought"]
-	fborepexp=[[],"FBO repair cost"]
-	fboeqpexp=[[],"FBO eqp instl"]
-	fbobuy=[[],"FBO bought"]
-	wsbuy100=[[],"100LL bought"]
-	wsbuyjet=[[],"JetA bought"]
-	wsbuysupp=[[],"Supplies"]
-	wsbuybld=[[],"Building materials"]
 
-	items=[rent,assnmtinc,acsold,fboref100,fborefjet,fbogndcrew,fborepinc,fboeqpinc,ptrentinc,fbosell,wssell100,wsselljet,wssellbld,wssellsupp,grpay,rentexp,assnmtexp,pltfee,addcrewfee,gndcrewfee,bkgfee,ref100,refjet,mxexp,eqinstl,acbuy,fborepexp,fboeqpexp,fbobuy,wsbuy100,wsbuyjet,wsbuybld,wsbuysupp]
+	items=[rent,assnmtinc,pltfee,addcrewfee,gndcrewfee,bkgfee,ref100,refjet,mxexp,eqinstl,acbuy]
 	
 	user=getname()
 	fromdate=fdate+" 00:01"
@@ -1030,23 +1095,6 @@ def sumacpayments(conn,fdate,tdate): #Plot revenue portion by aircraft
 		for var in items:
 			ac[i][0]+=var[0][i]
 		i+=1
-	# gtot=0
-	# for thisac in ac: #Sum up all aircraft
-		# gtot+=thisac[0]
-	# other=0
-	# labels=[]
-	# sizes=[]
-	# for this ac in ac:
-		# thisac[0]=thisac[0]/gtot*100
-		# if thisac[0]>5:
-			# labels.append(thisac[1])
-			# sizes.append(thisac[0])
-		# else:
-			# other+=thisac[0]
-	# if other>0.1:
-		# sizes.append(other)
-		# labels.append("Other")
-
 	pieplot(ac,None,5,"Aircraft Income")
 	
 def pieplot(data, total, min, stitle): #Create a pie plot
@@ -1094,7 +1142,7 @@ def main(argv): #This is where the magic happens
 	
 	syntaxstring='pricelog.py -un -dmac <aircraft icao> -ft <YYYY-MM-DD> -lh <price>'
 	try:
-		opts, args = getopt.getopt(argv,"hund:m:a:c:f:t:l:i:pqsg:ve:",["duration=","map=","average=","cheapest=","from=","to=","low=","high=","total=","commodity="])
+		opts, args = getopt.getopt(argv,"hund:m:a:c:f:t:l:i:pqsg:ve:x:j",["duration=","map=","average=","cheapest=","from=","to=","low=","high=","total=","commodity=","typestats="])
 	except getopt.GetoptError:
 		print(syntaxstring)
 		sys.exit(2)
@@ -1108,6 +1156,8 @@ def main(argv): #This is where the magic happens
 	ppay=0
 	spay=0
 	stot=0
+	stat=0
+	logs=0
 	lowprice=0
 	highprice=99999999
 	fromdate="2014-01-01"
@@ -1120,7 +1170,7 @@ def main(argv): #This is where the magic happens
 			acforsale(conn)
 		elif opt=='-n':
 			totals=gettotals(conn,"None",fromdate,todate)
-			plotdates([totals],"Aircraft for sale","Aircraft")
+			plotdates([totals],"Aircraft for sale","Aircraft",'o-')
 		elif opt in ("-d", "--duration"):
 			durtype,dur=gettype(arg)
 		elif opt in ("-m", "--map"):
@@ -1150,21 +1200,28 @@ def main(argv): #This is where the magic happens
 			stot=1
 		elif opt in ("-e", "--commodity"):
 			mapcommo(arg)
+		elif opt in ("-x", "--typestats"):
+			stattype,stat=gettype(arg)
+		elif opt=="-j":
+			logs=1
 
 	if pay+ppay+spay+stot>0:
 		conn2=sqlite3.connect('/mnt/data/XPLANE10/XSDK/payments.db')
+	
+	if logs+stat>0:
+		conn3=sqlite3.connect('/mnt/data/XPLANE10/XSDK/flightlogs.db')
 
 	if tot==1:
 		totals=gettotals(conn,tottype,fromdate,todate)
-		plotdates([totals],"Number of "+tottype+" for sale","Aircraft")
+		plotdates([totals],"Number of "+tottype+" for sale","Aircraft",'o-')
 	
 	if avg==1:
 		averages=getaverages(conn,avgtype,fromdate,todate)
-		plotdates([averages],"Average price for "+avgtype,"Price")
+		plotdates([averages],"Average price for "+avgtype,"Price",'o-')
 	
 	if low==1:
 		lows=getlows(conn,lowtype,fromdate,todate)
-		plotdates([lows],"Lowest price for "+lowtype,"Price")
+		plotdates([lows],"Lowest price for "+lowtype,"Price",'o-')
 	
 	if dur==1:
 		listings=getlistings(conn,durtype,lowprice,highprice)
@@ -1173,7 +1230,7 @@ def main(argv): #This is where the magic happens
 			duration=listings[4]-listings[3]
 			durations.append((listings[2],duration))
 			print(str(listings[2])+": "+str(duration))
-		plotdates([durations],"Time to sell for "+durtype,"Days")
+		plotdates([durations],"Time to sell for "+durtype,"Days",'o-')
 	
 	if pay==1:
 		year=fromdate.split('-', 2)[0]
@@ -1189,6 +1246,15 @@ def main(argv): #This is where the magic happens
 	
 	if stot==1:
 		sumacpayments(conn2,fromdate,todate)
+	
+	if stat==1:
+		getapstats(conn3,stattype)
+		
+	if logs==1:
+		year=fromdate.split('-', 2)[0]
+		month=fromdate.split('-', 2)[1]
+		loglogmonth(conn3,year,month)
+		conn3.close()
 
 	# We can also close the connection if we are done with it.
 	# Just be sure any changes have been committed or they will be lost. FOREVER
