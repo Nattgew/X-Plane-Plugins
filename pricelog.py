@@ -31,7 +31,7 @@ def fserequest(ra,rqst,tagname):
 		rakey="&readaccesskey="+getkey()
 	else:
 		rakey=""
-	data = urllib.request.urlopen('http://server.fseconomy.net/data?userkey='+getkey()+rakey'&format=xml&'+rqst)
+	data = urllib.request.urlopen('http://server.fseconomy.net/data?userkey='+getkey()+rakey+'&format=xml&'+rqst)
 	print("Parsing data...")
 	xmldoc = minidom.parse(data)
 	error = xmldoc.getElementsByTagName('Error')
@@ -356,13 +356,13 @@ def mapper(what, points, mincoords, maxcoords, title): # Put the points on a map
 			loc[2]=thous
 		pts=[] #rows=thous, columns=colors, contents=list of points
 		for i in range(max+1):
-			pts.append([[][][]]) #Add a new empty row
+			pts.append([[],[],[]]) #Add a new empty row
 			for loc in points:
 				if loc[2]==i+1:
 					pts[i][loc[3]].append((loc[0],loc[1]))
 		for i in range(max+1):
 			sz=(i+1)*2
-			if pts[i]!=[[][][]]:
+			if pts[i]!=[[],[],[]]:
 				for j in range(3):
 					if pts[i][j]!=[]:
 						x, y = m([k[1] for k in pts[i][j]], [k[0] for k in pts[i][j]])
@@ -1059,7 +1059,7 @@ def pieplot(data, total, min, stitle): #Create a pie plot
 		if cat[0]>min:
 			labels.append(cat[1])
 			sizes.append(cat[0])
-		else
+		else:
 			other+=cat[0]
 	if other>0.1:
 		sizes.append(other)
