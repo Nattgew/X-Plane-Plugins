@@ -31,6 +31,7 @@ def fserequest(ra,rqst,tagname):
 		rakey="&readaccesskey="+getkey()
 	else:
 		rakey=""
+	print("Will make request: http://server.fseconomy.net/data?userkey="+getkey()+rakey+'&format=xml&'+rqst)
 	data = urllib.request.urlopen('http://server.fseconomy.net/data?userkey='+getkey()+rakey+'&format=xml&'+rqst)
 	print("Parsing data...")
 	xmldoc = minidom.parse(data)
@@ -444,7 +445,7 @@ def mapcommo(type):
 		print("Commodity type "+type+" not recognized!")
 	if t1 is not None:
 		print("Sending request for commodities...")
-		commo = fserequest(0,'query=commodities&search=key','Commodity')
+		commo = fserequest(1,'query=commodities&search=key','Commodity')
 		print("Sorting results...")
 		stuff = []
 		for item in commo: #Parse commodity info
@@ -934,7 +935,7 @@ def sumacpayments(conn,fdate,tdate): #Plot revenue portion by aircraft
 	c=getpaydbcon(conn)
 	d=getpaydbcon(conn)
 	#Income
-	rentinc=[[],"Rental income"]
+	rent=[[],"Rental income"]
 	assnmtinc=[[],"Assignment income"]
 	acsold=[[],"Aircraft sold"]
 	fboref100=[[],"100LL pumped"]
@@ -961,7 +962,7 @@ def sumacpayments(conn,fdate,tdate): #Plot revenue portion by aircraft
 	refjet=[[],"JetA pumped"]
 	mxexp=[[],"Maintenance"]
 	eqinstl=[[],"Equipment installed"]
-	acbought=[[],"Aircraft bought"]
+	acbuy=[[],"Aircraft bought"]
 	fborepexp=[[],"FBO repair cost"]
 	fboeqpexp=[[],"FBO eqp instl"]
 	fbobuy=[[],"FBO bought"]
@@ -970,18 +971,20 @@ def sumacpayments(conn,fdate,tdate): #Plot revenue portion by aircraft
 	wsbuysupp=[[],"Supplies"]
 	wsbuybld=[[],"Building materials"]
 
-	items=[rentinc,assnmtinc,acsold,fboref100,fborefjet,fbogndcrew,fborepinc,fboeqpinc,ptrentinc,fbosell,wssell100,wsselljet,wssellbld,wssellsupp,grpay,rentexp,assnmtexp,pltfee,addcrewfee,gndcrewfee,bkgfee,ref100,refjet,mxexp,eqinstl,acbought,fborepexp,fboeqpexp,fbobuy,wsbuy100,wsbuyjet,wsbuybld,wsbuysupp]
+	items=[rent,assnmtinc,acsold,fboref100,fborefjet,fbogndcrew,fborepinc,fboeqpinc,ptrentinc,fbosell,wssell100,wsselljet,wssellbld,wssellsupp,grpay,rentexp,assnmtexp,pltfee,addcrewfee,gndcrewfee,bkgfee,ref100,refjet,mxexp,eqinstl,acbuy,fborepexp,fboeqpexp,fbobuy,wsbuy100,wsbuyjet,wsbuybld,wsbuysupp]
 	
 	user=getname()
 	fromdate=fdate+" 00:01"
 	todate=tdate+" 23:59"
 	ac=[]
+	i=-1
 	print("Tallying payments from"+str(fdate[0])+"-"+str(fdate[1])+" to "+str(tdate[0])+"-"+str(tdate[1])+"...")
 	#(date text, payto text, payfrom text, amount real, reason text, location text, aircraft text)
 	for dac in c.execute('SELECT DISTINCT aircraft FROM payments WHERE date BETWEEN ? AND ? AND payto = ? AND reason = "Pay for assignment"',(fromdate,todate,user)):
 		ac.append([0,dac[0]])
 		for var in items:
 			var[0].append(0)
+		i+=1
 		for payment in d.execute('SELECT * FROM payments WHERE date BETWEEN ? AND ? AND aircraft = ?',(fromdate,todate,dac[0])):
 			if payment[4]=="Rental of aircraft":
 				if payment[2]!=user:
@@ -1067,7 +1070,7 @@ def pieplot(data, total, min, stitle): #Create a pie plot
 	# The slices will be ordered and plotted counter-clockwise.
 	colors = ['yellowgreen', 'gold', 'lightskyblue', 'lightcoral']
 	#explode = (0, 0.1, 0, 0) # only "explode" the 2nd slice # But I don't wanna explode...
-	plt.pie(ssizes, labels=slabels, #colors=colors,
+	plt.pie(sizes, labels=labels, #colors=colors,
 			autopct='%1.1f%%', shadow=True, startangle=90)
 	plt.axis('equal') # Set aspect ratio to be equal so that pie is drawn as a circle.
 	plt.title(stitle)
@@ -1091,7 +1094,7 @@ def main(argv): #This is where the magic happens
 	
 	syntaxstring='pricelog.py -un -dmac <aircraft icao> -ft <YYYY-MM-DD> -lh <price>'
 	try:
-		opts, args = getopt.getopt(argv,"hund:m:a:c:f:t:l:i:pqsg:v:e:",["duration=","map=","average=","cheapest=","from=","to=","low=","high=","total=","percbyac=","commodity="])
+		opts, args = getopt.getopt(argv,"hund:m:a:c:f:t:l:i:pqsg:ve:",["duration=","map=","average=","cheapest=","from=","to=","low=","high=","total=","commodity="])
 	except getopt.GetoptError:
 		print(syntaxstring)
 		sys.exit(2)
@@ -1107,8 +1110,8 @@ def main(argv): #This is where the magic happens
 	stot=0
 	lowprice=0
 	highprice=99999999
-	fromdate="0000-01-01"
-	todate="9999-12-31"
+	fromdate="2014-01-01"
+	todate="2100-12-31"
 	for opt, arg in opts:
 		if opt=='-h':
 			print(syntaxstring)
@@ -1143,8 +1146,8 @@ def main(argv): #This is where the magic happens
 			spay=1
 		elif opt in ("-g", "--total"):
 			tottype,tot=gettype(arg)
-		elif opt in ("-v", "--percbyac"):
-			sumtype,stot=gettype(arg)
+		elif opt=="-v":
+			stot=1
 		elif opt in ("-e", "--commodity"):
 			mapcommo(arg)
 
