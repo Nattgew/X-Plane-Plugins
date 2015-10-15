@@ -1,11 +1,9 @@
 #!/usr/bin/python
 from xml.dom import minidom
-import urllib.request
-import math
+import urllib.request, math, sys, getopt
+import dicts # My script for custom dictionaries
 import os, re, fileinput, csv, sqlite3
 import locale, time
-import sys, getopt
-import dicts
 from datetime import timedelta, date, datetime
 from mpl_toolkits.basemap import Basemap
 from matplotlib.dates import DateFormatter, date2num
@@ -26,14 +24,25 @@ def getname():
 	myname=myname.strip()
 	return myname
 
-def fserequest(ra,rqst,tagname):
+def fserequest(ra,rqst,tagname,fmt):
 	if ra==1:
 		rakey="&readaccesskey="+getkey()
 	else:
 		rakey=""
-	print("Will make request: http://server.fseconomy.net/data?userkey="+getkey()+rakey+'&format=xml&'+rqst)
-	data = urllib.request.urlopen('http://server.fseconomy.net/data?userkey='+getkey()+rakey+'&format=xml&'+rqst)
-	print("Parsing data...")
+	rq = "http://server.fseconomy.net/data?userkey="+getkey()+rakey+'&format='+fmt+'&'+rqst
+	print("Will make request: "+rq)
+	data = urllib.request.urlopen(rq)
+	if fmt=='xml':
+		tags=readxml(data)
+	elif fmt=='csv':
+		tags=readcsv(data)
+	else:
+		print("Format "+fmt+" not recognized!")
+		tags=[]
+	return tags
+
+def readxml(data):
+	print("Parsing XML data...")
 	xmldoc = minidom.parse(data)
 	error = xmldoc.getElementsByTagName('Error')
 	if error!=[]:
@@ -43,9 +52,18 @@ def fserequest(ra,rqst,tagname):
 		tags = xmldoc.getElementsByTagName(tagname)
 	return tags
 
+def readcsv(data):
+	print("Parsing CSV data...")
+	has_header = csv.Sniffer().has_header(data.read(1024))
+	data.seek(0)  # rewind
+	reader = csv.reader(data)
+	if has_header:
+		next(reader)  # skip header row
+	return reader
+
 def acforsale(conn): #Log aircraft currently for sale
 	print("Sending request for sales listing...")
-	airplanes = fserequest(0,'query=aircraft&search=forsale','Aircraft')
+	airplanes = fserequest(0,'query=aircraft&search=forsale','Aircraft','xml')
 	if airplanes!=[]:
 		print("Recording data...")
 		c=getdbcon(conn)
@@ -66,9 +84,10 @@ def acforsale(conn): #Log aircraft currently for sale
 			c.execute('INSERT INTO allac VALUES (?,?,?,?,?,?,?);',row)
 		conn.commit()
 	
-def logpaymonth(conn,year,month): #Log a month of payments
+def logpaymonth(conn,fromdate): #Log a month of payments
+	year,month,*rest=fromdate.split('-', 2)
 	print("Sending request for payment listing...")
-	payments = fserequest(1,'query=payments&search=monthyear&month='+month+'&year='+year,'Payment')
+	payments = fserequest(1,'query=payments&search=monthyear&month='+month+'&year='+year,'Payment','xml')
 	if payments!=[]:
 		c=getpaydbcon(conn)
 		print("Recording data...")
@@ -93,23 +112,24 @@ def logpaymonth(conn,year,month): #Log a month of payments
 			c.execute('INSERT INTO payments VALUES (?,?,?,?,?,?,?,?,?);',row)
 		conn.commit()
 
-def logpaymonthcom(conn,year,month): #Add comments to a month of payments
-	print("Sending request for payment listing...")
-	payments = fserequest(1,'query=payments&search=monthyear&month='+month+'&year='+year,'Payment')
-	if payments!=[]:
-		c=getpaydbcon(conn)
-		print("Recording comment data...")
-		for payment in payments:
-			pid = int(payment.getElementsByTagName("Id")[0].firstChild.nodeValue)
-			com = payment.getElementsByTagName("Comment")[0].firstChild.nodeValue
-			if com=="null":
-				com=""
-			c.execute('UPDATE payments SET comment = ? WHERE pid = ?',(com, pid))
-		conn.commit()
+# def logpaymonthcom(conn,year,month): #Add comments to a month of payments
+	# print("Sending request for payment listing...")
+	# payments = fserequest(1,'query=payments&search=monthyear&month='+month+'&year='+year,'Payment','xml')
+	# if payments!=[]:
+		# c=getpaydbcon(conn)
+		# print("Recording comment data...")
+		# for payment in payments:
+			# pid = int(payment.getElementsByTagName("Id")[0].firstChild.nodeValue)
+			# com = payment.getElementsByTagName("Comment")[0].firstChild.nodeValue
+			# if com=="null":
+				# com=""
+			# c.execute('UPDATE payments SET comment = ? WHERE pid = ?',(com, pid))
+		# conn.commit()
 
-def loglogmonth(conn,year,month):
+def loglogmonth(conn,fromdate):
+	year,month,*rest=fromdate.split('-', 2)
 	print("Sending request for logs...")
-	logs = fserequest(1,'query=flightlogs&search=monthyear&month='+month+'&year='+year,'FlightLog')
+	logs = fserequest(1,'query=flightlogs&search=monthyear&month='+month+'&year='+year,'FlightLog','xml')
 	if logs!=[]:
 		c=getlogdbcon(conn)
 		print("Recording data...")
@@ -147,10 +167,56 @@ def loglogmonth(conn,year,month):
 			c.execute('INSERT INTO logs VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);',row)
 		conn.commit()
 
+def logconfigs(conn): #Update database of aircraft configs
+	print("Sending request for configs...")
+	configs = fserequest(1,'query=aircraft&search=configs','AircraftConfig','xml')
+	if configs!=[]:
+		c=getconfigdbcon(conn)
+		d=getconfigdbcon(conn)
+		print("Updating config data...")
+		for config in configs:
+			ac = config.getElementsByTagName("MakeModel")[0].firstChild.nodeValue
+			crew = int(config.getElementsByTagName("Crew")[0].firstChild.nodeValue)
+			seats = int(config.getElementsByTagName("Seats")[0].firstChild.nodeValue)
+			cruise = int(config.getElementsByTagName("CruiseSpeed")[0].firstChild.nodeValue)
+			gph = int(config.getElementsByTagName("GPH")[0].firstChild.nodeValue)
+			fuel = int(config.getElementsByTagName("FuelType")[0].firstChild.nodeValue)
+			mtow = int(config.getElementsByTagName("MTOW")[0].firstChild.nodeValue)
+			ew = int(config.getElementsByTagName("EmptyWeight")[0].firstChild.nodeValue)
+			price = int(config.getElementsByTagName("Price")[0].firstChild.nodeValue)
+			ext1 = int(config.getElementsByTagName("MakeModel")[0].firstChild.nodeValue)
+			ltip = int(config.getElementsByTagName("MakeModel")[0].firstChild.nodeValue)
+			laux = int(config.getElementsByTagName("MakeModel")[0].firstChild.nodeValue)
+			lmain = int(config.getElementsByTagName("MakeModel")[0].firstChild.nodeValue)
+			c1 = int(config.getElementsByTagName("MakeModel")[0].firstChild.nodeValue)
+			c2 = int(config.getElementsByTagName("MakeModel")[0].firstChild.nodeValue)
+			c3 = int(config.getElementsByTagName("MakeModel")[0].firstChild.nodeValue)
+			rmain = int(config.getElementsByTagName("MakeModel")[0].firstChild.nodeValue)
+			raux = int(config.getElementsByTagName("MakeModel")[0].firstChild.nodeValue)
+			rtip = int(config.getElementsByTagName("MakeModel")[0].firstChild.nodeValue)
+			ext2 = int(config.getElementsByTagName("MakeModel")[0].firstChild.nodeValue)
+			eng = int(config.getElementsByTagName("Engines")[0].firstChild.nodeValue)
+			engprice = int(config.getElementsByTagName("EnginePrice")[0].firstChild.nodeValue)
+			fcap=ext1+ltip+laux+lmain+c1+c2+c3+rmain+raux+rtip+ext2 #Total fuel capacity
+			fields = [ac, crew, seats, cruise, gph, fuel, mtow, ew, price, ext1, ltip, laux, lmain, c1, c2, c3, rmain, raux, rtip, ext2, fcap, eng, engprice]
+			cols=[]
+			for col in c.execute('''PRAGMA table_info(aircraft)'''): #Get list of column names
+				cols.append(col[1])
+			c.execute('SELECT * FROM aircraft WHERE ac = ?',(ac,)) #Get stored info for current aircraf6t
+			current=c.fetchone()
+			if len(current)>0:
+				for i in range(len(fields)):
+					if current[i]!=fields[i]: #Check if field has changed
+						print("Updating "+ac+": "+cols[i]+" "+str(current[i])+" -> "+str(fields[i]))
+						d.execute('UPDATE aircraft SET ? = ? WHERE ac = ?',(cols[i], current[i], ac))
+			else:
+				print("Adding new config: "+ac)
+				c.execute('INSERT INTO aircraft VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);',fields)
+
 def getdbcon(conn): #Get cursor for aircraft sale database
 	print("Initializing database cursor...")
 	c = conn.cursor()
-	c.execute("select count(*) from sqlite_master where type = 'table';")
+	c.execute("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table';")
 	exist=c.fetchone()
 	#print("Found " + str(exist[0]) + " tables...")
 	if exist[0]==0: #Table does not exist, create table
@@ -163,14 +229,13 @@ def getdbcon(conn): #Get cursor for aircraft sale database
 		c.execute('''CREATE INDEX idx2 ON allac(type)''')
 		c.execute('''CREATE INDEX idx3 ON allac(price)''')
 		c.execute('''CREATE INDEX idx4 ON queries(qtime)''')
-		
 		conn.commit()
 	return c
 	
 def getpaydbcon(conn): #Get cursor for payment database
 	print("Initializing payment database cursor...")
 	c = conn.cursor()
-	c.execute("select count(*) from sqlite_master where type = 'table';")
+	c.execute("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table';")
 	exist=c.fetchone()
 	if exist[0]==0: #Table does not exist, create table
 		print("Creating tables...")
@@ -178,22 +243,22 @@ def getpaydbcon(conn): #Get cursor for payment database
 			 (date text, payto text, payfrom text, amount real, reason text, location text, aircraft text, pid real, comment text)''')
 		c.execute('''CREATE INDEX idx1 ON payments(date)''')
 		conn.commit()
-	com=0 #Check if comments column exists, should only need this once
-	for col in c.execute('''PRAGMA table_info(payments)'''):
-		#print("Found column: "+str(col[1]))
-		if col[1]=="comment":
-			com=1
-			break
-	if com==0:
-		print("Adding column for comments...")
-		c.execute('''ALTER TABLE payments ADD COLUMN comment text''')
-		conn.commit()
+	# com=0 #Check if comments column exists, should only need this once
+	# for col in c.execute('''PRAGMA table_info(payments)'''):
+		# #print("Found column: "+str(col[1]))
+		# if col[1]=="comment":
+			# com=1
+			# break
+	# if com==0:
+		# print("Adding column for comments...")
+		# c.execute('''ALTER TABLE payments ADD COLUMN comment text''')
+		# conn.commit()
 	return c
 
 def getlogdbcon(conn): #Get cursor for log database
 	print("Initializing log database cursor...")
 	c = conn.cursor()
-	c.execute("select count(*) from sqlite_master where type = 'table';")
+	c.execute("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table';")
 	exist=c.fetchone()
 	if exist[0]==0: #Table does not exist, create table
 		print("Creating tables...")
@@ -207,7 +272,24 @@ def getlogdbcon(conn): #Get cursor for log database
 		conn.commit()
 	return c
 
-def getmaxiter(conn): #Return the number of latest query, which is the number of queries
+def getconfigdbcon(conn):
+	print("Initializing config database cursor...")
+	c = conn.cursor()
+	c.execute("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table';")
+	exist=c.fetchone()
+	if exist[0]==0: #Table does not exist, create table
+		print("Creating tables...")
+		c.execute('''CREATE TABLE aircraft
+			 (ac text, crew real, seats real, cruise real, gph real, fuel real, mtow real, ew real, price real, ext1 real, ltip real, laux real, lmain real, c1 real, c2 real, c3 real, rmain real, raux real, rtip real, ext2 real, fcap real, eng real, engprice real)''')
+		c.execute('''CREATE INDEX idx1 ON aircraft(ac)''')
+		c.execute('''CREATE INDEX idx2 ON aircraft(price)''')
+		c.execute('''CREATE INDEX idx3 ON aircraft(mtow)''')
+		c.execute('''CREATE INDEX idx4 ON aircraft(ew)''')
+		c.execute('''CREATE INDEX idx5 ON aircraft(fcap)''')
+		conn.commit()
+	return c
+
+def getmaxiter(conn): #Return the number of latest query, which is also the number of queries (YES IT IS SHUT UP)
 	c = conn.cursor()
 	c.execute('SELECT iter FROM queries ORDER BY iter DESC;')
 	count=c.fetchone()
@@ -221,7 +303,7 @@ def getmaxiter(conn): #Return the number of latest query, which is the number of
 def dudewheresmyairplane(): #Print list of owned planes
 	#planes={}
 	print("Sending request for aircraft list...")
-	airplanes = fserequest(1,'query=aircraft&search=key','Aircraft')
+	airplanes = fserequest(1,'query=aircraft&search=key','Aircraft','xml')
 	for plane in airplanes:
 		loc = plane.getElementsByTagName("Location")[0].firstChild.nodeValue
 		reg = plane.getElementsByTagName("Registration")[0].firstChild.nodeValue
@@ -233,7 +315,7 @@ def dudewheresmyairplane(): #Print list of owned planes
 def jobsfrom(apts,price,pax): #High paying jobs from airports
 	jobs=[]
 	print("Sending request for jobs from "+apts+"...")
-	assignments = fserequest(0,'query=icao&search=jobsfrom&icaos='+apts,'Assignment')
+	assignments = fserequest(0,'query=icao&search=jobsfrom&icaos='+apts,'Assignment','xml')
 	for assignment in assignments:
 		jobs=jobstest(assignment,jobs,price,pax)
 		global totalfrom
@@ -243,7 +325,7 @@ def jobsfrom(apts,price,pax): #High paying jobs from airports
 def jobsto(apts,price,pax): #High paying jobs to airports
 	jobs=[]
 	print("Sending request for jobs to "+apts+"...")
-	assignments = fserequest(0,'query=icao&search=jobsto&icaos='+apts,'Assignment')
+	assignments = fserequest(0,'query=icao&search=jobsto&icaos='+apts,'Assignment','xml')
 	for assignment in assignments:
 		jobs=jobstest(assignment,jobs,price,pax)
 		global totalto
@@ -269,13 +351,13 @@ def jobstest(assignment,jobs,price,pax): #Only add job to array if meeting minum
 
 def paxto(apts,minpax,maxpax): #Pax jobs to airports (incl green jobs)
 	print("Sending request incl pax jobs to "+apts+"...")
-	assignments = fserequest(0,'query=icao&search=jobsto&icaos='+apts,'Assignment')
+	assignments = fserequest(0,'query=icao&search=jobsto&icaos='+apts,'Assignment','xml')
 	jobs=paxtest(assignments,minpax,maxpax,"to")
 	return jobs
 
 def paxfrom(apts,minpax,maxpax): #Pax jobs from airports (incl green jobs)
 	print("Sending request incl pax jobs from "+apts+"...")
-	assignments = fserequest(0,'query=icao&search=jobsfrom&icaos='+apts,'Assignment')
+	assignments = fserequest(0,'query=icao&search=jobsfrom&icaos='+apts,'Assignment','xml')
 	jobs=paxtest(assignments,minpax,maxpax,"from")
 	return jobs
 
@@ -320,7 +402,8 @@ def printjobs(jobs,rev): #Print the list of jobs
 	else:
 		list=reversed(jobs)
 	for job in jobs:
-		print(job[2]+" "+job[3]+" "+job[0]+"-"+job[1]+" $"+str(int(job[4]))+" "+str(distbwt(job[0],job[1]))+" "+job[5])
+		#print(job[2]+" "+job[3]+" "+job[0]+"-"+job[1]+" $"+str(int(job[4]))+" "+str(distbwt(job[0],job[1]))+" "+job[5])
+		print('%s %s %s-%s $%i %f %s' % (job[2],job[3],job[0],job[1],int(job[4]),distbwt(job[0],job[1]),job[5]))
 	
 def cosinedist(lat1,lon1,lat2,lon2): #Use cosine to find distance between coordinates
 	phi1 = math.radians(lat1)
@@ -355,30 +438,15 @@ def distbwt(icaofrom,icaoto): #Find distance from one airport to another
 	dist=cosinedist(lat1,lon1,lat2,lon2)
 	return dist
 
-def build_latlon_csv(): #return dictionary of airport coordinates, using FSE csv file
+def build_csv(info): #Return a dictionary of info using FSE csv file
 	loc_dict = {}
-	file='/mnt/data/XPLANE10/XSDK/icaodata.csv'
-	with open(file, 'r') as f:
-		has_header = csv.Sniffer().has_header(f.read(1024))
-		f.seek(0)  # rewind
-		reader = csv.reader(f)
-		if has_header:
-			next(reader)  # skip header row
-		for row in reader:
-			loc_dict[row[0]]=(float(row[1]),float(row[2])) #Code = lat, lon
-	return loc_dict
-
-def build_ctry_csv(): #return dictionary of airport countries, using FSE csv file
-	loc_dict = {}
-	file='/mnt/data/XPLANE10/XSDK/icaodata.csv'
-	with open(file, 'r') as f:
-		has_header = csv.Sniffer().has_header(f.read(1024))
-		f.seek(0)  # rewind
-		reader = csv.reader(f)
-		if has_header:
-			next(reader)  # skip header row
-		for row in reader:
-			loc_dict[row[0]]=row[8] #Code = Country
+	with open('/mnt/data/XPLANE10/XSDK/icaodata.csv', 'r') as f:
+		out=readcsv(f)
+		for row in out:
+			if info=="latlon": #airport coordinates
+				loc_dict[row[0]]=(float(row[1]),float(row[2])) #Code = lat, lon
+			elif info=="country": #airport countries
+				loc_dict[row[0]]=row[8] #Code = Country
 	return loc_dict
 
 def chgdir(hdg,delt): #Add delta to heading and fix if passing 0 or 360
@@ -410,7 +478,7 @@ def bigjobs(apts,dir): #Find high paying jobs to/from airports
 	for airport in apts:
 		if dir==0:
 			area=nearby(airport,50)
-			jobs=jobsfrom(area,30000,8) 
+			jobs=jobsfrom(area,30000,8)  #30k is big, right?
 		else:
 			jobs=jobsto(airport,30000,8)
 		printjobs(jobs,0)
@@ -421,7 +489,7 @@ def bigjobs(apts,dir): #Find high paying jobs to/from airports
 def mapper(what, points, mincoords, maxcoords, title): # Put the points on a map
 	print("Mapping points...")
 	print("min: "+str(mincoords[0])+","+str(mincoords[1])+"  max: "+str(maxcoords[0])+","+str(maxcoords[1]))
-	if maxcoords[1]-mincoords[1]>180 or maxcoords[0]-mincoords[0]>60: # World with center aligned
+	if maxcoords[1]-mincoords[1]>180 or maxcoords[0]-mincoords[0]>60: # Big spread, world with center aligned
 		m = Basemap(projection='hammer', resolution='c', lon_0=(maxcoords[1]+mincoords[1])/2)
 	else: # Center map on area
 		width=maxcoords[1]-mincoords[1]
@@ -439,7 +507,7 @@ def mapper(what, points, mincoords, maxcoords, title): # Put the points on a map
 		x, y = m([i[1] for i in points], [i[0] for i in points])
 		c='b'
 		m.scatter(x,y,s=ptsize,marker=mk,c=c)
-	elif what=="fuel":
+	elif what=="fuel" or what=="mtrl":
 		max=0
 		for loc in points:
 			thous=int(round(loc[2])) #Size of point will be based on fuel amount
@@ -509,12 +577,9 @@ def getaverages(conn,actype,fr,to): #Return list of average prices for aircraft 
 
 def getdtime(strin): #Return datetime for the Y-M-D H:M input
 	adate,atime=strin.split()
-	year=int(adate.split('-', 2)[0])
-	month=int(adate.split('-', 2)[1])
-	day=int(adate.split('-', 2)[2])
-	hour=int(atime.split(':')[0])
-	mnt=int(atime.split(':')[1])
-	return datetime(year,month,day,hour,mnt)
+	year,month,day=adate.split('-', 2)
+	hour,mnt=atime.split(':')
+	return datetime(int(year),int(month),int(day),int(hour),int(mnt))
 
 def getlows(conn,actype,fr,to): #Return list of lowest price for aircraft in each query
 	c=getdbcon(conn)
@@ -573,10 +638,10 @@ def getapstats(conn,actype): #Return something about airplane flight logs
 	hrs=ftime/3600 #Print out the overall averages
 	speed=dist/hrs
 	gph=gals/hrs
-	print("Stats for "+actype)
+	print("\nStats for "+actype)
 	print("-----------------------------------------")
 	print("Avg speed: "+speed+" kt")
-	print("Avg gph: "+gph+" gph")
+	print("Avg gph: "+gph+" gph\n")
 	dspeed=[]
 	dgph=[]
 	xax=[]
@@ -625,7 +690,7 @@ def getapstats(conn,actype): #Return something about airplane flight logs
 	ax.legend( (i[1] for i in xax) )
 	plt.show()
 
-def mapcommo(ctype):
+def getcommo(ctype): # Adds up locations and quantities of stuff and sends it to the mapper
 	if ctype=="fuel":
 		t1="JetA Fuel"
 		t2="100LL Fuel"
@@ -636,7 +701,7 @@ def mapcommo(ctype):
 		print("Commodity type "+ctype+" not recognized!")
 	if t1 is not None:
 		print("Sending request for commodities...")
-		commo = fserequest(1,'query=commodities&search=key','Commodity')
+		commo = fserequest(1,'query=commodities&search=key','Commodity','xml')
 		print("Sorting results...")
 		stuff = []
 		for item in commo: #Parse commodity info
@@ -646,7 +711,7 @@ def mapcommo(ctype):
 				amt = airplane.getElementsByTagName("Amount")[0].firstChild.nodeValue
 				stuff.append((loc,typ,amt))
 		if stuff!=[]: #Add up quantity per location
-			qty=[] #List to hold quantities
+			qty=[] #List to hold quantities and types
 			for item in stuff:
 				match=-1
 				i=-1
@@ -655,28 +720,28 @@ def mapcommo(ctype):
 					if item[0]==qty[0]: #Test if the location has already been added
 						match=1
 						break
-				if match==-1: #If not added, then add new location/quantity
+				if match==-1: #If location not added, then add new location/quantity
 					if item[1]==t1:
 						idx=0
 					else: #t2
 						idx=1
 					qty.append([item[0],item[2].split(),idx])
-				else: #If added, then sum with other quantity
+				else: #If location already added, then sum with other quantity
 					qty[i][1]+=item[2].split()
 					qty[i][2]=2 #Indicates a mix of t1 and t2
-			coords=getcoords(qty[:][0])
+			coords,cmin,cmax=getcoords(qty[:][0])
 			if len(coords)==len(qty): #If not, there was some key error I guess
 				locations=[]
 				for i in range(len(coords)):
 					locations.append([locations[i][0],locations[i][1],qty[i][1],qty[i][2]])
-				mapper(ctype, locations, (latmin,lonmin), (latmax,lonmax), title)
+				return locations,cmin,cmax
 		else:
 			print("No "+ctype+" found!")
 
 def getlistings(conn,actype,lo,hi): #Return list of time for aircraft to sell
 	c=getdbcon(conn)
 	d=getdbcon(conn)
-	cdict=build_ctry_csv()
+	cdict=build_csv("country")
 	rdict=dicts.getregiondict()
 	listings=[]
 	print("Finding sell times for: "+actype+", "+str(lo)+" to "+str(hi)+"...")
@@ -696,7 +761,6 @@ def getlistings(conn,actype,lo,hi): #Return list of time for aircraft to sell
 					break
 			if match==0:
 				listings.append([sale[0],region,int(sale[5]),query[0],query[0]]) #SN, region, price, first iter, last iter
-				
 	return listings
 
 def mapaclocations(conn, actype): #Map locations of aircraft type for sale
@@ -708,16 +772,16 @@ def mapaclocations(conn, actype): #Map locations of aircraft type for sale
 	else:
 		q1+=" AND type = '"+actype+"'"
 		title="Locations of "+actype+" for sale"
-	locations,cmin,cmax=getcoords(c.execute(q1))
+	locations,cmin,cmax=getcoords([i[0] for i in c.execute(q1)])
 	mapper('ac', locations, cmin, cmax, title)
 	
 def getcoords(data): #Get coordinates for a list of airports
 	print("Building airport location dictionary from csv...")
-	loc_dict=build_latlon_csv()
+	loc_dict=build_csv("latlon")
 	print("Creating locations list...")
 	locations=[]
-	lat_tot=0
-	lon_tot=0
+	#lat_tot=0
+	#lon_tot=0
 	latmax,lonmax,latmin,lonmin=100,200,100,200 #garbage to signal init
 #	print("Running query: "+q1)
 	for row in data:
@@ -726,9 +790,9 @@ def getcoords(data): #Get coordinates for a list of airports
 		except KeyError: #Probably "Airborne"
 			continue
 		locations.append([lat,lon])
-		lat_tot+=lat
-		lon_tot+=lon
-		if lat<latmin or abs(latmin)>90:
+		#lat_tot+=lat
+		#lon_tot+=lon
+		if lat<latmin or abs(latmin)>90: #Look for min/max of coordinates
 			latmin=lat
 		if lat>latmax or abs(latmax)>90:
 			latmax=lat
@@ -740,7 +804,7 @@ def getcoords(data): #Get coordinates for a list of airports
 	if pts==0:
 		print("No locations found!")
 	#else:
-		#center=(lat_tot/pts,lon_tot/pts)
+		#center=(lat_tot/pts,lon_tot/pts) # Not currently used, also needs the totals above
 	return locations,(latmin,lonmin),(latmax,lonmax)
 	
 def plotdates(dlist,title,ylbl,sym): #Plot a list of data vs. dates
@@ -766,106 +830,123 @@ def plotpayments(conn,fromdate,todate): #Plot payment totals per category
 	c=getpaydbcon(conn)
 	user=getname()
 	delta=timedelta(days=1)
-	fyear=int(fromdate.split('-', 2)[0])
-	fmonth=int(fromdate.split('-', 2)[1])
-	fday=int(fromdate.split('-', 2)[2])
-	tyear=int(todate.split('-', 2)[0])
-	tmonth=int(todate.split('-', 2)[1])
-	tday=int(todate.split('-', 2)[2])
-	fdate=date(fyear,fmonth,fday)
-	tdate=date(tyear,tmonth,tday)
+	fyear,fmonth,fday=fromdate.split('-', 2)
+	tyear,tmonth,tday=todate.split('-', 2)
+	fdate=date(int(fyear),int(fmonth),int(fday))
+	tdate=date(int(tyear),int(tmonth),int(tday))
 	rentexp, rentinc, assnmtexp, assnmtinc, pltfee, addcrewfee, gndcrewfee, bkgfee, ref100, refjet, mxexp, eqinstl, acsold, acbought, fboref100, fborefjet, fbogndcrew, fborepinc, fborepexp, fboeqpexp, fboeqpinc, ptrentinc, ptrentexp, fbosell, fbobuy, wsbuy100, wssell100, wsbuyjet, wsselljet, wsbuybld, wssellbld, wsbuysupp, wssellsupp, grpay=([[fdate,0]] for i in range(34))
 	allthat=[rentexp, rentinc, assnmtexp, assnmtinc, pltfee, addcrewfee, gndcrewfee, bkgfee, ref100, refjet, mxexp, eqinstl, acsold, acbought, fboref100, fborefjet, fbogndcrew, fborepinc, fborepexp, fboeqpexp, fboeqpinc, ptrentinc, ptrentexp, fbosell, fbobuy, wsbuy100, wssell100, wsbuyjet, wsselljet, wsbuybld, wssellbld, wsbuysupp, wssellsupp, grpay]
+	categories=[("Rental of aircraft", rentinc, rentexp),
+				("Pay for assignment", assnmtinc, assnmtexp),
+				("Crew fee", addcrewfee, addcrewfee),
+				("FBO ground crew fee", fbogndcrew, gndcrewfee),
+				("Booking Fee", bkgfee, bkgfee),
+				("Refuelling with JetA", fborefjet, refjet),
+				("Refuelling with 100LL", fboref100, ref100),
+				("Aircraft maintenance", fborepinc, mxexp),
+				("Aircraft sale", acsold, acbought),
+				("Sale of wholesale JetA", wsselljet, wsbuyjet),
+				("Sale of wholesale 100LL", wssell100, wsbuy100),
+				("Sale of supplies", wssellsupp, wsbuysupp),
+				("Sale of building materials", wssellbld, wsbuybld),
+				("Group payment", grpay, grpay),
+				("Pilot fee", pltfee, pltfee),
+				("Installation of equipment in aircraft", fboeqpinc, eqinstl)]
 	i=0
-	print("Tallying daily payments from "+str(fdate.year)+"-"+str(fdate.month)+" to "+str(tdate.year)+"-"+str(tdate.month)+"...")
+	#print("Tallying daily payments from "+str(fdate.year)+"-"+str(fdate.month)+" to "+str(tdate.year)+"-"+str(tdate.month)+"...")
+	print('Tallying daily payments from %i-%i to %i-%i...' % (fdate.year,fdate.month,tdate.year,tdate.month))
 	#(date text, to text, from text, amount real, reason text, location real, aircraft real)
 	while fdate <= tdate:
 		fdateq=fdate.isoformat()+" 00:00:01"
 		tdateq=fdate.isoformat()+" 23:59:59"
 		if i>0:
-			dstring=fdate
 			for var in allthat:
-				var.append([dstring,var[i-1][1]])
+				var.append([fdate,var[i-1][1]])
 		for payment in c.execute('SELECT * FROM payments WHERE date BETWEEN ? AND ?',(fdateq,tdateq)):
-			if payment[4]=="Rental of aircraft":
-				if payment[2]!=user:
-					rentinc[i][1]+=payment[3]
-				else:
-					rentexp[i][1]+=payment[3]
-			elif payment[4]=="Pay for assignment":
-				if payment[2]!=user:
-					assnmtinc[i][1]+=payment[3]
-				else:
-					assnmtexp[i][1]+=payment[3]
-			elif payment[4]=="Crew fee":
-				addcrewfee[i][1]+=payment[3]
-			elif payment[4]=="FBO ground crew fee":
-				if payment[2]!=user:
-					fbogndcrew[i][1]+=payment[3]
-				else:
-					gndcrewfee[i][1]+=payment[3]
-			elif payment[4]=="Booking Fee":
-				bkgfee[i][1]+=payment[3]
-			elif payment[4]=="Refuelling with JetA":
-				if payment[2]!=user:
-					fborefjet[i][1]+=payment[3]
-				else:
-					refjet[i][1]+=payment[3]
-			elif payment[4]=="Refuelling with 100LL":
-				if payment[2]!=user:
-					fboref100[i][1]+=payment[3]
-				else:
-					ref100[i][1]+=payment[3]
-			elif payment[4]=="Aircraft maintenance":
-				if payment[2]!=user:
-					fborepinc[i][1]+=payment[3]
-				else:
-					mxexp[i][1]+=payment[3]
-			elif payment[4]=="Aircraft sale":
-				if payment[2]!=user:
-					acsold[i][1]+=payment[3]
-				else:
-					acbought[i][1]+=payment[3]
-			elif payment[4]=="Sale of wholesale JetA":
-				if payment[2]!=user:
-					wsselljet[i][1]+=payment[3]
-				else:
-					wsbuyjet[i][1]+=payment[3]
-			elif payment[4]=="Sale of wholesale 100LL":
-				if payment[2]!=user:
-					wssell100[i][1]+=payment[3]
-				else:
-					wsbuy100[i][1]+=payment[3]
-			elif payment[4]=="Sale of supplies":
-				if payment[2]!=user:
-					wssellsupp[i][1]+=payment[3]
-				else:
-					wsbuysupp[i][1]+=payment[3]
-			elif payment[4]=="Sale of building materials":
-				if payment[2]!=user:
-					wssellbld[i][1]+=payment[3]
-				else:
-					wsbuybld[i][1]+=payment[3]
-			elif payment[4]=="Group payment":
-				if payment[2]!=user:
-					grpay[i][1]+=payment[3]
-				else:
-					grpay[i][1]-=payment[3]
-			elif payment[4]=="Pilot fee":
-				if payment[2]!=user:
-					pltfee[i][1]+=payment[3]
-				else:
-					pltfee[i][1]-=payment[3]
-			elif payment[4]=="Installation of equipment in aircraft":
-				if payment[2]!=user:
-					fboeqpinc[i][1]+=payment[3]
-				else:
-					eqinstl[i][1]+=payment[3]
-			else:
-				print("No category found for "+payment[4])
+			for cat in categories:
+				if payment[4]==cat[0]:
+					if payment[2]!=user:
+						cat[1][i][1]+=payment[3]
+					else:
+						cat[2][i][1]+=payment[3]
+			# if payment[4]=="Rental of aircraft":
+				# if payment[2]!=user:
+					# rentinc[i][1]+=payment[3]
+				# else:
+					# rentexp[i][1]+=payment[3]
+			# elif payment[4]=="Pay for assignment":
+				# if payment[2]!=user:
+					# assnmtinc[i][1]+=payment[3]
+				# else:
+					# assnmtexp[i][1]+=payment[3]
+			# elif payment[4]=="Crew fee":
+				# addcrewfee[i][1]+=payment[3]
+			# elif payment[4]=="FBO ground crew fee":
+				# if payment[2]!=user:
+					# fbogndcrew[i][1]+=payment[3]
+				# else:
+					# gndcrewfee[i][1]+=payment[3]
+			# elif payment[4]=="Booking Fee":
+				# bkgfee[i][1]+=payment[3]
+			# elif payment[4]=="Refuelling with JetA":
+				# if payment[2]!=user:
+					# fborefjet[i][1]+=payment[3]
+				# else:
+					# refjet[i][1]+=payment[3]
+			# elif payment[4]=="Refuelling with 100LL":
+				# if payment[2]!=user:
+					# fboref100[i][1]+=payment[3]
+				# else:
+					# ref100[i][1]+=payment[3]
+			# elif payment[4]=="Aircraft maintenance":
+				# if payment[2]!=user:
+					# fborepinc[i][1]+=payment[3]
+				# else:
+					# mxexp[i][1]+=payment[3]
+			# elif payment[4]=="Aircraft sale":
+				# if payment[2]!=user:
+					# acsold[i][1]+=payment[3]
+				# else:
+					# acbought[i][1]+=payment[3]
+			# elif payment[4]=="Sale of wholesale JetA":
+				# if payment[2]!=user:
+					# wsselljet[i][1]+=payment[3]
+				# else:
+					# wsbuyjet[i][1]+=payment[3]
+			# elif payment[4]=="Sale of wholesale 100LL":
+				# if payment[2]!=user:
+					# wssell100[i][1]+=payment[3]
+				# else:
+					# wsbuy100[i][1]+=payment[3]
+			# elif payment[4]=="Sale of supplies":
+				# if payment[2]!=user:
+					# wssellsupp[i][1]+=payment[3]
+				# else:
+					# wsbuysupp[i][1]+=payment[3]
+			# elif payment[4]=="Sale of building materials":
+				# if payment[2]!=user:
+					# wssellbld[i][1]+=payment[3]
+				# else:
+					# wsbuybld[i][1]+=payment[3]
+			# elif payment[4]=="Group payment":
+				# if payment[2]!=user:
+					# grpay[i][1]+=payment[3]
+				# else:
+					# grpay[i][1]-=payment[3]
+			# elif payment[4]=="Pilot fee":
+				# if payment[2]!=user:
+					# pltfee[i][1]+=payment[3]
+				# else:
+					# pltfee[i][1]-=payment[3]
+			# elif payment[4]=="Installation of equipment in aircraft":
+				# if payment[2]!=user:
+					# fboeqpinc[i][1]+=payment[3]
+				# else:
+					# eqinstl[i][1]+=payment[3]
+			# else:
+				# print("No category found for "+payment[4])
 		fdate += delta
 		i += 1
-	
 	plotdates([refjet, addcrewfee, gndcrewfee],"Money","Money",'-')
 	
 def sumpayments(conn,fdate,tdate): #Plot portion of income/expense per category
@@ -886,7 +967,6 @@ def sumpayments(conn,fdate,tdate): #Plot portion of income/expense per category
 	wssellbld=[0,"Building materials sold"]
 	wssellsupp=[0,"Supplies sold"]
 	grpay=[0,"Group payment"]
-	
 	#Expenses
 	rentexp=[0,"Rental expense"]
 	assnmtexp=[0,"Assignment expense"]
@@ -906,90 +986,110 @@ def sumpayments(conn,fdate,tdate): #Plot portion of income/expense per category
 	wsbuyjet=[0,"JetA bought"]
 	wsbuybld=[0,"Building materials"]
 	wsbuysupp=[0,"Supplies"]
-
+	categories=[("Rental of aircraft", rentinc, rentexp),
+				("Pay for assignment", assnmtinc, assnmtexp),
+				("Crew fee", addcrewfee, addcrewfee),
+				("FBO ground crew fee", fbogndcrew, gndcrewfee),
+				("Booking Fee", bkgfee, bkgfee),
+				("Refuelling with JetA", fborefjet, refjet),
+				("Refuelling with 100LL", fboref100, ref100),
+				("Aircraft maintenance", fborepinc, mxexp),
+				("Aircraft sale", acsold, acbought),
+				("Sale of wholesale JetA", wsselljet, wsbuyjet),
+				("Sale of wholesale 100LL", wssell100, wsbuy100),
+				("Sale of supplies", wssellsupp, wsbuysupp),
+				("Sale of building materials", wssellbld, wsbuybld),
+				("Group payment", grpay, grpay),
+				("Pilot fee", pltfee, pltfee),
+				("Installation of equipment in aircraft", fboeqpinc, eqinstl)]
 	user=getname()
 	fromdate=fdate+" 00:01"
 	todate=tdate+" 23:59"
 	print("Tallying payments from"+str(fdate[0])+"-"+str(fdate[1])+" to "+str(tdate[0])+"-"+str(tdate[1])+"...")
 	#(date text, to text, from text, amount real, reason text, location real, aircraft real)
 	for payment in c.execute('SELECT * FROM payments WHERE date BETWEEN ? AND ?',(fromdate,todate)):
-		if payment[4]=="Rental of aircraft":
-			if payment[2]!=user:
-				rentinc[0]+=payment[3]
-			else:
-				rentexp[0]+=payment[3]
-		elif payment[4]=="Pay for assignment":
-			if payment[2]!=user:
-				assnmtinc[0]+=payment[3]
-			else:
-				assnmtexp[0]+=payment[3]
-		elif payment[4]=="Crew fee":
-			addcrewfee[0]+=payment[3]
-		elif payment[4]=="FBO ground crew fee":
-			if payment[2]!=user:
-				fbogndcrew[0]+=payment[3]
-			else:
-				gndcrewfee[0]+=payment[3]
-		elif payment[4]=="Booking Fee":
-			bkgfee[0]+=payment[3]
-		elif payment[4]=="Refuelling with JetA":
-			if payment[2]!=user:
-				fborefjet[0]+=payment[3]
-			else:
-				refjet[0]+=payment[3]
-		elif payment[4]=="Refuelling with 100LL":
-			if payment[2]!=user:
-				fboref100[0]+=payment[3]
-			else:
-				ref100[0]+=payment[3]
-		elif payment[4]=="Aircraft maintenance":
-			if payment[2]!=user:
-				fborepinc[0]+=payment[3]
-			else:
-				mxexp[0]+=payment[3]
-		elif payment[4]=="Aircraft sale":
-			if payment[2]!=user:
-				acsold[0]+=payment[3]
-			else:
-				acbought[0]+=payment[3]
-		elif payment[4]=="Sale of wholesale JetA":
-			if payment[2]!=user:
-				wsselljet[0]+=payment[3]
-			else:
-				wsbuyjet[0]+=payment[3]
-		elif payment[4]=="Sale of wholesale 100LL":
-			if payment[2]!=user:
-				wssell100[0]+=payment[3]
-			else:
-				wsbuy100[0]+=payment[3]
-		elif payment[4]=="Sale of supplies":
-			if payment[2]!=user:
-				wssellsupp[0]+=payment[3]
-			else:
-				wsbuysupp[0]+=payment[3]
-		elif payment[4]=="Sale of building materials":
-			if payment[2]!=user:
-				wssellbld[0]+=payment[3]
-			else:
-				wsbuybld[0]+=payment[3]
-		elif payment[4]=="Group payment":
-			if payment[2]!=user:
-				grpay[0]+=payment[3]
-			else:
-				grpay[0]-=payment[3]
-		elif payment[4]=="Pilot fee":
-			if payment[2]!=user:
-				pltfee[0]+=payment[3]
-			else:
-				pltfee[0]-=payment[3]
-		elif payment[4]=="Installation of equipment in aircraft":
-			if payment[2]!=user:
-				fboeqpinc[0]+=payment[3]
-			else:
-				eqinstl[0]+=payment[3]
-		else:
-			print("No category found for "+payment[4])
-
+		for cat in categories:
+			if payment[4]==cat[0]:
+				if payment[2]!=user:
+					cat[1][0]+=payment[3]
+				else:
+					cat[2][0]+=payment[3]
+		# if payment[4]=="Rental of aircraft":
+			# if payment[2]!=user:
+				# rentinc[0]+=payment[3]
+			# else:
+				# rentexp[0]+=payment[3]
+		# elif payment[4]=="Pay for assignment":
+			# if payment[2]!=user:
+				# assnmtinc[0]+=payment[3]
+			# else:
+				# assnmtexp[0]+=payment[3]
+		# elif payment[4]=="Crew fee":
+			# addcrewfee[0]+=payment[3]
+		# elif payment[4]=="FBO ground crew fee":
+			# if payment[2]!=user:
+				# fbogndcrew[0]+=payment[3]
+			# else:
+				# gndcrewfee[0]+=payment[3]
+		# elif payment[4]=="Booking Fee":
+			# bkgfee[0]+=payment[3]
+		# elif payment[4]=="Refuelling with JetA":
+			# if payment[2]!=user:
+				# fborefjet[0]+=payment[3]
+			# else:
+				# refjet[0]+=payment[3]
+		# elif payment[4]=="Refuelling with 100LL":
+			# if payment[2]!=user:
+				# fboref100[0]+=payment[3]
+			# else:
+				# ref100[0]+=payment[3]
+		# elif payment[4]=="Aircraft maintenance":
+			# if payment[2]!=user:
+				# fborepinc[0]+=payment[3]
+			# else:
+				# mxexp[0]+=payment[3]
+		# elif payment[4]=="Aircraft sale":
+			# if payment[2]!=user:
+				# acsold[0]+=payment[3]
+			# else:
+				# acbought[0]+=payment[3]
+		# elif payment[4]=="Sale of wholesale JetA":
+			# if payment[2]!=user:
+				# wsselljet[0]+=payment[3]
+			# else:
+				# wsbuyjet[0]+=payment[3]
+		# elif payment[4]=="Sale of wholesale 100LL":
+			# if payment[2]!=user:
+				# wssell100[0]+=payment[3]
+			# else:
+				# wsbuy100[0]+=payment[3]
+		# elif payment[4]=="Sale of supplies":
+			# if payment[2]!=user:
+				# wssellsupp[0]+=payment[3]
+			# else:
+				# wsbuysupp[0]+=payment[3]
+		# elif payment[4]=="Sale of building materials":
+			# if payment[2]!=user:
+				# wssellbld[0]+=payment[3]
+			# else:
+				# wsbuybld[0]+=payment[3]
+		# elif payment[4]=="Group payment":
+			# if payment[2]!=user:
+				# grpay[0]+=payment[3]
+			# else:
+				# grpay[0]-=payment[3]
+		# elif payment[4]=="Pilot fee":
+			# if payment[2]!=user:
+				# pltfee[0]+=payment[3]
+			# else:
+				# pltfee[0]-=payment[3]
+		# elif payment[4]=="Installation of equipment in aircraft":
+			# if payment[2]!=user:
+				# fboeqpinc[0]+=payment[3]
+			# else:
+				# eqinstl[0]+=payment[3]
+		# else:
+			# print("No category found for "+payment[4])
 	#Income nets per category
 	rent=[rentinc[0]-rentexp[0],"Rental"]
 	assnmt=[assnmtinc[0]-assnmtexp[0],"Assignments"]
@@ -1003,7 +1103,6 @@ def sumpayments(conn,fdate,tdate): #Plot portion of income/expense per category
 	sup=[wssellsupp[0]-wsbuysupp[0],"Supplies"]
 	bld=[wssellbld[0]-wsbuybld[0],"Building Mtrls"]
 	incnets=[rent, assnmt, ac, ws100, wsjet, fborep, fboeqp, ptrent, fbo, sup, bld]
-	
 	incnet=[]
 	expnet=[ref100, refjet, bkgfee, gndcrewfee, addcrewfee, pltfee, mxexp] #Always negative
 	netinc=0
@@ -1030,7 +1129,6 @@ def sumacpayments(conn,fdate,tdate): #Plot revenue portion by aircraft
 	#Income
 	rent=[[],"Rental income"]
 	assnmtinc=[[],"Assignment income"]
-		
 	#Expenses
 	pltfee=[[],"Pilot fees"]
 	addcrewfee=[[],"Additional crew fee"]
@@ -1041,9 +1139,19 @@ def sumacpayments(conn,fdate,tdate): #Plot revenue portion by aircraft
 	mxexp=[[],"Maintenance"]
 	eqinstl=[[],"Equipment installed"]
 	acbuy=[[],"Aircraft bought"]
-
 	items=[rent,assnmtinc,pltfee,addcrewfee,gndcrewfee,bkgfee,ref100,refjet,mxexp,eqinstl,acbuy]
-	
+	z=[[],""]
+	categories=[("Rental of aircraft", rent, rent),
+				("Pay for assignment", assnmtinc, z),
+				("Crew fee", addcrewfee, addcrewfee),
+				("FBO ground crew fee", z, gndcrewfee),
+				("Booking Fee", z, bkgfee),
+				("Refuelling with JetA", z, refjet),
+				("Refuelling with 100LL", z, ref100),
+				("Aircraft maintenance", z, mxexp),
+				("Aircraft sale", acbuy, acbuy),
+				("Pilot fee", pltfee, pltfee),
+				("Installation of equipment in aircraft", z, eqinstl)]
 	user=getname()
 	fromdate=fdate+" 00:01"
 	todate=tdate+" 23:59"
@@ -1057,46 +1165,51 @@ def sumacpayments(conn,fdate,tdate): #Plot revenue portion by aircraft
 			var[0].append(0)
 		i+=1
 		for payment in d.execute('SELECT * FROM payments WHERE date BETWEEN ? AND ? AND aircraft = ?',(fromdate,todate,dac[0])):
-			if payment[4]=="Rental of aircraft":
-				if payment[2]!=user:
-					rent[0][i]+=payment[3]
-				else:
-					rent[0][i]-=payment[3]
-			elif payment[4]=="Pay for assignment":
-				if payment[2]!=user:
-					assnmtinc[0][i]+=payment[3]
-			elif payment[4]=="Crew fee":
-				addcrewfee[0][i]-=payment[3]
-			elif payment[4]=="FBO ground crew fee":
-				if payment[2]==user:
-					gndcrewfee[0][i]-=payment[3]
-			elif payment[4]=="Booking Fee":
-				bkgfee[0][i]-=payment[3]
-			elif payment[4]=="Refuelling with JetA":
-				if payment[2]==user:
-					refjet[0][i]-=payment[3]
-			elif payment[4]=="Refuelling with 100LL":
-				if payment[2]==user:
-					ref100[0][i]-=payment[3]
-			elif payment[4]=="Aircraft maintenance":
-				if payment[2]==user:
-					mxexp[0][i]-=payment[3]
-			elif payment[4]=="Aircraft sale":
-				if payment[2]!=user:
-					acbuy[0][i]+=payment[3]
-				else:
-					acbuy[0][i]-=payment[3]
-			elif payment[4]=="Pilot fee":
-				if payment[2]!=user:
-					pltfee[0][i]+=payment[3]
-				else:
-					pltfee[0]-=payment[3]
-			elif payment[4]=="Installation of equipment in aircraft":
-				if payment[2]==user:
-					eqinstl[0][i]-=payment[3]
-			else:
-				print("No category (for aircraft) found for "+payment[4])
-
+			for cat in categories:
+				if payment[4]==cat[0]:
+					if payment[2]!=user:
+						cat[1][0][i]+=payment[3]
+					else:
+						cat[2][0][i]-=payment[3]
+			# if payment[4]=="Rental of aircraft":
+				# if payment[2]!=user:
+					# rent[0][i]+=payment[3]
+				# else:
+					# rent[0][i]-=payment[3]
+			# elif payment[4]=="Pay for assignment":
+				# if payment[2]!=user:
+					# assnmtinc[0][i]+=payment[3]
+			# elif payment[4]=="Crew fee":
+				# addcrewfee[0][i]-=payment[3]
+			# elif payment[4]=="FBO ground crew fee":
+				# if payment[2]==user:
+					# gndcrewfee[0][i]-=payment[3]
+			# elif payment[4]=="Booking Fee":
+				# bkgfee[0][i]-=payment[3]
+			# elif payment[4]=="Refuelling with JetA":
+				# if payment[2]==user:
+					# refjet[0][i]-=payment[3]
+			# elif payment[4]=="Refuelling with 100LL":
+				# if payment[2]==user:
+					# ref100[0][i]-=payment[3]
+			# elif payment[4]=="Aircraft maintenance":
+				# if payment[2]==user:
+					# mxexp[0][i]-=payment[3]
+			# elif payment[4]=="Aircraft sale":
+				# if payment[2]!=user:
+					# acbuy[0][i]+=payment[3]
+				# else:
+					# acbuy[0][i]-=payment[3]
+			# elif payment[4]=="Pilot fee":
+				# if payment[2]!=user:
+					# pltfee[0][i]+=payment[3]
+				# else:
+					# pltfee[0]-=payment[3]
+			# elif payment[4]=="Installation of equipment in aircraft":
+				# if payment[2]==user:
+					# eqinstl[0][i]-=payment[3]
+			# else:
+				# print("No category (for aircraft) found for "+payment[4])
 	for i in range(len(ac)): #Sum up all categories for each aircraft
 		for var in items:
 			ac[i][0]+=var[0][i]
@@ -1148,24 +1261,13 @@ def main(argv): #This is where the magic happens
 	
 	syntaxstring='pricelog.py -un -dmac <aircraft icao> -ft <YYYY-MM-DD> -lh <price>'
 	try:
-		opts, args = getopt.getopt(argv,"hund:m:a:c:f:t:l:i:pqsg:ve:x:jz",["duration=","map=","average=","cheapest=","from=","to=","low=","high=","total=","commodity=","typestats="])
+		opts, args = getopt.getopt(argv,"hund:m:a:c:f:t:l:i:pqsg:ve:x:jzb",["duration=","map=","average=","cheapest=","from=","to=","low=","high=","total=","commodity=","typestats="])
 	except getopt.GetoptError:
 		print(syntaxstring)
 		sys.exit(2)
 	print("Opening database...")
 	conn=sqlite3.connect('/mnt/data/XPLANE10/XSDK/forsale.db')
-	tot=0
-	avg=0
-	low=0
-	dur=0
-	pay=0
-	ppay=0
-	spay=0
-	stot=0
-	stat=0
-	logs=0
-	com=0
-	lowprice=0
+	tot, avg, low, dur, pay, ppay, spay, stot, stat, logs, com, lowprice=(0,)*12
 	highprice=99999999
 	fromdate="2014-01-01"
 	todate="2100-12-31"
@@ -1195,30 +1297,51 @@ def main(argv): #This is where the magic happens
 			lowprice=arg
 		elif opt in ("-i", "--high"):
 			highprice=arg
-		elif opt in ("-p", "--payments"):
+		elif opt=="-p":
 			pay=1
-		elif opt in ("-q", "--plotpayments"):
+		elif opt=="-q":
 			ppay=1
-		elif opt in ("-s", "--sumpayments"):
+		elif opt=="-s":
 			spay=1
 		elif opt in ("-g", "--total"):
 			tottype,tot=gettype(arg)
 		elif opt=="-v":
 			stot=1
 		elif opt in ("-e", "--commodity"):
-			mapcommo(arg)
+			locations,cmin,cmax=getcommo(arg)
+			mapper(arg, locations, cmin, cmax, "Locations of Commodities")
 		elif opt in ("-x", "--typestats"):
 			stattype,stat=gettype(arg)
 		elif opt=="-j":
 			logs=1
 		elif opt=="-z":
 			com=1
+		elif opt=="-b":
+			cconn=sqlite3.connect('/mnt/data/XPLANE10/XSDK/configs.db')
+			logconfigs(cconn)
+			cconn.close()
 
 	if pay+ppay+spay+stot+com>0:
 		conn2=sqlite3.connect('/mnt/data/XPLANE10/XSDK/payments.db')
-	
+		if pay==1:
+			logpaymonth(conn2,fromdate)
+		if ppay==1:
+			plotpayments(conn2,fromdate,todate)
+		if spay==1:
+			sumpayments(conn2,fromdate,todate)
+		if stot==1:
+			sumacpayments(conn2,fromdate,todate)
+		if com==1:
+			logpaymonthcom(conn2,fromdate)
+		conn2.close()
+		
 	if logs+stat>0:
 		conn3=sqlite3.connect('/mnt/data/XPLANE10/XSDK/flightlogs.db')
+		if stat==1:
+			getapstats(conn3,stattype)
+		if logs==1:
+			loglogmonth(conn3,fromdate)
+		conn3.close()
 
 	if tot==1:
 		totals=gettotals(conn,tottype,fromdate,todate)
@@ -1241,38 +1364,6 @@ def main(argv): #This is where the magic happens
 			print(str(listings[2])+": "+str(duration))
 		plotdates([durations],"Time to sell for "+durtype,"Days",'o-')
 	
-	if pay==1:
-		year=fromdate.split('-', 2)[0]
-		month=fromdate.split('-', 2)[1]
-		logpaymonth(conn2,year,month)
-		conn2.close()
-	
-	if ppay==1:
-		plotpayments(conn2,fromdate,todate)
-
-	if spay==1:
-		sumpayments(conn2,fromdate,todate)
-	
-	if stot==1:
-		sumacpayments(conn2,fromdate,todate)
-	
-	if stat==1:
-		getapstats(conn3,stattype)
-		
-	if logs==1:
-		year=fromdate.split('-', 2)[0]
-		month=fromdate.split('-', 2)[1]
-		loglogmonth(conn3,year,month)
-		conn3.close()
-	
-	if com==1:
-		year=fromdate.split('-', 2)[0]
-		month=fromdate.split('-', 2)[1]
-		logpaymonthcom(conn2,year,month)
-		conn2.close()
-
-	# We can also close the connection if we are done with it.
-	# Just be sure any changes have been committed or they will be lost. FOREVER
 	print("Finished, closing database...")
 	conn.close()
 	
