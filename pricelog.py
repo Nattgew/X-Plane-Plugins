@@ -95,53 +95,51 @@ def logpaymonthcom(conn,year,month): #Add comments to a month of payments
 	print("Sending request for payment listing...")
 	payments = fserequest(1,'query=payments&search=monthyear&month='+month+'&year='+year,'Payment')
 	c=getpaydbcon(conn)
-	print("Recording data...")
+	print("Recording comment data...")
 	for payment in payments:
 		pid = int(payment.getElementsByTagName("Id")[0].firstChild.nodeValue)
 		com = payment.getElementsByTagName("Comment")[0].firstChild.nodeValue
 		if com=="null":
 			com=""
-		c.execute('SELECT * FROM payments WHERE pid = ?',(pid,))
-		row=c.fetchone()
 		c.execute('UPDATE payments SET comment = ? WHERE pid = ?',(com, pid))
 	conn.commit()
 
 def loglogmonth(conn,year,month):
 	print("Sending request for logs...")
-	logs = fserequest(1,'query=flightlogs&search=monthyear&month='+month+'&year='+year,'Commodity')
+	logs = fserequest(1,'query=flightlogs&search=monthyear&month='+month+'&year='+year,'FlightLog')
 	c=getlogdbcon(conn)
 	print("Recording data...")
 	for log in logs:
-		id = int(payment.getElementsByTagName("Id")[0].firstChild.nodeValue)
-		typ = payment.getElementsByTagName("Type")[0].firstChild.nodeValue
-		tim = payment.getElementsByTagName("Time")[0].firstChild.nodeValue
-		dis = int(payment.getElementsByTagName("Distance")[0].firstChild.nodeValue)
+		fid = int(log.getElementsByTagName("Id")[0].firstChild.nodeValue)
+		typ = log.getElementsByTagName("Type")[0].firstChild.nodeValue
+		tim = log.getElementsByTagName("Time")[0].firstChild.nodeValue
+		dis = int(log.getElementsByTagName("Distance")[0].firstChild.nodeValue)
 		#pilot
-		sn = int(payment.getElementsByTagName("SerialNumber")[0].firstChild.nodeValue)
-		ac = payment.getElementsByTagName("Aircraft")[0].firstChild.nodeValue
-		mo = payment.getElementsByTagName("MakeModel")[0].firstChild.nodeValue
+		sn = int(log.getElementsByTagName("SerialNumber")[0].firstChild.nodeValue)
+		ac = log.getElementsByTagName("Aircraft")[0].firstChild.nodeValue
+		mo = log.getElementsByTagName("MakeModel")[0].firstChild.nodeValue
 		if typ=="flight":
-			fr = payment.getElementsByTagName("From")[0].firstChild.nodeValue
-			to = payment.getElementsByTagName("To")[0].firstChild.nodeValue
+			fr = log.getElementsByTagName("From")[0].firstChild.nodeValue
+			to = log.getElementsByTagName("To")[0].firstChild.nodeValue
 		else: #More borked XML
 			fr=""
 			to=""
 		#total eng time
-		ft = payment.getElementsByTagName("FlightTime")[0].firstChild.nodeValue
+		ft = log.getElementsByTagName("FlightTime")[0].firstChild.nodeValue
 		#group name (broken)
-		inc = float(payment.getElementsByTagName("Income")[0].firstChild.nodeValue)
-		pf = float(payment.getElementsByTagName("PilotFee")[0].firstChild.nodeValue)
-		crw = float(payment.getElementsByTagName("CrewCost")[0].firstChild.nodeValue)
-		bf = float(payment.getElementsByTagName("BookingFee")[0].firstChild.nodeValue)
-		bo = float(payment.getElementsByTagName("Bonus")[0].firstChild.nodeValue)
-		fl = float(payment.getElementsByTagName("FuelCost")[0].firstChild.nodeValue)
-		gc = float(payment.getElementsByTagName("GCF")[0].firstChild.nodeValue)
-		rat = float(payment.getElementsByTagName("RentalPrice")[0].firstChild.nodeValue)
-		rtp = payment.getElementsByTagName("RentalType")[0].firstChild.nodeValue
-		rtt = payment.getElementsByTagName("RentalUnits")[0].firstChild.nodeValue
-		rtc = float(payment.getElementsByTagName("RentalCost")[0].firstChild.nodeValue)
+		inc = float(log.getElementsByTagName("Income")[0].firstChild.nodeValue)
+		pf = float(log.getElementsByTagName("PilotFee")[0].firstChild.nodeValue)
+		crw = float(log.getElementsByTagName("CrewCost")[0].firstChild.nodeValue)
+		bf = float(log.getElementsByTagName("BookingFee")[0].firstChild.nodeValue)
+		bo = float(log.getElementsByTagName("Bonus")[0].firstChild.nodeValue)
+		fl = float(log.getElementsByTagName("FuelCost")[0].firstChild.nodeValue)
+		gc = float(log.getElementsByTagName("GCF")[0].firstChild.nodeValue)
+		rat = float(log.getElementsByTagName("RentalPrice")[0].firstChild.nodeValue)
+		rtp = log.getElementsByTagName("RentalType")[0].firstChild.nodeValue
+		rtt = log.getElementsByTagName("RentalUnits")[0].firstChild.nodeValue
+		rtc = float(log.getElementsByTagName("RentalCost")[0].firstChild.nodeValue)
 		tim=tim.replace('/','-')
-		row = (id, typ, tim, dis, sn, ac, mo, fr, to, ft, inc, pf, crw, bf, bo, fl, gc, rat, rtp, rtt, rtc)
+		row = (fid, typ, tim, dis, sn, ac, mo, fr, to, ft, inc, pf, crw, bf, bo, fl, gc, rat, rtp, rtt, rtc)
 		c.execute('INSERT INTO logs VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);',row)
 	conn.commit()
 
@@ -154,13 +152,14 @@ def getdbcon(conn): #Get cursor for aircraft sale database
 	if exist[0]==0: #Table does not exist, create table
 		print("Creating tables...")
 		c.execute('''CREATE TABLE allac
-			 (serial real, type text, loc text, locname text, hours real, price real, iter real)''')
+			 (serial real, type text, loc text, locname text, hours real, price real, obsiter real)''')
 		c.execute('''CREATE TABLE queries
 			 (obsiter real, qtime text)''')
-		c.execute('''CREATE INDEX idx1 ON allac(iter)''') #FIX ME
-		c.execute('''CREATE INDEX idx2 ON queries(obsiter)''')
-		c.execute('''CREATE INDEX idx3 ON queries(qtime)''')
-		c.execute('''CREATE INDEX idx4 ON allac(type)''')
+		c.execute('''CREATE INDEX idx1 ON allac(obsiter)''')
+		c.execute('''CREATE INDEX idx2 ON allac(type)''')
+		c.execute('''CREATE INDEX idx3 ON allac(price)''')
+		c.execute('''CREATE INDEX idx4 ON queries(qtime)''')
+		
 		conn.commit()
 	return c
 	
@@ -177,10 +176,12 @@ def getpaydbcon(conn): #Get cursor for payment database
 		conn.commit()
 	com=0 #Check if comments column exists, should only need this once
 	for col in c.execute('''PRAGMA table_info(payments)'''):
-		if col[0]=="comment":
+		#print("Found column: "+str(col[1]))
+		if col[1]=="comment":
 			com=1
 			break
 	if com==0:
+		print("Adding column for comments...")
 		c.execute('''ALTER TABLE payments ADD COLUMN comment text''')
 		conn.commit()
 	return c
@@ -193,7 +194,7 @@ def getlogdbcon(conn): #Get cursor for log database
 	if exist[0]==0: #Table does not exist, create table
 		print("Creating tables...")
 		c.execute('''CREATE TABLE logs
-			 (fid real, type text, time text, dist real, sn real, ac text, model text, dep text, arr text, fltime text, income real, pfee real, crew real, bkfee real, bonus real, fuel real, gndfee real, rprice real, rtype text, runits text, rcost real)''')
+			 (fid real, type text, date text, dist real, sn real, ac text, model text, dep text, arr text, fltime text, income real, pfee real, crew real, bkfee real, bonus real, fuel real, gndfee real, rprice real, rtype text, runits text, rcost real)''')
 		c.execute('''CREATE INDEX idx1 ON logs(date)''')
 		c.execute('''CREATE INDEX idx2 ON logs(type)''')
 		c.execute('''CREATE INDEX idx3 ON logs(dist)''')
@@ -415,6 +416,7 @@ def bigjobs(apts,dir): #Find high paying jobs to/from airports
 		
 def mapper(what, points, mincoords, maxcoords, title): # Put the points on a map
 	print("Mapping points...")
+	print("min: "+str(mincoords[0])+","+str(mincoords[1])+"  max: "+str(maxcoords[0])+","+str(maxcoords[1]))
 	if maxcoords[1]-mincoords[1]>180 or maxcoords[0]-mincoords[0]>60: # World with center aligned
 		m = Basemap(projection='hammer', resolution='c', lon_0=(maxcoords[1]+mincoords[1])/2)
 	else: # Center map on area
@@ -619,15 +621,15 @@ def getapstats(conn,actype): #Return something about airplane flight logs
 	ax.legend( (i[1] for i in xax) )
 	plt.show()
 
-def mapcommo(type):
-	if type=="fuel":
+def mapcommo(ctype):
+	if ctype=="fuel":
 		t1="JetA Fuel"
 		t2="100LL Fuel"
-	elif type=="mtrl":
+	elif ctype=="mtrl":
 		t1="Supplies"
 		t2="Building materials"
 	else:
-		print("Commodity type "+type+" not recognized!")
+		print("Commodity type "+ctype+" not recognized!")
 	if t1 is not None:
 		print("Sending request for commodities...")
 		commo = fserequest(1,'query=commodities&search=key','Commodity')
@@ -663,9 +665,9 @@ def mapcommo(type):
 				locations=[]
 				for i in range(len(coords)):
 					locations.append([locations[i][0],locations[i][1],qty[i][1],qty[i][2]])
-				mapper(type, locations, (latmin,lonmin), (latmax,lonmax), title)
+				mapper(ctype, locations, (latmin,lonmin), (latmax,lonmax), title)
 		else:
-			print("No "+type+" found!")
+			print("No "+ctype+" found!")
 
 def getlistings(conn,actype,lo,hi): #Return list of time for aircraft to sell
 	c=getdbcon(conn)
@@ -702,8 +704,8 @@ def mapaclocations(conn, actype): #Map locations of aircraft type for sale
 	else:
 		q1+=" AND type = '"+actype+"'"
 		title="Locations of "+actype+" for sale"
-	locations=getcoords(c.execute(q1))
-	mapper(what, locations, (latmin,lonmin), (latmax,lonmax), title)
+	locations,cmin,cmax=getcoords(c.execute(q1))
+	mapper('ac', locations, cmin, cmax, title)
 	
 def getcoords(data): #Get coordinates for a list of airports
 	print("Building airport location dictionary from csv...")
@@ -735,7 +737,7 @@ def getcoords(data): #Get coordinates for a list of airports
 		print("No locations found!")
 	#else:
 		#center=(lat_tot/pts,lon_tot/pts)
-	return locations
+	return locations,(latmin,lonmin),(latmax,lonmax)
 	
 def plotdates(dlist,title,ylbl,sym): #Plot a list of data vs. dates
 	print("Plotting figure for: "+title)
@@ -743,7 +745,7 @@ def plotdates(dlist,title,ylbl,sym): #Plot a list of data vs. dates
 	formatter=DateFormatter('%Y-%m-%d %H:%M')
 	ax.xaxis.set_major_formatter(formatter)
 	for data in dlist:
-		if len(data)==2:
+		if len(data[0])==2:
 			ax.plot([date2num(i[0]) for i in data], [i[1] for i in data], sym)
 		else:
 			ax.errorbar([date2num(i[0]) for i in data], [i[1] for i in data], yerr=[i[2] for i in data], fmt=sym)
@@ -1142,7 +1144,7 @@ def main(argv): #This is where the magic happens
 	
 	syntaxstring='pricelog.py -un -dmac <aircraft icao> -ft <YYYY-MM-DD> -lh <price>'
 	try:
-		opts, args = getopt.getopt(argv,"hund:m:a:c:f:t:l:i:pqsg:ve:x:j",["duration=","map=","average=","cheapest=","from=","to=","low=","high=","total=","commodity=","typestats="])
+		opts, args = getopt.getopt(argv,"hund:m:a:c:f:t:l:i:pqsg:ve:x:jz",["duration=","map=","average=","cheapest=","from=","to=","low=","high=","total=","commodity=","typestats="])
 	except getopt.GetoptError:
 		print(syntaxstring)
 		sys.exit(2)
@@ -1158,6 +1160,7 @@ def main(argv): #This is where the magic happens
 	stot=0
 	stat=0
 	logs=0
+	com=0
 	lowprice=0
 	highprice=99999999
 	fromdate="2014-01-01"
@@ -1204,8 +1207,10 @@ def main(argv): #This is where the magic happens
 			stattype,stat=gettype(arg)
 		elif opt=="-j":
 			logs=1
+		elif opt=="-z":
+			com=1
 
-	if pay+ppay+spay+stot>0:
+	if pay+ppay+spay+stot+com>0:
 		conn2=sqlite3.connect('/mnt/data/XPLANE10/XSDK/payments.db')
 	
 	if logs+stat>0:
@@ -1255,6 +1260,12 @@ def main(argv): #This is where the magic happens
 		month=fromdate.split('-', 2)[1]
 		loglogmonth(conn3,year,month)
 		conn3.close()
+	
+	if com==1:
+		year=fromdate.split('-', 2)[0]
+		month=fromdate.split('-', 2)[1]
+		logpaymonthcom(conn2,year,month)
+		conn2.close()
 
 	# We can also close the connection if we are done with it.
 	# Just be sure any changes have been committed or they will be lost. FOREVER
