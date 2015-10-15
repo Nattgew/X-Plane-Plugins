@@ -120,7 +120,7 @@ def loglogmonth(conn,year,month):
 		sn = int(payment.getElementsByTagName("SerialNumber")[0].firstChild.nodeValue)
 		ac = payment.getElementsByTagName("Aircraft")[0].firstChild.nodeValue
 		mo = payment.getElementsByTagName("MakeModel")[0].firstChild.nodeValue
-		if typ="flight":
+		if typ=="flight":
 			fr = payment.getElementsByTagName("From")[0].firstChild.nodeValue
 			to = payment.getElementsByTagName("To")[0].firstChild.nodeValue
 		else: #More borked XML
@@ -496,8 +496,8 @@ def getaverages(conn,actype,fr,to): #Return list of average prices for aircraft 
 			avg=totalprice/numforsale
 			ssprice=0
 			for price in prices:
-				ssprice+=pow(price-avg,2)
-			stdev=sqrt(ssprice/numforsale)
+				ssprice+=math.pow(price-avg,2)
+			stdev=math.sqrt(ssprice/numforsale)
 			averages.append((getdtime(query[1]),avg,stdev))
 	return averages
 
@@ -526,7 +526,7 @@ def plotfuelprices(conn): #Plot fuel prices over time
 	c=getdbcon(conn)
 	print("Getting flight logs...") #Thinking about a raw plot per payment, and average per day
 	#(date text, payto text, payfrom text, amount real, reason text, location text, aircraft text, pid real, comment text)
-	for log in c.execute('SELECT amount, comment FROM payments WHERE reason = "Refuelling with JetA"')):
+	for log in c.execute('SELECT amount, comment FROM payments WHERE reason = "Refuelling with JetA"'):
 		#User ID: xxxxx Amount (gals): 428.9, $ per Gal: $3.75
 		gals=log[1].float(split(':',2)[1].split(',')) #Maybe do this when creating db?
 
@@ -574,7 +574,7 @@ def getapstats(conn,actype): #Return something about airplane flight logs
 	dspeed=[]
 	dgph=[]
 	xax=[]
-	stdgph[]
+	stdgph=[]
 	stdspd=[]
 	for i in range(8):
 		hrs=tftime[i]/3600 #Compute values for the different buckets
@@ -592,8 +592,8 @@ def getapstats(conn,actype): #Return something about airplane flight logs
 		ssgph=0
 		ssspd=0
 		for j in range(tflts[i]): #Compute standard deviation
-			ssgph+=pow(aspeed[i][j]-speed,2)
-			ssspd+=pow(agph[i][j]-gph,2)
+			ssgph+=math.pow(aspeed[i][j]-speed,2)
+			ssspd+=math.pow(agph[i][j]-gph,2)
 		stdgph.append(sqrt(ssgph/tflts[i]))
 		stdspd.append(sqrt(ssspd/tflts[i]))
 	print("Plotting figure for "+actype+" stats...")
@@ -609,7 +609,7 @@ def getapstats(conn,actype): #Return something about airplane flight logs
 	plt.show()
 	print("Plotting figure for "+actype+" distances...")
 	fig, ax = plt.subplots()
-	ind=(i[0]-25 for i in xax])
+	ind=([i[0]-25 for i in xax])
 	width=0.35
 	rects1 = ax.bar(ind, tflts, width, color='r')
 	ax.set_ylabel('Flights')
@@ -750,7 +750,7 @@ def plotdates(dlist,title,ylbl,sym): #Plot a list of data vs. dates
 	formatter=DateFormatter('%Y-%m-%d')
 	ax.xaxis.set_major_formatter(formatter)
 	fig.autofmt_xdate()
-	plt.xlim([date2num(min(dlist[0][0])),date2num(max(dlist[0][0]))])
+	plt.xlim([min(date2num(i[0]) for i in dlist[0]),max(date2num(i[0]) for i in dlist[0])])
 	plt.title(title,fontsize=12)
 	plt.xlabel("Date")
 	plt.ylabel(ylbl)
