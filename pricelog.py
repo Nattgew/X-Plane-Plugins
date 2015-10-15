@@ -46,102 +46,106 @@ def fserequest(ra,rqst,tagname):
 def acforsale(conn): #Log aircraft currently for sale
 	print("Sending request for sales listing...")
 	airplanes = fserequest(0,'query=aircraft&search=forsale','Aircraft')
-	print("Recording data...")
-	c=getdbcon(conn)
-	count=getmaxiter(conn)
-	count+=1
-	now=time.strftime("%Y-%m-%d %H:%M", time.gmtime())
-	row=(count, now)
-	c.execute('INSERT INTO queries VALUES (?,?);',row) #Record date/time of this query
-	for airplane in airplanes: #Record aircraft for sale
-		actype = airplane.getElementsByTagName("MakeModel")[0].firstChild.nodeValue
-		serial = int(airplane.getElementsByTagName("SerialNumber")[0].firstChild.nodeValue)
-		aframetime = airplane.getElementsByTagName("AirframeTime")[0].firstChild.nodeValue
-		hours = int(aframetime.split(":")[0])
-		price = float(airplane.getElementsByTagName("SalePrice")[0].firstChild.nodeValue)
-		loc = airplane.getElementsByTagName("Location")[0].firstChild.nodeValue
-		locname = airplane.getElementsByTagName("LocationName")[0].firstChild.nodeValue
-		row=(serial, actype, loc, locname, hours, price, count)
-		c.execute('INSERT INTO allac VALUES (?,?,?,?,?,?,?);',row)
-	conn.commit()
+	if airplanes!=[]:
+		print("Recording data...")
+		c=getdbcon(conn)
+		count=getmaxiter(conn)
+		count+=1
+		now=time.strftime("%Y-%m-%d %H:%M", time.gmtime())
+		row=(count, now)
+		c.execute('INSERT INTO queries VALUES (?,?);',row) #Record date/time of this query
+		for airplane in airplanes: #Record aircraft for sale
+			actype = airplane.getElementsByTagName("MakeModel")[0].firstChild.nodeValue
+			serial = int(airplane.getElementsByTagName("SerialNumber")[0].firstChild.nodeValue)
+			aframetime = airplane.getElementsByTagName("AirframeTime")[0].firstChild.nodeValue
+			hours = int(aframetime.split(":")[0])
+			price = float(airplane.getElementsByTagName("SalePrice")[0].firstChild.nodeValue)
+			loc = airplane.getElementsByTagName("Location")[0].firstChild.nodeValue
+			locname = airplane.getElementsByTagName("LocationName")[0].firstChild.nodeValue
+			row=(serial, actype, loc, locname, hours, price, count)
+			c.execute('INSERT INTO allac VALUES (?,?,?,?,?,?,?);',row)
+		conn.commit()
 	
 def logpaymonth(conn,year,month): #Log a month of payments
 	print("Sending request for payment listing...")
 	payments = fserequest(1,'query=payments&search=monthyear&month='+month+'&year='+year,'Payment')
-	c=getpaydbcon(conn)
-	print("Recording data...")
-	for payment in payments:
-		pdate = payment.getElementsByTagName("Date")[0].firstChild.nodeValue
-		to = payment.getElementsByTagName("To")[0].firstChild.nodeValue
-		fr = payment.getElementsByTagName("From")[0].firstChild.nodeValue
-		amt = float(payment.getElementsByTagName("Amount")[0].firstChild.nodeValue)
-		rsn = payment.getElementsByTagName("Reason")[0].firstChild.nodeValue
-		loc = payment.getElementsByTagName("Location")[0].firstChild.nodeValue
-		pid = int(payment.getElementsByTagName("Id")[0].firstChild.nodeValue)
-		#print("pdate="+pdate+"  to="+to+"  from="+fr+"  amount="+str(amt)+"  reason="+rsn+"  loc="+loc)
-		if rsn in ("Monthly Interest", "Fuel Delivered", "Sale of wholesale JetA", "Sale of wholesale 100LL", "Sale of supplies", "Sale of building materials", "Transfer of supplies", "Transfer of building materials", "Group payment", "FBO sale", "Transfer of JetA", "Transfer of 100LL"): #Broken XML
-			ac = "null"
-		else:
-			ac = payment.getElementsByTagName("Aircraft")[0].firstChild.nodeValue
-		com = payment.getElementsByTagName("Comment")[0].firstChild.nodeValue
-		if com=="null":
-			com=""
-		pdate=pdate.replace('/','-')
-		row=(pdate, to, fr, amt, rsn, loc, ac, pid, com)
-		c.execute('INSERT INTO payments VALUES (?,?,?,?,?,?,?,?,?);',row)
-	conn.commit()
+	if payments!=[]:
+		c=getpaydbcon(conn)
+		print("Recording data...")
+		for payment in payments:
+			pdate = payment.getElementsByTagName("Date")[0].firstChild.nodeValue
+			to = payment.getElementsByTagName("To")[0].firstChild.nodeValue
+			fr = payment.getElementsByTagName("From")[0].firstChild.nodeValue
+			amt = float(payment.getElementsByTagName("Amount")[0].firstChild.nodeValue)
+			rsn = payment.getElementsByTagName("Reason")[0].firstChild.nodeValue
+			loc = payment.getElementsByTagName("Location")[0].firstChild.nodeValue
+			pid = int(payment.getElementsByTagName("Id")[0].firstChild.nodeValue)
+			#print("pdate="+pdate+"  to="+to+"  from="+fr+"  amount="+str(amt)+"  reason="+rsn+"  loc="+loc)
+			if rsn in ("Monthly Interest", "Fuel Delivered", "Sale of wholesale JetA", "Sale of wholesale 100LL", "Sale of supplies", "Sale of building materials", "Transfer of supplies", "Transfer of building materials", "Group payment", "FBO sale", "Transfer of JetA", "Transfer of 100LL"): #Broken XML
+				ac = "null"
+			else:
+				ac = payment.getElementsByTagName("Aircraft")[0].firstChild.nodeValue
+			com = payment.getElementsByTagName("Comment")[0].firstChild.nodeValue
+			if com=="null":
+				com=""
+			pdate=pdate.replace('/','-')
+			row=(pdate, to, fr, amt, rsn, loc, ac, pid, com)
+			c.execute('INSERT INTO payments VALUES (?,?,?,?,?,?,?,?,?);',row)
+		conn.commit()
 
 def logpaymonthcom(conn,year,month): #Add comments to a month of payments
 	print("Sending request for payment listing...")
 	payments = fserequest(1,'query=payments&search=monthyear&month='+month+'&year='+year,'Payment')
-	c=getpaydbcon(conn)
-	print("Recording comment data...")
-	for payment in payments:
-		pid = int(payment.getElementsByTagName("Id")[0].firstChild.nodeValue)
-		com = payment.getElementsByTagName("Comment")[0].firstChild.nodeValue
-		if com=="null":
-			com=""
-		c.execute('UPDATE payments SET comment = ? WHERE pid = ?',(com, pid))
-	conn.commit()
+	if payments!=[]:
+		c=getpaydbcon(conn)
+		print("Recording comment data...")
+		for payment in payments:
+			pid = int(payment.getElementsByTagName("Id")[0].firstChild.nodeValue)
+			com = payment.getElementsByTagName("Comment")[0].firstChild.nodeValue
+			if com=="null":
+				com=""
+			c.execute('UPDATE payments SET comment = ? WHERE pid = ?',(com, pid))
+		conn.commit()
 
 def loglogmonth(conn,year,month):
 	print("Sending request for logs...")
 	logs = fserequest(1,'query=flightlogs&search=monthyear&month='+month+'&year='+year,'FlightLog')
-	c=getlogdbcon(conn)
-	print("Recording data...")
-	for log in logs:
-		fid = int(log.getElementsByTagName("Id")[0].firstChild.nodeValue)
-		typ = log.getElementsByTagName("Type")[0].firstChild.nodeValue
-		tim = log.getElementsByTagName("Time")[0].firstChild.nodeValue
-		dis = int(log.getElementsByTagName("Distance")[0].firstChild.nodeValue)
-		#pilot
-		sn = int(log.getElementsByTagName("SerialNumber")[0].firstChild.nodeValue)
-		ac = log.getElementsByTagName("Aircraft")[0].firstChild.nodeValue
-		mo = log.getElementsByTagName("MakeModel")[0].firstChild.nodeValue
-		if typ=="flight":
-			fr = log.getElementsByTagName("From")[0].firstChild.nodeValue
-			to = log.getElementsByTagName("To")[0].firstChild.nodeValue
-		else: #More borked XML
-			fr=""
-			to=""
-		#total eng time
-		ft = log.getElementsByTagName("FlightTime")[0].firstChild.nodeValue
-		#group name (broken)
-		inc = float(log.getElementsByTagName("Income")[0].firstChild.nodeValue)
-		pf = float(log.getElementsByTagName("PilotFee")[0].firstChild.nodeValue)
-		crw = float(log.getElementsByTagName("CrewCost")[0].firstChild.nodeValue)
-		bf = float(log.getElementsByTagName("BookingFee")[0].firstChild.nodeValue)
-		bo = float(log.getElementsByTagName("Bonus")[0].firstChild.nodeValue)
-		fl = float(log.getElementsByTagName("FuelCost")[0].firstChild.nodeValue)
-		gc = float(log.getElementsByTagName("GCF")[0].firstChild.nodeValue)
-		rat = float(log.getElementsByTagName("RentalPrice")[0].firstChild.nodeValue)
-		rtp = log.getElementsByTagName("RentalType")[0].firstChild.nodeValue
-		rtt = log.getElementsByTagName("RentalUnits")[0].firstChild.nodeValue
-		rtc = float(log.getElementsByTagName("RentalCost")[0].firstChild.nodeValue)
-		tim=tim.replace('/','-')
-		row = (fid, typ, tim, dis, sn, ac, mo, fr, to, ft, inc, pf, crw, bf, bo, fl, gc, rat, rtp, rtt, rtc)
-		c.execute('INSERT INTO logs VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);',row)
-	conn.commit()
+	if logs!=[]:
+		c=getlogdbcon(conn)
+		print("Recording data...")
+		for log in logs:
+			fid = int(log.getElementsByTagName("Id")[0].firstChild.nodeValue)
+			typ = log.getElementsByTagName("Type")[0].firstChild.nodeValue
+			tim = log.getElementsByTagName("Time")[0].firstChild.nodeValue
+			dis = int(log.getElementsByTagName("Distance")[0].firstChild.nodeValue)
+			#pilot
+			sn = int(log.getElementsByTagName("SerialNumber")[0].firstChild.nodeValue)
+			ac = log.getElementsByTagName("Aircraft")[0].firstChild.nodeValue
+			mo = log.getElementsByTagName("MakeModel")[0].firstChild.nodeValue
+			if typ=="flight":
+				fr = log.getElementsByTagName("From")[0].firstChild.nodeValue
+				to = log.getElementsByTagName("To")[0].firstChild.nodeValue
+			else: #More borked XML
+				fr=""
+				to=""
+			#total eng time
+			ft = log.getElementsByTagName("FlightTime")[0].firstChild.nodeValue
+			#group name (broken)
+			inc = float(log.getElementsByTagName("Income")[0].firstChild.nodeValue)
+			pf = float(log.getElementsByTagName("PilotFee")[0].firstChild.nodeValue)
+			crw = float(log.getElementsByTagName("CrewCost")[0].firstChild.nodeValue)
+			bf = float(log.getElementsByTagName("BookingFee")[0].firstChild.nodeValue)
+			bo = float(log.getElementsByTagName("Bonus")[0].firstChild.nodeValue)
+			fl = float(log.getElementsByTagName("FuelCost")[0].firstChild.nodeValue)
+			gc = float(log.getElementsByTagName("GCF")[0].firstChild.nodeValue)
+			rat = float(log.getElementsByTagName("RentalPrice")[0].firstChild.nodeValue)
+			rtp = log.getElementsByTagName("RentalType")[0].firstChild.nodeValue
+			rtt = log.getElementsByTagName("RentalUnits")[0].firstChild.nodeValue
+			rtc = float(log.getElementsByTagName("RentalCost")[0].firstChild.nodeValue)
+			tim=tim.replace('/','-')
+			row = (fid, typ, tim, dis, sn, ac, mo, fr, to, ft, inc, pf, crw, bf, bo, fl, gc, rat, rtp, rtt, rtc)
+			c.execute('INSERT INTO logs VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);',row)
+		conn.commit()
 
 def getdbcon(conn): #Get cursor for aircraft sale database
 	print("Initializing database cursor...")
