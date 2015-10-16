@@ -33,7 +33,7 @@ def fserequest(ra,rqst,tagname,fmt):
 	print("Will make request: "+rq)
 	data = urllib.request.urlopen(rq)
 	if fmt=='xml':
-		tags=readxml(data)
+		tags=readxml(data,tagname)
 	elif fmt=='csv':
 		tags=readcsv(data)
 	else:
@@ -41,7 +41,7 @@ def fserequest(ra,rqst,tagname,fmt):
 		tags=[]
 	return tags
 
-def readxml(data):
+def readxml(data,tagname):
 	print("Parsing XML data...")
 	xmldoc = minidom.parse(data)
 	error = xmldoc.getElementsByTagName('Error')
@@ -490,8 +490,10 @@ def mapper(what, points, mincoords, maxcoords, title): # Put the points on a map
 	print("Mapping points...")
 	print("min: "+str(mincoords[0])+","+str(mincoords[1])+"  max: "+str(maxcoords[0])+","+str(maxcoords[1]))
 	if maxcoords[1]-mincoords[1]>180 or maxcoords[0]-mincoords[0]>60: # Big spread, world with center aligned
+		print("Using world map")
 		m = Basemap(projection='hammer', resolution='c', lon_0=(maxcoords[1]+mincoords[1])/2)
 	else: # Center map on area
+		print("Using regional map")
 		width=maxcoords[1]-mincoords[1]
 		height=maxcoords[0]-mincoords[0]
 		m = Basemap(projection='cyl', resolution='c', llcrnrlon=mincoords[1]-0.1*width, llcrnrlat=mincoords[0]-0.1*height, urcrnrlon=maxcoords[1]+0.1*width, urcrnrlat=maxcoords[0]+0.1*height)
@@ -705,10 +707,10 @@ def getcommo(ctype): # Adds up locations and quantities of stuff and sends it to
 		print("Sorting results...")
 		stuff = []
 		for item in commo: #Parse commodity info
-			typ = airplane.getElementsByTagName("Type")[0].firstChild.nodeValue
+			typ = item.getElementsByTagName("Type")[0].firstChild.nodeValue
 			if typ==t1 or typ==t2:
-				loc = airplane.getElementsByTagName("Location")[0].firstChild.nodeValue
-				amt = airplane.getElementsByTagName("Amount")[0].firstChild.nodeValue
+				loc = item.getElementsByTagName("Location")[0].firstChild.nodeValue
+				amt = item.getElementsByTagName("Amount")[0].firstChild.nodeValue
 				stuff.append((loc,typ,amt))
 		if stuff!=[]: #Add up quantity per location
 			qty=[] #List to hold quantities and types
@@ -725,15 +727,17 @@ def getcommo(ctype): # Adds up locations and quantities of stuff and sends it to
 						idx=0
 					else: #t2
 						idx=1
-					qty.append([item[0],item[2].split(),idx])
+					qty.append([item[0],int(item[2].split()[0]),idx])
 				else: #If location already added, then sum with other quantity
 					qty[i][1]+=item[2].split()
 					qty[i][2]=2 #Indicates a mix of t1 and t2
-			coords,cmin,cmax=getcoords(qty[:][0])
+			coords,cmin,cmax=getcoords(qty[:])
 			if len(coords)==len(qty): #If not, there was some key error I guess
 				locations=[]
+				print("Working with "+str(len(coords))+" coords...")
 				for i in range(len(coords)):
-					locations.append([locations[i][0],locations[i][1],qty[i][1],qty[i][2]])
+					print("Apending "+str(coords[i][0])+","+str(coords[i][1])+","+str(qty[i][1])+","+str(qty[i][2]))
+					locations.append([coords[i][0],coords[i][1],qty[i][1],qty[i][2]])
 				return locations,cmin,cmax
 		else:
 			print("No "+ctype+" found!")
@@ -788,6 +792,7 @@ def getcoords(data): #Get coordinates for a list of airports
 		try:
 			lat,lon=loc_dict[row[0]]
 		except KeyError: #Probably "Airborne"
+			print("Key error on: "+str(row[0]))
 			continue
 		locations.append([lat,lon])
 		#lat_tot+=lat
