@@ -466,18 +466,38 @@ def bigjobs(apts,dir): #Find high paying jobs to/from airports
 		total+=len(jobs)
 	word="from near" if dir==0 else "to"
 	print("Found these "+str(total)+" big jobs "+word+" those airports:")
-		
+
+def dcoord(coord,delta,dirn):
+	if dirn=='lon':
+		lmax=179.9
+	else:
+		lmax=89.9
+	new=coord+delta
+	if new<-lmax:
+		new=-lmax
+		#new+=2*lmax
+	elif new>lmax:
+		nex=lmax
+		#new-=2*lmax
+	return new
+
 def mapper(what, points, mincoords, maxcoords, title): # Put the points on a map
-	print("Mapping points...") #points is list of lists containing lat,lon, then possibly addtional data
+	print("Mapping "+str(len(points))+" points...") #points is list of lists containing lat,lon, then possibly addtional data
 	print("min: "+str(mincoords[0])+","+str(mincoords[1])+"  max: "+str(maxcoords[0])+","+str(maxcoords[1]))
 	if maxcoords[1]-mincoords[1]>180 or maxcoords[0]-mincoords[0]>60: # Big spread, world with center aligned
 		print("Using world map")
-		m = Basemap(projection='hammer', resolution='c', lon_0=(maxcoords[1]+mincoords[1])/2)
+		m = Basemap(projection='hammer', resolution=None, lon_0=(maxcoords[1]+mincoords[1])/2)
 	else: # Center map on area
 		print("Using regional map")
 		width=maxcoords[1]-mincoords[1]
 		height=maxcoords[0]-mincoords[0]
-		m = Basemap(projection='cyl', resolution='c', llcrnrlon=mincoords[1]-0.1*width, llcrnrlat=mincoords[0]-0.1*height, urcrnrlon=maxcoords[1]+0.1*width, urcrnrlat=maxcoords[0]+0.1*height)
+		print("Width: "+str(width)+"  Height: "+str(height))
+		llclo=dcoord(mincoords[1],-0.25*width,'lon')
+		llcla=dcoord(mincoords[0],-0.25*height,'lat')
+		urclo=dcoord(maxcoords[1],0.25*width,'lon')
+		urcla=dcoord(maxcoords[0],0.25*height,'lat')
+		print("ll="+str(llclo)+","+str(llcla)+"  ur="+str(urclo)+","+str(urcla))
+		m = Basemap(projection='cyl', resolution=None, llcrnrlon=llclo, llcrnrlat=llcla, urcrnrlon=urclo, urcrnrlat=urcla)
 	if what=="ac":
 		if len(points) < 30: #Use awesome airplane symbol
 			verts = list(zip([0.,1.,1.,10.,10.,9.,6.,1.,1.,4.,1.,0.,-1.,-4.,-1.,-1.,-5.,-9.,-10.,-10.,-1.,-1.,0.],[9.,8.,3.,-1.,-2.,-2.,0.,0.,-5.,-8.,-8.,-9.,-8.,-8.,-5.,0.,0.,-2.,-2.,-1.,3.,8.,9.])) #Supposed to be an airplane
@@ -486,7 +506,8 @@ def mapper(what, points, mincoords, maxcoords, title): # Put the points on a map
 		else: #Use boring but more compact dots
 			mk='o'
 			ptsize=2
-		m.shadedrelief()
+		print(points)
+		m.shadedrelief(scale=0.2)
 		x, y = m([i[1] for i in points], [i[0] for i in points])
 		c='b'
 		m.scatter(x,y,s=ptsize,marker=mk,c=c)
@@ -504,7 +525,7 @@ def mapper(what, points, mincoords, maxcoords, title): # Put the points on a map
 				if loc[2]==i+1: #If size matches, add the point
 					pts[i][loc[3]].append((loc[0],loc[1]))
 		for i in range(max+1): #Set size/color of points
-			sz=(i+1) #Size based on amount
+			sz=(i+1)/6 #Size based on amount
 			if pts[i]!=[[],[],[]]: #Check if any list has points
 				for j in range(3):
 					if pts[i][j]!=[]: #Check if this list has any points
@@ -516,6 +537,7 @@ def mapper(what, points, mincoords, maxcoords, title): # Put the points on a map
 						else:
 							c='k'
 						m.scatter(x,y,s=sz,marker='o',c=c) #Plot the points with these properties
+						m.shadedrelief(scale=0.2)
 	plt.title(title,fontsize=12)
 	plt.show()
 	
@@ -801,7 +823,7 @@ def getcoords(data): #Get coordinates for a list of airports
 		try:
 			lat,lon=loc_dict[row[0]]
 		except KeyError: #Probably "Airborne"
-			print("Key error on: "+str(row[0]))
+			print("Key error on: "+str(row))
 			continue
 		locations.append([lat,lon])
 		#lat_tot+=lat
@@ -1363,7 +1385,7 @@ def main(argv): #This is where the magic happens
 			plotdates([prices],"Average fuel price","Price",['o-'],[None])
 		conn.close()
 
-	if tot+avg+low+dur+domap+sale+>0:
+	if tot+avg+low+dur+domap+sale+tots>0:
 		conn=sqlite3.connect('/mnt/data/XPLANE10/XSDK/forsale.db')
 		if domap==1:
 			mapaclocations(conn,maptype)
@@ -1372,7 +1394,7 @@ def main(argv): #This is where the magic happens
 		if tot==1:
 			totals=gettotals(conn,tottype,fromdate,todate)
 			plotdates([totals],"Number of "+tottype+" for sale","Aircraft",['o-'],[None])
-		if tots==1"
+		if tots==1:
 			totals=gettotals(conn,"None",fromdate,todate)
 			plotdates([totals],"Aircraft for sale","Aircraft",['o-'],[None])
 		if avg==1:
