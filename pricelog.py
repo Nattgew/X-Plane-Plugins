@@ -652,21 +652,22 @@ def getapstats(conn,actype): #Return something about airplane flight logs
 	agph=[[],[],[],[],[],[],[],[]]
 	print("Getting flight logs...")
 	for log in c.execute('SELECT dist, fltime, fuel FROM logs WHERE model = ? AND type = "flight" AND fuel > 0.0', (actype,)):
-		gal=log[2]/3.5
+		gal=float(log[2])/3.5
 		gals+=gal #For overall averages
-		dist+=log[0]
-		secs=logs[1].split(':')*3600+logs[1].split(':')[1]*60
+		ldist=float(log[0])
+		dist+=ldist
+		secs=int(log[1].split(':')[0])*3600+int(log[1].split(':')[1])*60
 		ftime+=secs
-		bucket=floor(log[0]/50) #For averages per distance bucket
+		bucket=math.floor(ldist/50) #For averages per distance bucket
 		if bucket>7:
 			bucket=7
 		tgals[bucket]+=gal
 		tftime[bucket]+=secs
-		tdist[bucket]+=log[0]
+		tdist[bucket]+=ldist
 		tflts[bucket]+=1
 		hrs=secs/3600 #Store actual values for computing standard deviation
 		gph=gal/hrs
-		speed=log[0]/hrs
+		speed=ldist/hrs
 		agph[bucket].append(gph)
 		aspeed[bucket].append(speed)
 	hrs=ftime/3600 #Print out the overall averages
@@ -674,8 +675,8 @@ def getapstats(conn,actype): #Return something about airplane flight logs
 	gph=gals/hrs
 	print("\nStats for "+actype)
 	print("-----------------------------------------")
-	print("Avg speed: "+speed+" kt")
-	print("Avg gph: "+gph+" gph\n")
+	print("Avg speed: "+str(int(round(speed)))+" kt")
+	print("Avg gph: "+str(int(round(gph,2)))+" gph\n")
 	dspeed=[]
 	dgph=[]
 	xax=[]
@@ -690,37 +691,39 @@ def getapstats(conn,actype): #Return something about airplane flight logs
 		idx=(i+1)*50 #Generate stuff for x axis
 		val=idx-25
 		if idx<7:
-			lbl="<"+idx
+			lbl="<"+str(idx)
 		else:
-			lbl=">"+idx
+			lbl=">"+str(idx)
 		xax.append((val,lbl))
 		ssgph=0
 		ssspd=0
 		for j in range(tflts[i]): #Compute standard deviation
 			ssgph+=math.pow(aspeed[i][j]-speed,2)
 			ssspd+=math.pow(agph[i][j]-gph,2)
-		stdgph.append(sqrt(ssgph/tflts[i]))
-		stdspd.append(sqrt(ssspd/tflts[i]))
+		stdgph.append(math.sqrt(ssgph/tflts[i]))
+		stdspd.append(math.sqrt(ssspd/tflts[i]))
 	print("Plotting figure for "+actype+" stats...")
 	fig, ax = plt.subplots()
 	# ax.plot([i[0] for i in xax], [i[0] for i in dspeed], 'o-')
 	# ax.plot([i[0] for i in xax], [i[0] for i in dgph], 'o-')
-	ax.errorbar([i[0] for i in xax], [i[0] for i in dspeed], yerr=stdspd, fmt='--o')
-	ax.errorbar([i[0] for i in xax], [i[0] for i in dgph], yerr=stdgph, fmt='--o', c='#cc9900', ecolor='cc9900')
-	ax.set_xticklabels((i[1] for i in xax))
-	plt.title("Speed and gph for sector length",fontsize=12)
+	ax.errorbar([i[0] for i in xax], [i for i in dspeed], yerr=stdspd, fmt='--o')
+	ax.errorbar([i[0] for i in xax], [i for i in dgph], yerr=stdgph, fmt='--o', c='#cc9900', ecolor='#cc9900')
+	ax.set_xticklabels([i[1] for i in xax])
+	plt.title("Speed and gph for sector length - "+actype,fontsize=12)
 	plt.xlabel("Length")
 	plt.ylabel("Speed/gph")
 	plt.show()
 	print("Plotting figure for "+actype+" distances...")
 	fig, ax = plt.subplots()
 	ind=([i[0]-25 for i in xax])
-	width=0.35
+	width=20
 	rects1 = ax.bar(ind, tflts, width, color='r')
 	ax.set_ylabel('Flights')
-	ax.set_title('Flights by sector length')
-	ax.set_xticks(ind+width)
-	ax.set_xticklabels( (i[1] for i in xax) )
+	ax.set_title('Flights by sector length - '+actype)
+	print(ind)
+	print(width)
+	ax.set_xticks([i+width for i in ind])
+	ax.set_xticklabels( [i[1] for i in xax] )
 	ax.legend( (i[1] for i in xax) )
 	plt.show()
 
