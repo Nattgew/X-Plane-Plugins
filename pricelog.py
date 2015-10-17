@@ -174,7 +174,7 @@ def logconfigs(conn): #Update database of aircraft configs
 			fuel = int(gebtn(config, "FuelType"))
 			mtow = int(gebtn(config, "MTOW"))
 			ew = int(gebtn(config, "EmptyWeight"))
-			price = int(gebtn(config, "Price"))
+			price = int(float(gebtn(config, "Price")))
 			ext1 = int(gebtn(config, "Ext1"))
 			ltip = int(gebtn(config, "LTip"))
 			laux = int(gebtn(config, "LAux"))
@@ -187,12 +187,12 @@ def logconfigs(conn): #Update database of aircraft configs
 			rtip = int(gebtn(config, "RTip"))
 			ext2 = int(gebtn(config, "Ext2"))
 			eng = int(gebtn(config, "Engines"))
-			engprice = int(gebtn(config, "EnginePrice"))
+			engprice = int(float(gebtn(config, "EnginePrice")))
 			fcap=ext1+ltip+laux+lmain+c1+c2+c3+rmain+raux+rtip+ext2 #Total fuel capacity
 			fields = [ac, crew, seats, cruise, gph, fuel, mtow, ew, price, ext1, ltip, laux, lmain, c1, c2, c3, rmain, raux, rtip, ext2, fcap, eng, engprice]
 			c.execute('SELECT * FROM aircraft WHERE ac = ?',(ac,)) #Get stored info for current aircraft
 			current=c.fetchone()
-			if len(current)>0:
+			if current is not None and len(current)>0:
 				cols=[]
 				for col in c.execute('''PRAGMA table_info(aircraft)'''): #Get list of column names
 					cols.append(col[1])
@@ -203,6 +203,7 @@ def logconfigs(conn): #Update database of aircraft configs
 			else:
 				print("Adding new config: "+ac)
 				c.execute('INSERT INTO aircraft VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);',fields)
+		conn.commit()
 
 def getdbcon(conn): #Get cursor for aircraft sale database
 	print("Initializing database cursor...")
