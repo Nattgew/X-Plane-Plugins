@@ -490,8 +490,12 @@ def mapper(what, points, mincoords, maxcoords, title): # Put the points on a map
 		m = Basemap(projection='hammer', resolution=None, lon_0=(maxcoords[1]+mincoords[1])/2)
 	else: # Center map on area
 		print("Using regional map")
-		width=maxcoords[1]-mincoords[1]
-		height=maxcoords[0]-mincoords[0]
+		if len(points)>1:
+			width=maxcoords[1]-mincoords[1]
+			height=maxcoords[0]-mincoords[0]
+		else:
+			width=100
+			height=100
 		print("Width: "+str(width)+"  Height: "+str(height))
 		llclo=dcoord(mincoords[1],-0.25*width,'lon')
 		llcla=dcoord(mincoords[0],-0.25*height,'lat')
@@ -582,12 +586,12 @@ def getaverages(conn,actype,fr,to): #Return list of average prices for aircraft 
 	return averages
 
 def getbaseprice(actype): #Return the base price for this actype
-	cconn=sqlite3.connect('/mnt/data/XPLANE10/XSDK/configs.db')
+	conn=sqlite3.connect('/mnt/data/XPLANE10/XSDK/configs.db')
 	c=getconfigdbcon(conn)
 	c.execute('SELECT price FROM aircraft WHERE ac = ?',(actype,))
 	price=c.fetchone()
 	baseprice=price[0]+73333 #Add equipment price
-	cconn.close()
+	conn.close()
 	return baseprice
 
 def getdtime(strin): #Return datetime for the Y-M-D H:M input
@@ -650,11 +654,12 @@ def getapstats(conn,actype): #Return something about airplane flight logs
 	tflts=[0,0,0,0,0,0,0,0] #Total number of flights
 	aspeed=[[],[],[],[],[],[],[],[]] #for standard deviation calc
 	agph=[[],[],[],[],[],[],[],[]]
-	print("Getting flight logs...")
+	print("Getting flight logs for "+actype+"...")
 	for log in c.execute('SELECT dist, fltime, fuel FROM logs WHERE model = ? AND type = "flight" AND fuel > 0.0', (actype,)):
+		#print("Found flight: "+str(log[0])+" nmi, "+log[1])
 		gal=float(log[2])/3.5
 		gals+=gal #For overall averages
-		ldist=float(log[0])
+		ldist=log[0]
 		dist+=ldist
 		secs=int(log[1].split(':')[0])*3600+int(log[1].split(':')[1])*60
 		ftime+=secs
@@ -812,7 +817,8 @@ def mapaclocations(conn, actype): #Map locations of aircraft type for sale
 		q1+=" AND type = '"+actype+"'"
 		title="Locations of "+actype+" for sale"
 	locations,cmin,cmax=getcoords([i[0] for i in c.execute(q1)])
-	mapper('ac', locations, cmin, cmax, title)
+	if len(locations)>0:
+		mapper('ac', locations, cmin, cmax, title)
 	
 def getcoords(data): #Get coordinates for a list of airports
 	print("Building airport location dictionary from csv...")
@@ -825,7 +831,7 @@ def getcoords(data): #Get coordinates for a list of airports
 #	print("Running query: "+q1)
 	for row in data:
 		try:
-			lat,lon=loc_dict[row[0]]
+			lat,lon=loc_dict[row]
 		except KeyError: #Probably "Airborne"
 			print("Key error on: "+str(row))
 			continue
@@ -858,7 +864,7 @@ def plotdates(dlist,title,ylbl,sym,clr): #Plot a list of data vs. dates
 	jj=1 if len(clr)==len(dlist) else 0
 	for data in dlist:
 		if len(data[0])==2:
-			ax.plot([date2num(i[0]) for i in data], [i[1] for i in data], fmt=sym[i], c=clr[j])
+			ax.plot([date2num(i[0]) for i in data], [i[1] for i in data], sym[i], c=clr[j])
 		else:
 			ax.errorbar([date2num(i[0]) for i in data], [i[1] for i in data], yerr=[i[2] for i in data], fmt=sym, c=clr[j])
 		i+=ii
@@ -1408,8 +1414,8 @@ def main(argv): #This is where the magic happens
 			plotdates([averages,baseprice],"Average price for "+avgtype,"Price",['o-','--'],['b','r'])
 		if low==1:
 			lows=getlows(conn,lowtype,fromdate,todate)
-			bprice=getbaseprice(avgtype)
-			baseprice=[["2014-01-01",bprice],["2100-12-31",bprice]]
+			bprice=getbaseprice(lowtype)
+			baseprice=[[getdtime("2014-01-01 00:01"),bprice],[getdtime("2100-12-31 23:59"),bprice]]
 			plotdates([lows,baseprice],"Lowest price for "+lowtype,"Price",['o-','--'],['b','r'])
 		if dur==1:
 			listings=getlistings(conn,durtype,lowprice,highprice)
