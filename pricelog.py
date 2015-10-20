@@ -72,11 +72,11 @@ def acforsale(conn): #Log aircraft currently for sale
 	if airplanes!=[]:
 		print("Recording data...")
 		c=getdbcon(conn)
-		count=getmaxiter(conn)
-		count+=1
+		count=getmaxiter(conn)+1
 		now=time.strftime("%Y-%m-%d %H:%M", time.gmtime())
 		row=(count, now)
-		c.execute('INSERT INTO queries VALUES (?,?);',row) #Record date/time of this query
+		c.execute('INSERT INTO queries VALUES (?,?)',row) #Record date/time of this query
+		rows=[]
 		for airplane in airplanes: #Record aircraft for sale
 			actype = airplane.getElementsByTagName("MakeModel")[0].firstChild.nodeValue
 			serial = int(airplane.getElementsByTagName("SerialNumber")[0].firstChild.nodeValue)
@@ -85,9 +85,33 @@ def acforsale(conn): #Log aircraft currently for sale
 			price = float(airplane.getElementsByTagName("SalePrice")[0].firstChild.nodeValue)
 			loc = airplane.getElementsByTagName("Location")[0].firstChild.nodeValue
 			locname = airplane.getElementsByTagName("LocationName")[0].firstChild.nodeValue
-			row=(serial, actype, loc, locname, hours, price, count)
-			c.execute('INSERT INTO allac VALUES (?,?,?,?,?,?,?);',row)
-		conn.commit()
+			rows.append((serial, actype, loc, locname, hours, price, count))
+		c.executemany('INSERT INTO allac VALUES (?,?,?,?,?,?,?)',rows)
+		
+def salepickens(conn): #Convert log to compact format
+	print("Processing data...")
+	c=getdbcon(conn)
+	d=getdbcon(conn)
+	rdict=dicts.getregiondict()
+	now=time.strftime("%Y-%m-%d %H:%M", time.gmtime())
+	c.execute('''CREATE TABLE listings
+			 (serial real, type text, loc text, locname text, hours real, price real, firstiter real, lastiter real)''')
+	c.execute('''CREATE INDEX idx1 ON listings(firstiter)''')
+	c.execute('''CREATE INDEX idx2 ON listings(type)''')
+	c.execute('''CREATE INDEX idx3 ON listings(price)''')
+	c.execute('''CREATE INDEX idx4 ON listings(lastiter)''')
+	#c.execute('INSERT INTO queries VALUES (?,?)',row) #Record date/time of this query
+	for i in range(getmaxiter(conn)):
+			for listing in c.execute('SELECT * FROM allac WHERE obsiter = ?',(i+1,)):
+				if i>0:
+					d.execute('SELECT loc FROM listings WHERE serial = ? AND price = ? AND lastiter = ?',(listing[0], listing[5], i))
+					result=d.fetchone()
+					if rdict[result[0]]!=rdict[listing[2]]:
+						d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,?,?)',([value for value in listing],i+1))
+					else:
+						d.execute('UPDATE listings SET lastiter = ? WHERE serial = ? AND price = ? AND lastiter = ?',(i+1,listing[0], listing[5], i))
+				else:
+					d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,?,1.0)',([value for value in listing]))
 	
 def logpaymonth(conn,fromdate): #Log a month of payments
 	year,month,*rest=fromdate.split('-', 2)
@@ -95,6 +119,7 @@ def logpaymonth(conn,fromdate): #Log a month of payments
 	payments = fserequest(1,'query=payments&search=monthyear&month='+month+'&year='+year,'Payment','xml')
 	if payments!=[]:
 		c=getpaydbcon(conn)
+		rows=[]
 		print("Recording data...")
 		for payment in payments:
 			pdate = gebtn(payment,"Date")
@@ -113,9 +138,8 @@ def logpaymonth(conn,fromdate): #Log a month of payments
 			if com=="null":
 				com=""
 			pdate=pdate.replace('/','-')
-			row=(pdate, to, fr, amt, rsn, loc, ac, pid, com)
-			c.execute('INSERT INTO payments VALUES (?,?,?,?,?,?,?,?,?);',row)
-		conn.commit()
+			rows.append((pdate, to, fr, amt, rsn, loc, ac, pid, com))
+		c.executemany('INSERT INTO payments VALUES (?,?,?,?,?,?,?,?,?)',rows)
 
 def loglogmonth(conn,fromdate):
 	year,month,*rest=fromdate.split('-', 2)
@@ -123,6 +147,7 @@ def loglogmonth(conn,fromdate):
 	logs = fserequest(1,'query=flightlogs&search=monthyear&month='+month+'&year='+year,'FlightLog','xml')
 	if logs!=[]:
 		c=getlogdbcon(conn)
+		rows=[]
 		print("Recording data...")
 		for log in logs:
 			fid = int(gebtn(log, "Id"))
@@ -154,9 +179,8 @@ def loglogmonth(conn,fromdate):
 			rtt = gebtn(log, "RentalUnits")
 			rtc = float(gebtn(log, "RentalCost"))
 			tim=tim.replace('/','-')
-			row = (fid, typ, tim, dis, sn, ac, mo, fr, to, ft, inc, pf, crw, bf, bo, fl, gc, rat, rtp, rtt, rtc)
-			c.execute('INSERT INTO logs VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);',row)
-		conn.commit()
+			rows.append((fid, typ, tim, dis, sn, ac, mo, fr, to, ft, inc, pf, crw, bf, bo, fl, gc, rat, rtp, rtt, rtc))
+		c.executemany('INSERT INTO logs VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',rows)
 
 def logconfigs(conn): #Update database of aircraft configs
 	print("Sending request for configs...")
@@ -202,13 +226,12 @@ def logconfigs(conn): #Update database of aircraft configs
 						d.execute('UPDATE aircraft SET ? = ? WHERE ac = ?',(cols[i], current[i], ac))
 			else:
 				print("Adding new config: "+ac)
-				c.execute('INSERT INTO aircraft VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);',fields)
-		conn.commit()
+				c.execute('INSERT INTO aircraft VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',fields)
 
 def getdbcon(conn): #Get cursor for aircraft sale database
 	print("Initializing database cursor...")
 	c = conn.cursor()
-	c.execute("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table';")
+	c.execute("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table'")
 	exist=c.fetchone()
 	#print("Found " + str(exist[0]) + " tables...")
 	if exist[0]==0: #Table does not exist, create table
@@ -221,26 +244,24 @@ def getdbcon(conn): #Get cursor for aircraft sale database
 		c.execute('''CREATE INDEX idx2 ON allac(type)''')
 		c.execute('''CREATE INDEX idx3 ON allac(price)''')
 		c.execute('''CREATE INDEX idx4 ON queries(qtime)''')
-		conn.commit()
 	return c
 	
 def getpaydbcon(conn): #Get cursor for payment database
 	print("Initializing payment database cursor...")
 	c = conn.cursor()
-	c.execute("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table';")
+	c.execute("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table'")
 	exist=c.fetchone()
 	if exist[0]==0: #Table does not exist, create table
 		print("Creating tables...")
 		c.execute('''CREATE TABLE payments
 			 (date text, payto text, payfrom text, amount real, reason text, location text, aircraft text, pid real, comment text)''')
 		c.execute('''CREATE INDEX idx1 ON payments(date)''')
-		conn.commit()
 	return c
 
 def getlogdbcon(conn): #Get cursor for log database
 	print("Initializing log database cursor...")
 	c = conn.cursor()
-	c.execute("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table';")
+	c.execute("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table'")
 	exist=c.fetchone()
 	if exist[0]==0: #Table does not exist, create table
 		print("Creating tables...")
@@ -251,13 +272,12 @@ def getlogdbcon(conn): #Get cursor for log database
 		c.execute('''CREATE INDEX idx3 ON logs(dist)''')
 		c.execute('''CREATE INDEX idx4 ON logs(model)''')
 		c.execute('''CREATE INDEX idx5 ON logs(ac)''')
-		conn.commit()
 	return c
 
 def getconfigdbcon(conn):
 	print("Initializing config database cursor...")
 	c = conn.cursor()
-	c.execute("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table';")
+	c.execute("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table'")
 	exist=c.fetchone()
 	if exist[0]==0: #Table does not exist, create table
 		print("Creating tables...")
@@ -268,12 +288,11 @@ def getconfigdbcon(conn):
 		c.execute('''CREATE INDEX idx3 ON aircraft(mtow)''')
 		c.execute('''CREATE INDEX idx4 ON aircraft(ew)''')
 		c.execute('''CREATE INDEX idx5 ON aircraft(fcap)''')
-		conn.commit()
 	return c
 
 def getmaxiter(conn): #Return the number of latest query, which is also the number of queries (YES IT IS SHUT UP)
 	c = conn.cursor()
-	c.execute('SELECT iter FROM queries ORDER BY iter DESC;')
+	c.execute('SELECT iter FROM queries ORDER BY iter DESC')
 	count=c.fetchone()
 	#print("Found "+str(count)+" previous queries")
 	if count is not None:
