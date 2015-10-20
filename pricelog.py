@@ -66,6 +66,19 @@ def gebtn(field,tag): #Shorter way to get tags
 		tags=""
 	return tags
 
+def gebtns(field,tags): #Shorter way to get list of tags
+	vals=[]
+	for tag in tags:
+		val=gebtn(field,tag[0])
+		if tag[1]==1:
+			val=int(val)
+		elif tag[1]==2:
+			val=float(val)
+		elif tag[1]==3:
+			val=int(float(val))
+		vals.append(val)
+	return vals
+
 def acforsale(conn): #Log aircraft currently for sale
 	print("Sending request for sales listing...")
 	airplanes = fserequest(0,'query=aircraft&search=forsale','Aircraft','xml')
@@ -120,25 +133,28 @@ def logpaymonth(conn,fromdate): #Log a month of payments
 	if payments!=[]:
 		c=getpaydbcon(conn)
 		rows=[]
+		fields=(("Date", 0), ("To", 0), ("From", 0), ("Amount", 2), ("Reason", 0), ("Location", 0), ("Id", 1), ("Aircraft", 0), ("Comment", 0))
 		print("Recording data...")
 		for payment in payments:
-			pdate = gebtn(payment,"Date")
-			to = gebtn(payment, "To")
-			fr = gebtn(payment, "From")
-			amt = float(gebtn(payment, "Amount"))
-			rsn = gebtn(payment, "Reason")
-			loc = gebtn(payment, "Location")
-			pid = int(gebtn(payment, "Id"))
+			row=getbtns(payment,fields)
+			# pdate = gebtn(payment,"Date")
+			# to = gebtn(payment, "To")
+			# fr = gebtn(payment, "From")
+			# amt = float(gebtn(payment, "Amount"))
+			# rsn = gebtn(payment, "Reason")
+			# loc = gebtn(payment, "Location")
+			# pid = int(gebtn(payment, "Id"))
 			#print("pdate="+pdate+"  to="+to+"  from="+fr+"  amount="+str(amt)+"  reason="+rsn+"  loc="+loc)
 			# if rsn in ("Monthly Interest", "Fuel Delivered", "Sale of wholesale JetA", "Sale of wholesale 100LL", "Sale of supplies", "Sale of building materials", "Transfer of supplies", "Transfer of building materials", "Group payment", "FBO sale", "Transfer of JetA", "Transfer of 100LL"): #Broken XML
 				# ac = ""
 			# else:
-			ac = gebtn(payment, "Aircraft")
-			com = gebtn(payment, "Comment")
-			if com=="null":
-				com=""
-			pdate=pdate.replace('/','-')
-			rows.append((pdate, to, fr, amt, rsn, loc, ac, pid, com))
+			# ac = gebtn(payment, "Aircraft")
+			# com = gebtn(payment, "Comment")
+			if row[8]=="null":
+				row[8]=""
+			row[0]=row[0].replace('/','-')
+			# rows.append((pdate, to, fr, amt, rsn, loc, ac, pid, com))
+			rows.append(tuple(row))
 		c.executemany('INSERT INTO payments VALUES (?,?,?,?,?,?,?,?,?)',rows)
 
 def loglogmonth(conn,fromdate):
@@ -148,38 +164,42 @@ def loglogmonth(conn,fromdate):
 	if logs!=[]:
 		c=getlogdbcon(conn)
 		rows=[]
+		fields=(("Id", 1), ("Type", 0), ("Time", 0), ("Distance", 1), ("SerialNumber", 1), ("Aircraft", 0), ("MakeModel", 0), ("From", 0), ("To", 0), ("FlightTime", 0), ("Income", 2), ("PilotFee", 2), ("CrewCost", 2), ("BookingFee", 2), ("Bonus", 2), ("FuelCost", 2), ("GCF", 2), ("RentalPrice", 2), ("RentalType", 0), ("RentalUnits", 0), ("RentalCost", 2))
 		print("Recording data...")
 		for log in logs:
-			fid = int(gebtn(log, "Id"))
-			typ = gebtn(log, "Type")
-			tim = gebtn(log, "Time")
-			dis = int(gebtn(log, "Distance"))
-			#pilot
-			sn = int(gebtn(log, "SerialNumber"))
-			ac = gebtn(log, "Aircraft")
-			mo = gebtn(log, "MakeModel")
-			# if typ=="flight":
-			fr = gebtn(log, "From")
-			to = gebtn(log, "To")
-			# else: #More borked XML
-				# fr=""
-				# to=""
-			#total eng time
-			ft = gebtn(log, "FlightTime")
-			#group name (broken)
-			inc = float(gebtn(log, "Income"))
-			pf = float(gebtn(log, "PilotFee"))
-			crw = float(gebtn(log, "CrewCost"))
-			bf = float(gebtn(log, "BookingFee"))
-			bo = float(gebtn(log, "Bonus"))
-			fl = float(gebtn(log, "FuelCost"))
-			gc = float(gebtn(log, "GCF"))
-			rat = float(gebtn(log, "RentalPrice"))
-			rtp = gebtn(log, "RentalType")
-			rtt = gebtn(log, "RentalUnits")
-			rtc = float(gebtn(log, "RentalCost"))
-			tim=tim.replace('/','-')
-			rows.append((fid, typ, tim, dis, sn, ac, mo, fr, to, ft, inc, pf, crw, bf, bo, fl, gc, rat, rtp, rtt, rtc))
+			row=gebtn(log, fields)
+			# fid = int(gebtn(log, "Id"))
+			# typ = gebtn(log, "Type")
+			# tim = gebtn(log, "Time")
+			# dis = int(gebtn(log, "Distance"))
+			# #pilot
+			# sn = int(gebtn(log, "SerialNumber"))
+			# ac = gebtn(log, "Aircraft")
+			# mo = gebtn(log, "MakeModel")
+			# # if typ=="flight":
+			# fr = gebtn(log, "From")
+			# to = gebtn(log, "To")
+			# # else: #More borked XML
+				# # fr=""
+				# # to=""
+			# #total eng time
+			# ft = gebtn(log, "FlightTime")
+			# #group name (broken)
+			# inc = float(gebtn(log, "Income"))
+			# pf = float(gebtn(log, "PilotFee"))
+			# crw = float(gebtn(log, "CrewCost"))
+			# bf = float(gebtn(log, "BookingFee"))
+			# bo = float(gebtn(log, "Bonus"))
+			# fl = float(gebtn(log, "FuelCost"))
+			# gc = float(gebtn(log, "GCF"))
+			# rat = float(gebtn(log, "RentalPrice"))
+			# rtp = gebtn(log, "RentalType")
+			# rtt = gebtn(log, "RentalUnits")
+			# rtc = float(gebtn(log, "RentalCost"))
+			# tim=tim.replace('/','-')
+			row[2]=row[2].replace('/','-')
+			# rows.append((fid, typ, tim, dis, sn, ac, mo, fr, to, ft, inc, pf, crw, bf, bo, fl, gc, rat, rtp, rtt, rtc))
+			rows.append(tuple(row))
 		c.executemany('INSERT INTO logs VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',rows)
 
 def logconfigs(conn): #Update database of aircraft configs
@@ -188,48 +208,55 @@ def logconfigs(conn): #Update database of aircraft configs
 	if configs!=[]:
 		c=getconfigdbcon(conn)
 		d=getconfigdbcon(conn)
+		fields=(("MakeModel", 0), ("Crew", 1), ("Seats", 1), ("CruiseSpeed", 1), ("GPH", 1), ("FuelType", 1), ("MTOW", 1), ("EmptyWeight", 1), ("Price", 3), ("Ext1", 1), ("LTip", 1), ("LAux", 1), ("LMain", 1), ("Center1", 1), ("Center2", 1), ("Center3", 1), ("RMain", 1), ("RAux", 1), ("RTip", 1), ("Ext2", 1), ("Engines", 1), ("EnginePrice", 3))
 		print("Updating config data...")
 		for config in configs:
-			ac = gebtn(config, "MakeModel")
-			crew = int(gebtn(config, "Crew"))
-			seats = int(gebtn(config, "Seats"))
-			cruise = int(gebtn(config, "CruiseSpeed"))
-			gph = int(gebtn(config, "GPH"))
-			fuel = int(gebtn(config, "FuelType"))
-			mtow = int(gebtn(config, "MTOW"))
-			ew = int(gebtn(config, "EmptyWeight"))
-			price = int(float(gebtn(config, "Price")))
-			ext1 = int(gebtn(config, "Ext1"))
-			ltip = int(gebtn(config, "LTip"))
-			laux = int(gebtn(config, "LAux"))
-			lmain = int(gebtn(config, "LMain"))
-			c1 = int(gebtn(config, "Center1"))
-			c2 = int(gebtn(config, "Center2"))
-			c3 = int(gebtn(config, "Center3"))
-			rmain = int(gebtn(config, "RMain"))
-			raux = int(gebtn(config, "RAux"))
-			rtip = int(gebtn(config, "RTip"))
-			ext2 = int(gebtn(config, "Ext2"))
-			eng = int(gebtn(config, "Engines"))
-			engprice = int(float(gebtn(config, "EnginePrice")))
-			fcap=ext1+ltip+laux+lmain+c1+c2+c3+rmain+raux+rtip+ext2 #Total fuel capacity
-			fields = [ac, crew, seats, cruise, gph, fuel, mtow, ew, price, ext1, ltip, laux, lmain, c1, c2, c3, rmain, raux, rtip, ext2, fcap, eng, engprice]
+			row=getbtns(config, fields)
+			# ac = gebtn(config, "MakeModel")
+			# crew = int(gebtn(config, "Crew"))
+			# seats = int(gebtn(config, "Seats"))
+			# cruise = int(gebtn(config, "CruiseSpeed"))
+			# gph = int(gebtn(config, "GPH"))
+			# fuel = int(gebtn(config, "FuelType"))
+			# mtow = int(gebtn(config, "MTOW"))
+			# ew = int(gebtn(config, "EmptyWeight"))
+			# price = int(float(gebtn(config, "Price")))
+			# ext1 = int(gebtn(config, "Ext1"))
+			# ltip = int(gebtn(config, "LTip"))
+			# laux = int(gebtn(config, "LAux"))
+			# lmain = int(gebtn(config, "LMain"))
+			# c1 = int(gebtn(config, "Center1"))
+			# c2 = int(gebtn(config, "Center2"))
+			# c3 = int(gebtn(config, "Center3"))
+			# rmain = int(gebtn(config, "RMain"))
+			# raux = int(gebtn(config, "RAux"))
+			# rtip = int(gebtn(config, "RTip"))
+			# ext2 = int(gebtn(config, "Ext2"))
+			# eng = int(gebtn(config, "Engines"))
+			# engprice = int(float(gebtn(config, "EnginePrice")))
+			fcap=0
+			for i in range(9,20):
+				fcap+=row[i]
+			row.insert(20,fcap)
+			# fcap=ext1+ltip+laux+lmain+c1+c2+c3+rmain+raux+rtip+ext2 #Total fuel capacity
+			# fields = [ac, crew, seats, cruise, gph, fuel, mtow, ew, price, ext1, ltip, laux, lmain, c1, c2, c3, rmain, raux, rtip, ext2, fcap, eng, engprice]
 			c.execute('SELECT * FROM aircraft WHERE ac = ?',(ac,)) #Get stored info for current aircraft
 			current=c.fetchone()
 			if current is not None and len(current)>0:
 				cols=[]
 				for col in c.execute('''PRAGMA table_info(aircraft)'''): #Get list of column names
 					cols.append(col[1])
-				for i in range(len(fields)):
-					if current[i]!=fields[i]: #Check if field has changed
-						print("Updating "+ac+": "+cols[i]+" "+str(current[i])+" -> "+str(fields[i]))
+				for i in range(len(row)):
+					if current[i]!=row[i]: #Check if field has changed
+						print("Updating "+ac+": "+cols[i]+" "+str(current[i])+" -> "+str(row[i]))
 						d.execute('UPDATE aircraft SET ? = ? WHERE ac = ?',(cols[i], current[i], ac))
 			else:
 				print("Adding new config: "+ac)
-				c.execute('INSERT INTO aircraft VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',fields)
+				c.execute('INSERT INTO aircraft VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',row)
+		print("Configs up to date")
 
 def getdbcon(conn): #Get cursor for aircraft sale database
-	print("Initializing database cursor...")
+	print("Initializing sale database cursor...")
 	c = conn.cursor()
 	c.execute("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table'")
 	exist=c.fetchone()
@@ -244,27 +271,35 @@ def getdbcon(conn): #Get cursor for aircraft sale database
 		c.execute('''CREATE INDEX idx2 ON allac(type)''')
 		c.execute('''CREATE INDEX idx3 ON allac(price)''')
 		c.execute('''CREATE INDEX idx4 ON queries(qtime)''')
+	else:
+		c.execute('SELECT qtime FROM queries ORDER BY iter DESC')
+		dtime=c.fetchone()
+		print("Sale data last updated: "+dtime[0])
 	return c
 	
 def getpaydbcon(conn): #Get cursor for payment database
-	print("Initializing payment database cursor...")
+	#print("Initializing payment database cursor...")
 	c = conn.cursor()
 	c.execute("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table'")
 	exist=c.fetchone()
 	if exist[0]==0: #Table does not exist, create table
-		print("Creating tables...")
+		print("Creating payment tables...")
 		c.execute('''CREATE TABLE payments
 			 (date text, payto text, payfrom text, amount real, reason text, location text, aircraft text, pid real, comment text)''')
 		c.execute('''CREATE INDEX idx1 ON payments(date)''')
+	else:
+		c.execute('SELECT date FROM payments ORDER BY date DESC')
+		dtime=c.fetchone()
+		print("Last payment data recorded: "+dtime[0])
 	return c
 
 def getlogdbcon(conn): #Get cursor for log database
-	print("Initializing log database cursor...")
+	#print("Initializing log database cursor...")
 	c = conn.cursor()
 	c.execute("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table'")
 	exist=c.fetchone()
 	if exist[0]==0: #Table does not exist, create table
-		print("Creating tables...")
+		print("Creating log database tables...")
 		c.execute('''CREATE TABLE logs
 			 (fid real, type text, date text, dist real, sn real, ac text, model text, dep text, arr text, fltime text, income real, pfee real, crew real, bkfee real, bonus real, fuel real, gndfee real, rprice real, rtype text, runits text, rcost real)''')
 		c.execute('''CREATE INDEX idx1 ON logs(date)''')
@@ -272,15 +307,19 @@ def getlogdbcon(conn): #Get cursor for log database
 		c.execute('''CREATE INDEX idx3 ON logs(dist)''')
 		c.execute('''CREATE INDEX idx4 ON logs(model)''')
 		c.execute('''CREATE INDEX idx5 ON logs(ac)''')
+	else:
+		c.execute('SELECT date FROM logs ORDER BY date DESC')
+		dtime=c.fetchone()
+		print("Last log data recorded: "+dtime[0])
 	return c
 
 def getconfigdbcon(conn):
-	print("Initializing config database cursor...")
+	#print("Initializing config database cursor...")
 	c = conn.cursor()
 	c.execute("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table'")
 	exist=c.fetchone()
 	if exist[0]==0: #Table does not exist, create table
-		print("Creating tables...")
+		print("Creating config tables...")
 		c.execute('''CREATE TABLE aircraft
 			 (ac text, crew real, seats real, cruise real, gph real, fuel real, mtow real, ew real, price real, ext1 real, ltip real, laux real, lmain real, c1 real, c2 real, c3 real, rmain real, raux real, rtip real, ext2 real, fcap real, eng real, engprice real)''')
 		c.execute('''CREATE INDEX idx1 ON aircraft(ac)''')
@@ -495,10 +534,8 @@ def dcoord(coord,delta,dirn):
 	new=coord+delta
 	if new<-lmax:
 		new=-lmax
-		#new+=2*lmax
 	elif new>lmax:
 		nex=lmax
-		#new-=2*lmax
 	return new
 
 def mapper(what, points, mincoords, maxcoords, title): # Put the points on a map
@@ -607,9 +644,16 @@ def getaverages(conn,actype,fr,to): #Return list of average prices for aircraft 
 def getbaseprice(actype): #Return the base price for this actype
 	conn=sqlite3.connect('/mnt/data/XPLANE10/XSDK/configs.db')
 	c=getconfigdbcon(conn)
-	c.execute('SELECT price FROM aircraft WHERE ac = ?',(actype,))
-	price=c.fetchone()
-	baseprice=price[0]+73333 #Add equipment price
+	for i in range(2):
+		c.execute('SELECT price FROM aircraft WHERE ac = ?',(actype,))
+		price=c.fetchone()
+		if price is not None:
+			baseprice=price[0]+73333 #Add equipment price
+			break
+		elif i==1:
+			baseprice=0
+			break
+		logconfigs(conn) #No match, try updating the configs?
 	conn.close()
 	return baseprice
 
@@ -697,10 +741,10 @@ def getapstats(conn,actype): #Return something about airplane flight logs
 	hrs=ftime/3600 #Print out the overall averages
 	speed=dist/hrs
 	gph=gals/hrs
-	print("\nStats for "+actype)
-	print("-----------------------------------------")
-	print("Avg speed: "+str(int(round(speed)))+" kt")
-	print("Avg gph: "+str(int(round(gph,2)))+" gph\n")
+	#print("\nStats for "+actype)
+	#print("-----------------------------------------")
+	#print("Avg speed: "+str(int(round(speed)))+" kt")
+	#print("Avg gph: "+str(int(round(gph,2)))+" gph\n")
 	dspeed=[]
 	dgph=[]
 	xax=[]
@@ -751,7 +795,7 @@ def getapstats(conn,actype): #Return something about airplane flight logs
 	ax.legend( (i[1] for i in xax) )
 	plt.show()
 
-def getcommo(ctype): # Adds up locations and quantities of stuff and sends it to the mapper
+def getcommo(ctype): # Adds up locations and quantities of stuff to send to the mapper
 	if ctype=="fuel":
 		t1="JetA Fuel"
 		t2="100LL Fuel"
@@ -872,7 +916,7 @@ def getcoords(data): #Get coordinates for a list of airports
 		#center=(lat_tot/pts,lon_tot/pts) # Not currently used, also needs the totals above
 	return locations,(latmin,lonmin),(latmax,lonmax)
 	
-def plotdates(dlist,title,ylbl,sym,clr): #Plot a list of data vs. dates
+def plotdates(dlist,title,ylbl,sym,clr,save): #Plot a list of data vs. dates
 	print("Plotting figure for: "+title)
 	fig, ax = plt.subplots()
 	formatter=DateFormatter('%Y-%m-%d %H:%M')
@@ -895,7 +939,10 @@ def plotdates(dlist,title,ylbl,sym,clr): #Plot a list of data vs. dates
 	plt.title(title,fontsize=12)
 	plt.xlabel("Date")
 	plt.ylabel(ylbl)
-	plt.show()
+	if save==0:
+		plt.show()
+	else:
+		plt.savefig(title+'.png')
 	
 def plotpayments(conn,fromdate,todate): #Plot payment totals per category
 	c=getpaydbcon(conn)
@@ -1018,7 +1065,7 @@ def plotpayments(conn,fromdate,todate): #Plot payment totals per category
 				# print("No category found for "+payment[4])
 		fdate += delta
 		i += 1
-	plotdates([refjet, addcrewfee, gndcrewfee],"Money","Money",['-'],None)
+	plotdates([refjet, addcrewfee, gndcrewfee],"Money","Money",['-'],None,0)
 	
 def sumpayments(conn,fdate,tdate): #Plot portion of income/expense per category
 	c=getpaydbcon(conn)
@@ -1331,11 +1378,11 @@ def gettype(icao): #Return name of aircraft type or error if not found
 def main(argv): #This is where the magic happens
 	syntaxstring='pricelog.py -acdgmx <aircraft> -bhjknpqsuvz -e <fuel/mtrls> -ft <YYYY-MM-DD> -il <price>'
 	try: #______________o__r____w_y_
-		opts, args = getopt.getopt(argv,"a:bc:d:e:f:g:hi:jkl:m:npqst:uvx:z",["duration=","map=","average=","cheapest=","from=","to=","low=","high=","total=","commodity=","typestats="])
+		opts, args = getopt.getopt(argv,"a:bc:d:e:f:g:hi:jkl:m:npqst:uvwx:z",["duration=","map=","average=","cheapest=","from=","to=","low=","high=","total=","commodity=","typestats="])
 	except getopt.GetoptError:
 		print(syntaxstring)
 		sys.exit(2)
-	tot, avg, low, dur, pay, ppay, spay, stot, stat, logs, com, lowprice, fuel, domap, sale, tots=(0,)*16
+	tot, avg, low, dur, pay, ppay, spay, stot, stat, logs, com, lowprice, fuel, domap, sale, tots, pout=(0,)*16
 	highprice=99999999
 	fromdate="2014-01-01"
 	todate="2100-12-31"
@@ -1384,6 +1431,8 @@ def main(argv): #This is where the magic happens
 			sale=1
 		elif opt=="-v":
 			stot=1
+		elif opt=="-w":
+			pout=1
 		elif opt in ("-x", "--typestats"):
 			stattype,stat=gettype(arg)
 		elif opt=="-z":
@@ -1411,7 +1460,7 @@ def main(argv): #This is where the magic happens
 			loglogmonth(conn,fromdate)
 		if fuel==1:
 			prices=getfuelprices(conn,fromdate,todate)
-			plotdates([prices],"Average fuel price","Price",['o-'],[None])
+			plotdates([prices],"Average fuel price","Price",['o-'],[None],0)
 		conn.close()
 
 	if tot+avg+low+dur+domap+sale+tots>0:
@@ -1422,20 +1471,20 @@ def main(argv): #This is where the magic happens
 			acforsale(conn)
 		if tot==1:
 			totals=gettotals(conn,tottype,fromdate,todate)
-			plotdates([totals],"Number of "+tottype+" for sale","Aircraft",['o-'],[None])
+			plotdates([totals],"Number of "+tottype+" for sale","Aircraft",['o-'],[None],0)
 		if tots==1:
 			totals=gettotals(conn,"None",fromdate,todate)
-			plotdates([totals],"Aircraft for sale","Aircraft",['o-'],[None])
+			plotdates([totals],"Aircraft for sale","Aircraft",['o-'],[None],0)
 		if avg==1:
 			averages=getaverages(conn,avgtype,fromdate,todate)
 			bprice=getbaseprice(avgtype)
 			baseprice=[["2014-01-01",bprice],["2100-12-31",bprice]] #Ensure it covers the whole range
-			plotdates([averages,baseprice],"Average price for "+avgtype,"Price",['o-','--'],['b','r'])
+			plotdates([averages,baseprice],"Average price for "+avgtype,"Price",['o-','--'],['b','r'],0)
 		if low==1:
 			lows=getlows(conn,lowtype,fromdate,todate)
 			bprice=getbaseprice(lowtype)
 			baseprice=[[getdtime("2014-01-01 00:01"),bprice],[getdtime("2100-12-31 23:59"),bprice]]
-			plotdates([lows,baseprice],"Lowest price for "+lowtype,"Price",['o-','--'],['b','r'])
+			plotdates([lows,baseprice],"Lowest price for "+lowtype,"Price",['o-','--'],['b','r'],0)
 		if dur==1:
 			listings=getlistings(conn,durtype,lowprice,highprice)
 			durations=[]
@@ -1443,8 +1492,19 @@ def main(argv): #This is where the magic happens
 				duration=listings[4]-listings[3]
 				durations.append((listings[2],duration))
 				print(str(listings[2])+": "+str(duration))
-			plotdates([durations],"Time to sell for "+durtype,"Days",['o-'],[None])
+			plotdates([durations],"Time to sell for "+durtype,"Days",['o-'],[None],0)
+		if pout==1:
+			actypes=[]
+			with open('/mnt/data/XPLANE10/XSDK/dailytypes.txt', 'r') as f:
+				for actype in f:
+					ptype,ret=gettype(actype)
+					if ret==1
+						lows=getlows(conn,ptype,fromdate,todate)
+						bprice=getbaseprice(ptype)
+						baseprice=[[getdtime("2014-01-01 00:01"),bprice],[getdtime("2100-12-31 23:59"),bprice]]
+						plotdates([lows,baseprice],"Lowest price for "+ptype,"Price",['o-','--'],['b','r'],1)
 		conn.close()
 	print("Finished!")
+
 if __name__ == "__main__":
    main(sys.argv[1:])
