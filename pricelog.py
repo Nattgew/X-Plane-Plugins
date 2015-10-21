@@ -9,20 +9,20 @@ from mpl_toolkits.basemap import Basemap
 from matplotlib.dates import DateFormatter, date2num
 import matplotlib.pyplot as plt
 
-def getkey():
+def getkey(): #Returns API key stored in file
 	with open('/mnt/data/XPLANE10/XSDK/mykey.txt', 'r') as f:
 		mykey = f.readline()
 	mykey=mykey.strip()
 	return mykey
 
-def getname():
+def getname(): #Returns username stored in file
 	with open('/mnt/data/XPLANE10/XSDK/mykey.txt', 'r') as f:
 		nothing = f.readline()
 		myname = f.readline()
 	myname=myname.strip()
 	return myname
 
-def fserequest(ra,rqst,tagname,fmt):
+def fserequest(ra,rqst,tagname,fmt): #Requests data in format, returns list of requested tag
 	if ra==1:
 		rakey="&readaccesskey="+getkey()
 	else:
@@ -39,7 +39,7 @@ def fserequest(ra,rqst,tagname,fmt):
 		tags=[]
 	return tags
 
-def readxml(data,tagname):
+def readxml(data,tagname): #Parses XML, returns list of requested tagname
 	print("Parsing XML data...")
 	xmldoc = minidom.parse(data)
 	error = xmldoc.getElementsByTagName('Error')
@@ -50,25 +50,25 @@ def readxml(data,tagname):
 		tags = xmldoc.getElementsByTagName(tagname)
 	return tags
 
-def readcsv(data):
+def readcsv(data): #Eats Gary's lunch
 	print("Parsing CSV data...")
 	has_header = csv.Sniffer().has_header(data.read(1024))
-	data.seek(0)  # rewind
+	data.seek(0) # rewind
 	reader = csv.reader(data)
 	if has_header:
-		next(reader)  # skip header row
+		next(reader) # skip header row
 	return reader
 
 def gebtn(field,tag): #Shorter way to get tags
-	try: #Might as well catch exceptions here too
+	try:
 		tags=field.getElementsByTagName(tag)[0].firstChild.nodeValue
-	except:
+	except: #Borked XML, more common than you may think
 		tags=""
 	return tags
 
 def getbtns(field,tags): #Shorter way to get list of tags
 	vals=[]
-	for tag in tags:
+	for tag in tags: #Converts value based on second field
 		val=gebtn(field,tag[0])
 		if tag[1]==1:
 			val=int(val)
@@ -111,7 +111,6 @@ def salepickens(conn): #Convert log to compact format
 	c.execute('''CREATE INDEX idx2 ON listings(type)''')
 	c.execute('''CREATE INDEX idx3 ON listings(price)''')
 	c.execute('''CREATE INDEX idx4 ON listings(lastiter)''')
-	#c.execute('INSERT INTO queries VALUES (?,?)',row) #Record date/time of this query
 	for i in range(getmaxiter(conn)):
 			for listing in c.execute('SELECT * FROM allac WHERE obsiter = ?',(i+1,)):
 				if i>0:
@@ -139,7 +138,6 @@ def logpaymonth(conn,fromdate): #Log a month of payments
 			if row[8]=="null":
 				row[8]=""
 			row[0]=row[0].replace('/','-')
-			# rows.append((pdate, to, fr, amt, rsn, loc, ac, pid, com))
 			rows.append(tuple(row))
 		c.executemany('INSERT INTO payments VALUES (?,?,?,?,?,?,?,?,?)',rows)
 		conn.commit()
@@ -156,7 +154,6 @@ def loglogmonth(conn,fromdate):
 		for log in logs:
 			row=gebtns(log, fields)
 			row[2]=row[2].replace('/','-')
-			# rows.append((fid, typ, tim, dis, sn, ac, mo, fr, to, ft, inc, pf, crw, bf, bo, fl, gc, rat, rtp, rtt, rtc))
 			rows.append(tuple(row))
 		c.executemany('INSERT INTO logs VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',rows)
 		conn.commit()
@@ -172,11 +169,9 @@ def logconfigs(conn): #Update database of aircraft configs
 		for config in configs:
 			row=getbtns(config, fields)
 			fcap=0
-			for i in range(9,20):
+			for i in range(9,20): #Calc total fuel capacity
 				fcap+=row[i]
 			row.insert(20,fcap)
-			# fcap=ext1+ltip+laux+lmain+c1+c2+c3+rmain+raux+rtip+ext2 #Total fuel capacity
-			# fields = [ac, crew, seats, cruise, gph, fuel, mtow, ew, price, ext1, ltip, laux, lmain, c1, c2, c3, rmain, raux, rtip, ext2, fcap, eng, engprice]
 			c.execute('SELECT * FROM aircraft WHERE ac = ?',(row[0],)) #Get stored info for current aircraft
 			current=c.fetchone()
 			if current is not None and len(current)>0:
@@ -185,10 +180,10 @@ def logconfigs(conn): #Update database of aircraft configs
 					cols.append(col[1])
 				for i in range(len(row)):
 					if current[i]!=row[i]: #Check if field has changed
-						print("Updating "+ac+": "+cols[i]+" "+str(current[i])+" -> "+str(row[i]))
-						d.execute('UPDATE aircraft SET ? = ? WHERE ac = ?',(cols[i], current[i], ac))
+						print("Updating "+row[0]+": "+cols[i]+" "+str(current[i])+" -> "+str(row[i]))
+						d.execute('UPDATE aircraft SET ? = ? WHERE ac = ?',(cols[i], current[i], row[0]))
 			else:
-				print("Adding new config: "+ac)
+				print("Adding new config: "+row[0])
 				c.execute('INSERT INTO aircraft VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',row)
 			conn.commit()
 		print("Configs up to date")
@@ -251,7 +246,7 @@ def getlogdbcon(conn): #Get cursor for log database
 		print("Last log data recorded: "+dtime[0])
 	return c
 
-def getconfigdbcon(conn):
+def getconfigdbcon(conn): #Get cursor for config database
 	#print("Initializing config database cursor...")
 	c = conn.cursor()
 	c.execute("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table'")
@@ -283,12 +278,9 @@ def dudewheresmyairplane(): #Print list of owned planes
 	print("Sending request for aircraft list...")
 	airplanes = fserequest(1,'query=aircraft&search=key','Aircraft','xml')
 	for plane in airplanes:
-		loc = gebtn(plane, "Location")
-		reg = gebtn(plane, "Registration")
-		eng = gebtn(plane, "EngineTime")
-		chk = gebtn(plane, "TimeLast100hr")
+		row=gebtns(plane, [("Location", 0), ("Registration", 0), ("EngineTime", 0), ("TimeLast100hr", 0)])
 		#planes[reg]=(loc,eng,chk)
-		print(reg+" at "+loc+"  tot: "+eng+"  last: "+chk)
+		print(row[1]+" at "+row[0]+"  tot: "+row[2]+"  last: "+row[3])
 	
 def jobsfrom(apts,price,pax): #High paying jobs from airports
 	jobs=[]
@@ -316,7 +308,7 @@ def jobstest(assignment,jobs,price,pax): #Only add job to array if meeting minum
 		amt = gebtn(assignment, "Amount")
 		typ = gebtn(assignment, "UnitType")
 		if not(int(amt)>pax and typ=="passengers"):
-			#dep = assignment, "FromIcao")
+			#dep = gebtn(assignment, "FromIcao")
 			arr = gebtn(assignment, "ToIcao")
 			loc = gebtn(assignment, "Location")
 			exp = gebtn(assignment, "Expires")
@@ -464,7 +456,7 @@ def bigjobs(apts,dir): #Find high paying jobs to/from airports
 	word="from near" if dir==0 else "to"
 	print("Found these "+str(total)+" big jobs "+word+" those airports:")
 
-def dcoord(coord,delta,dirn):
+def dcoord(coord,delta,dirn): # Change coordinate by delta without exceeding a max
 	if dirn=='lon':
 		lmax=179.9
 	else:
@@ -487,7 +479,7 @@ def mapper(what, points, mincoords, maxcoords, title): # Put the points on a map
 		if len(points)>1:
 			width=maxcoords[1]-mincoords[1]
 			height=maxcoords[0]-mincoords[0]
-		else:
+		else: # Provide good window for plotting one point
 			width=100
 			height=100
 		print("Width: "+str(width)+"  Height: "+str(height))
@@ -539,7 +531,24 @@ def mapper(what, points, mincoords, maxcoords, title): # Put the points on a map
 						m.shadedrelief(scale=0.2)
 	plt.title(title,fontsize=12)
 	plt.show()
-	
+
+def gettimeforsale(conn,timetype): # Get data for all ac of timetype for sale
+	c=getdbcon(conn)
+	d=getdbcon(conn)
+	e=getdbcon(conn)
+	print("Getting sales data...")
+	listings=[]
+	i=0
+	#(serial real, type text, loc text, locname text, hours real, price real, obsiter real)
+	for dac in c.execute('SELECT DISTINCT serial FROM allac'):
+		listings.append([])
+		for qp in d.execute('SELECT price, obsiter FROM allac WHERE serial = ?',(dac[0],)):
+			qtime=e.execute('SELECT qtime FROM queries WHERE obsiter = ?',(qp[1],))
+			date=getdtime(e.fetchone()[0])
+			listings[i].append([date,int(float(qp[0]))])
+		i+=1
+	return listings
+
 def gettotals(conn,actype,fr,to): #Return list of total aircraft for sale at each query time
 	c=getdbcon(conn)
 	d=getdbcon(conn)
@@ -798,20 +807,20 @@ def getlistings(conn,actype,lo,hi): #Return list of time for aircraft to sell
 	print("Finding sell times for: "+actype+", "+str(lo)+" to "+str(hi)+"...")
 	for query in c.execute('SELECT obsiter FROM queries'):
 	#serial real, type text, loc text, locname text, hours real, price real, obsiter real
-		for sale in d.execute('SELECT * FROM allac WHERE obsiter = ? AND type = ? AND price BETWEEN ? AND ?', (query[0],actype,lo,hi)):
-			country=cdict[sale[2]]
+		for sale in d.execute('SELECT serial, loc, price FROM allac WHERE obsiter = ? AND type = ? AND price BETWEEN ? AND ?', (query[0],actype,lo,hi)):
+			country=cdict[sale[1]]
 			region=rdict[country]
 			match=0
 			for i in range(len(listings)):
 				if sale[0]==listings[i][0]: #Check for matching listing
-					if region==listings[i][1] and sale[5]==listings[i][2]:
+					if region==listings[i][1] and sale[2]==listings[i][2]:
 						listings[i][4]=query[0] #Update "to" date in current list
 						match=1
 					else: #Price/region changed, assume not sold, remove old listing and will append a new one
 						listings.remove(listings[i]) 
 					break
 			if match==0: #New/updated listing: SN, region, price, first iter, last iter
-				listings.append([sale[0],region,int(sale[5]),query[0],query[0]]) 
+				listings.append([sale[0],region,int(sale[2]),query[0],query[0]]) 
 	return listings
 
 def mapaclocations(conn, actype): #Map locations of aircraft type for sale
@@ -835,7 +844,6 @@ def getcoords(data): #Get coordinates for a list of airports
 	#lat_tot=0
 	#lon_tot=0
 	latmax,lonmax,latmin,lonmin=100,200,100,200 #garbage to signal init
-#	print("Running query: "+q1)
 	for row in data:
 		try:
 			lat,lon=loc_dict[row]
@@ -861,25 +869,25 @@ def getcoords(data): #Get coordinates for a list of airports
 	return locations,(latmin,lonmin),(latmax,lonmax)
 	
 def plotdates(dlist,title,ylbl,sym,clr,save): #Plot a list of data vs. dates
-	if clr is None:
-		clr='b'
+	if clr is None: #Allows for easy defaults I guess
+		clr=['b']
 	if sym is None:
-		sym='-o'
+		sym=['-o']
 	print("Plotting figure for: "+title)
 	fig, ax = plt.subplots()
 	formatter=DateFormatter('%Y-%m-%d %H:%M')
 	ax.xaxis.set_major_formatter(formatter)
 	i=0
-	ii=1 if len(sym)==len(dlist) else 0
+	ii=1 if len(sym)>1 else 0 #Changes whether each plot moves down a list of symbols/colors
 	j=0
-	jj=1 if len(clr)==len(dlist) else 0
+	jj=1 if len(clr)>1 else 0 
 	for data in dlist:
 		if len(data[0])==2:
 			ax.plot([date2num(i[0]) for i in data], [i[1] for i in data], sym[i], c=clr[j])
 		else:
-			ax.errorbar([date2num(i[0]) for i in data], [i[1] for i in data], yerr=[i[2] for i in data], fmt=sym, c=clr[j])
-		i+=ii
-		j+=jj
+			ax.errorbar([date2num(i[0]) for i in data], [i[1] for i in data], yerr=[i[2] for i in data], fmt=sym[i], c=clr[j])
+		i+=ii if i<len(dlist)-2 else -i #Reference next symbol/color, if one is provided for each data entry
+		j+=jj if j<len(dlist)-2 else -j #Go back to zero if reaching length of data list
 	formatter=DateFormatter('%Y-%m-%d')
 	ax.xaxis.set_major_formatter(formatter)
 	fig.autofmt_xdate()
@@ -890,9 +898,7 @@ def plotdates(dlist,title,ylbl,sym,clr,save): #Plot a list of data vs. dates
 	if save==0:
 		plt.show()
 	else:
-		print("Saving as "+title+".png")
-		title=title.replace(' ','_')
-		plt.savefig('/mnt/data/Dropbox/'+title+'.png')
+		plt.savefig('/mnt/data/Dropbox/'+title.replace(' ','_')+'.png')
 	
 def plotpayments(conn,fromdate,todate): #Plot payment totals per category
 	c=getpaydbcon(conn)
@@ -921,7 +927,6 @@ def plotpayments(conn,fromdate,todate): #Plot payment totals per category
 				("Pilot fee", pltfee, pltfee),
 				("Installation of equipment in aircraft", fboeqpinc, eqinstl)]
 	i=0
-	#print("Tallying daily payments from "+str(fdate.year)+"-"+str(fdate.month)+" to "+str(tdate.year)+"-"+str(tdate.month)+"...")
 	print('Tallying daily payments from %i-%i to %i-%i...' % (fdate.year,fdate.month,tdate.year,tdate.month))
 	#(date text, to text, from text, amount real, reason text, location real, aircraft real)
 	while fdate <= tdate:
@@ -930,13 +935,14 @@ def plotpayments(conn,fromdate,todate): #Plot payment totals per category
 		if i>0:
 			for var in allthat:
 				var.append([fdate,var[i-1][1]]) #Carry over the previous totals to new date
-		for payment in c.execute('SELECT * FROM payments WHERE date BETWEEN ? AND ?',(fdateq,tdateq)):
+		for payment in c.execute('SELECT payfrom, amount, reason FROM payments WHERE date BETWEEN ? AND ?',(fdateq,tdateq)):
 			for cat in categories:
-				if payment[4]==cat[0]:
-					if payment[2]!=user:
-						cat[1][i][1]+=payment[3]
+				if payment[2]==cat[0]: #Test if category matches
+					if payment[0]!=user: #If payment not from user
+						cat[1][i][1]+=payment[1]
 					else:
-						cat[2][i][1]+=payment[3]
+						cat[2][i][1]+=payment[1]
+					break
 		fdate += delta
 		i += 1
 	plotdates([refjet, addcrewfee, gndcrewfee],"Money","Money",['-'],None,0)
@@ -999,13 +1005,14 @@ def sumpayments(conn,fdate,tdate): #Plot portion of income/expense per category
 	todate=tdate+" 23:59"
 	print("Tallying payments from"+str(fdate[0])+"-"+str(fdate[1])+" to "+str(tdate[0])+"-"+str(tdate[1])+"...")
 	#(date text, to text, from text, amount real, reason text, location real, aircraft real)
-	for payment in c.execute('SELECT * FROM payments WHERE date BETWEEN ? AND ?',(fromdate,todate)):
+	for payment in c.execute('SELECT payfrom, amount, reason FROM payments WHERE date BETWEEN ? AND ?',(fromdate,todate)):
 		for cat in categories:
-			if payment[4]==cat[0]:
-				if payment[2]!=user:
-					cat[1][0]+=payment[3]
+			if payment[2]==cat[0]:
+				if payment[0]!=user:
+					cat[1][0]+=payment[1]
 				else:
-					cat[2][0]+=payment[3]
+					cat[2][0]+=payment[1]
+				break
 	#Income nets per category
 	rent=[rentinc[0]-rentexp[0],"Rental"]
 	assnmt=[assnmtinc[0]-assnmtexp[0],"Assignments"]
@@ -1032,7 +1039,6 @@ def sumpayments(conn,fdate,tdate): #Plot portion of income/expense per category
 			netexp+=net[0]
 	pieplot(incnet,netinc,5,"Income sources")
 	pieplot(expnet,netexp,5,"Expense sources")
-
 	#Totals income/expenses
 	revs=[rentinc, assnmtinc, acsold, fboref100, fborefjet, fbogndcrew, fborepinc, fboeqpinc, ptrentinc, fbosell, wssell100, wsselljet, wssellbld, wssellsupp]
 	exps=[rentexp, assnmtexp, pltfee, addcrewfee, gndcrewfee, bkgfee, ref100, refjet, mxexp, eqinstl, acbought, fborepexp, fboeqpexp, fbobuy, wsbuy100, wsbuyjet, wsbuybld, wsbuysupp]
@@ -1078,15 +1084,15 @@ def sumacpayments(conn,fdate,tdate): #Plot revenue portion by aircraft
 	for dac in c.execute('SELECT DISTINCT aircraft FROM payments WHERE date BETWEEN ? AND ? AND payto = ? AND reason = "Pay for assignment"',(fromdate,todate,user)):
 		ac.append([0,dac[0]])
 		for var in items:
-			var[0].append(0)
+			var[0].append(0) # Initialize with 0 values for this aircraft
 		i+=1
-		for payment in d.execute('SELECT * FROM payments WHERE date BETWEEN ? AND ? AND aircraft = ?',(fromdate,todate,dac[0])):
+		for payment in d.execute('SELECT payfrom, amount, reason FROM payments WHERE date BETWEEN ? AND ? AND aircraft = ?',(fromdate,todate,dac[0])):
 			for cat in categories:
-				if payment[4]==cat[0]:
-					if payment[2]!=user:
-						cat[1][0][i]+=payment[3]
+				if payment[2]==cat[0]:
+					if payment[0]!=user:
+						cat[1][0][i]+=payment[1]
 					else:
-						cat[2][0][i]-=payment[3]
+						cat[2][0][i]-=payment[1]
 					break
 	for i in range(len(ac)): #Sum up all categories for each aircraft
 		for var in items:
@@ -1098,7 +1104,7 @@ def pieplot(data, total, min, stitle): #Create a pie plot
 	labels=[]
 	sizes=[]
 	other=0
-	if total is None:
+	if total is None: #Calc total if not given
 		total=0
 		for cat in data:
 			total+=cat[0]
@@ -1123,26 +1129,24 @@ def pieplot(data, total, min, stitle): #Create a pie plot
 	
 def gettype(icao): #Return name of aircraft type or error if not found
 	icaodict=dicts.getactypedict()
+	actype=""
 	try:
 		if icao!="":
 			actype=icaodict[icao]
-		else:
-			actype=""
 		success=1
 	except (KeyError,IndexError):
 		print("Name for code "+icao+" not found!")
-		actype=""
 		success=0
 	return actype, success
 
 def main(argv): #This is where the magic happens
 	syntaxstring='pricelog.py -acdgmx <aircraft> -bhjknpqsuvz -e <fuel/mtrls> -ft <YYYY-MM-DD> -il <price>'
-	try: #______________o__r____w_y_
-		opts, args = getopt.getopt(argv,"a:bc:d:e:f:g:hi:jkl:m:npqst:uvwx:z",["duration=","map=","average=","cheapest=","from=","to=","low=","high=","total=","commodity=","typestats="])
+	try: #______________o__r________
+		opts, args = getopt.getopt(argv,"a:bc:d:e:f:g:hi:jkl:m:npqst:uvwx:y:z",["duration=","map=","average=","cheapest=","from=","to=","low=","high=","total=","commodity=","typestats=","timeforsale="])
 	except getopt.GetoptError:
 		print(syntaxstring)
 		sys.exit(2)
-	tot, avg, low, dur, pay, ppay, spay, stot, stat, logs, com, lowprice, fuel, domap, sale, tots, pout=(0,)*17
+	tot, avg, low, dur, pay, ppay, spay, stot, stat, logs, com, lowprice, fuel, domap, sale, tots, pout, tfs=(0,)*18
 	highprice=99999999
 	fromdate="2014-01-01"
 	todate="2020-12-31"
@@ -1195,6 +1199,8 @@ def main(argv): #This is where the magic happens
 			pout=1
 		elif opt in ("-x", "--typestats"):
 			stattype,stat=gettype(arg)
+		elif opt in ("-y", "--timeforsale"):
+			timetype,tfs=gettype(arg)
 		elif opt=="-z":
 			com=1
 	print("Running option...")
@@ -1223,12 +1229,17 @@ def main(argv): #This is where the magic happens
 			loglogmonth(conn,fromdate)
 		conn.close()
 
-	if tot+avg+low+dur+domap+sale+tots+pout>0:
+	if tot+avg+low+dur+domap+sale+tots+pout+tfs>0:
 		conn=sqlite3.connect('/mnt/data/XPLANE10/XSDK/forsale.db')
 		if domap==1:
 			mapaclocations(conn,maptype)
 		if sale==1:
 			acforsale(conn)
+		if tfs==1:
+			times=gettimeforsale(conn,timetype)
+			bprice=getbaseprice(timetype)
+			times.append([[getdtime("2014-01-01 00:01"),bprice],[getdtime("2100-12-31 23:59"),bprice]])
+			plotdates(times,"Prices of "+timetype,"Price",['o-','--'],['b'],0)
 		if tot==1:
 			totals=gettotals(conn,tottype,fromdate,todate)
 			plotdates([totals],"Number of "+tottype+" for sale","Aircraft",['o-'],None,0)
@@ -1238,7 +1249,7 @@ def main(argv): #This is where the magic happens
 		if avg==1:
 			averages=getaverages(conn,avgtype,fromdate,todate)
 			bprice=getbaseprice(avgtype)
-			baseprice=[["2014-01-01",bprice],["2100-12-31",bprice]] #Ensure it covers the whole range
+			baseprice=[["2014-01-01 00:01",bprice],["2100-12-31 23:59",bprice]] #Ensure it covers the whole range
 			plotdates([averages,baseprice],"Average price for "+avgtype,"Price",['o-','--'],['b','r'],0)
 		if low==1:
 			lows=getlows(conn,lowtype,fromdate,todate)
