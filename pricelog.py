@@ -1382,7 +1382,7 @@ def main(argv): #This is where the magic happens
 	except getopt.GetoptError:
 		print(syntaxstring)
 		sys.exit(2)
-	tot, avg, low, dur, pay, ppay, spay, stot, stat, logs, com, lowprice, fuel, domap, sale, tots, pout=(0,)*16
+	tot, avg, low, dur, pay, ppay, spay, stot, stat, logs, com, lowprice, fuel, domap, sale, tots, pout=(0,)*17
 	highprice=99999999
 	fromdate="2014-01-01"
 	todate="2100-12-31"
@@ -1498,7 +1498,7 @@ def main(argv): #This is where the magic happens
 			with open('/mnt/data/XPLANE10/XSDK/dailytypes.txt', 'r') as f:
 				for actype in f:
 					ptype,ret=gettype(actype)
-					if ret==1
+					if ret==1:
 						lows=getlows(conn,ptype,fromdate,todate)
 						bprice=getbaseprice(ptype)
 						baseprice=[[getdtime("2014-01-01 00:01"),bprice],[getdtime("2100-12-31 23:59"),bprice]]
