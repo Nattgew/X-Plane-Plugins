@@ -614,21 +614,26 @@ def getlows(conn,actype,fr,to): #Return list of lowest price for aircraft in eac
 	return lows
 
 def getfuelprices(conn): #Plot fuel prices over time
-	c=getdbcon(conn)
+	c=getpaydbcon(conn)
 	print("Getting flight logs...")
 	dgas=[]
 	dprice=[]
 	eprice=[]
+	i=-1
 	#(date text, payto text, payfrom text, amount real, reason text, location text, aircraft text, pid real, comment text)
 	for log in c.execute('SELECT date, amount, comment FROM payments WHERE reason = "Refuelling with JetA"'):
 		#User ID: xxxxx Amount (gals): 428.9, $ per Gal: $3.75
 		gals=float(log[2].split(':',3)[2].split(',')[0])
 		pergal=float(log[2].split(':',3)[3].replace(' $',''))
 		pdate=log[0].split()[0]
+		#print("i="+str(i)+"  len(dgas)="+str(len(dgas)))
 		if len(dgas)>0 and dgas[i][0]==pdate:
+			#print("Adding "+str(gals)+" gals")
 			dgas[i][1]+=gals
 			dgas[i][2]+=log[1]
 		else:
+			#print("New day with "+str(gals)+" gals")
+			i+=1
 			dgas.append([pdate,gals,log[1]])
 		eprice.append([pdate,pergal])
 	for day in dgas:
@@ -640,7 +645,8 @@ def getfuelprices(conn): #Plot fuel prices over time
 				ssprice+=math.pow(price[1]-avg,2)
 				num+=1
 		stdev=math.sqrt(ssprice/num)
-		dprice.append((day[0],avg,stdev))
+		print("New day "+day[0]+" with "+str(avg)+" per gal, sd "+str(stdev))
+		dprice.append((getdtime(day[0]+" 00:01"),avg,stdev))
 	return dprice
 
 def getapstats(conn,actype): #Return something about airplane flight logs
@@ -1192,7 +1198,7 @@ def main(argv): #This is where the magic happens
 		elif opt=="-z":
 			com=1
 	print("Running option...")
-	if pay+ppay+spay+stot+com>0:
+	if pay+ppay+spay+stot+com+fuel>0:
 		conn=sqlite3.connect('/mnt/data/XPLANE10/XSDK/payments.db')
 		if pay==1:
 			logpaymonth(conn,fromdate)
@@ -1204,17 +1210,17 @@ def main(argv): #This is where the magic happens
 			sumacpayments(conn,fromdate,todate)
 		if com==1:
 			logpaymonthcom(conn,fromdate)
+		if fuel==1:
+			prices=getfuelprices(conn)
+			plotdates([prices],"Average fuel price","Price",['o-'],None,0)
 		conn.close()
 		
-	if logs+stat+fuel>0:
+	if logs+stat>0:
 		conn=sqlite3.connect('/mnt/data/XPLANE10/XSDK/flightlogs.db')
 		if stat==1:
 			getapstats(conn,stattype)
 		if logs==1:
 			loglogmonth(conn,fromdate)
-		if fuel==1:
-			prices=getfuelprices(conn,fromdate,todate)
-			plotdates([prices],"Average fuel price","Price",['o-'],None,0)
 		conn.close()
 
 	if tot+avg+low+dur+domap+sale+tots+pout>0:
