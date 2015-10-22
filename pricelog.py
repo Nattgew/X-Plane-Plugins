@@ -536,15 +536,16 @@ def gettimeforsale(conn,timetype): # Get data for all ac of timetype for sale
 	c=getdbcon(conn)
 	d=getdbcon(conn)
 	e=getdbcon(conn)
-	print("Getting sales data...")
+	print("Getting sales data for "+timetype+"...")
 	listings=[]
 	i=0
 	#(serial real, type text, loc text, locname text, hours real, price real, obsiter real)
-	for dac in c.execute('SELECT DISTINCT serial FROM allac'):
+	for dac in c.execute('SELECT DISTINCT serial FROM allac WHERE type = ?',(timetype,)):
 		listings.append([])
 		for qp in d.execute('SELECT price, obsiter FROM allac WHERE serial = ?',(dac[0],)):
-			qtime=e.execute('SELECT qtime FROM queries WHERE obsiter = ?',(qp[1],))
+			qtime=e.execute('SELECT qtime FROM queries WHERE iter = ?',(qp[1],))
 			date=getdtime(e.fetchone()[0])
+			#print("AC: "+str(dac[0])+"  "+str(date)+": "+str(qp[0]))
 			listings[i].append([date,int(float(qp[0]))])
 		i+=1
 	return listings
@@ -880,7 +881,8 @@ def plotdates(dlist,title,ylbl,sym,clr,save): #Plot a list of data vs. dates
 	i=0
 	ii=1 if len(sym)>1 else 0 #Changes whether each plot moves down a list of symbols/colors
 	j=0
-	jj=1 if len(clr)>1 else 0 
+	jj=1 if len(clr)>1 else 0
+	print("Iter i "+str(i)+" by "+str(ii)+"  j "+str(j)+" by "+str(jj))
 	for data in dlist:
 		if len(data[0])==2:
 			ax.plot([date2num(i[0]) for i in data], [i[1] for i in data], sym[i], c=clr[j])
@@ -892,6 +894,7 @@ def plotdates(dlist,title,ylbl,sym,clr,save): #Plot a list of data vs. dates
 	ax.xaxis.set_major_formatter(formatter)
 	fig.autofmt_xdate()
 	plt.xlim([min(date2num(i[0]) for i in dlist[0]),max(date2num(i[0]) for i in dlist[0])])
+	plt.ylim(0.75*data[:-1][0][1],1.25*data[:-1][0][1])
 	plt.title(title,fontsize=12)
 	plt.xlabel("Date")
 	plt.ylabel(ylbl)
@@ -1239,7 +1242,7 @@ def main(argv): #This is where the magic happens
 			times=gettimeforsale(conn,timetype)
 			bprice=getbaseprice(timetype)
 			times.append([[getdtime("2014-01-01 00:01"),bprice],[getdtime("2100-12-31 23:59"),bprice]])
-			plotdates(times,"Prices of "+timetype,"Price",['o-','--'],['b'],0)
+			plotdates(times,"Prices of "+timetype,"Price",['o-'],['b'],0)
 		if tot==1:
 			totals=gettotals(conn,tottype,fromdate,todate)
 			plotdates([totals],"Number of "+tottype+" for sale","Aircraft",['o-'],None,0)
@@ -1249,7 +1252,7 @@ def main(argv): #This is where the magic happens
 		if avg==1:
 			averages=getaverages(conn,avgtype,fromdate,todate)
 			bprice=getbaseprice(avgtype)
-			baseprice=[["2014-01-01 00:01",bprice],["2100-12-31 23:59",bprice]] #Ensure it covers the whole range
+			baseprice=[[getdtime("2014-01-01 00:01"),bprice],[getdtime("2100-12-31 23:59"),bprice]] #Ensure it covers the whole range
 			plotdates([averages,baseprice],"Average price for "+avgtype,"Price",['o-','--'],['b','r'],0)
 		if low==1:
 			lows=getlows(conn,lowtype,fromdate,todate)
