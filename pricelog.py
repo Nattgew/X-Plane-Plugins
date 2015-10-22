@@ -142,7 +142,7 @@ def logpaymonth(conn,fromdate): #Log a month of payments
 		c.executemany('INSERT INTO payments VALUES (?,?,?,?,?,?,?,?,?)',rows)
 		conn.commit()
 
-def loglogmonth(conn,fromdate):
+def loglogmonth(conn,fromdate): #Log a month of logs
 	year,month,*rest=fromdate.split('-', 2)
 	print("Sending request for logs...")
 	logs = fserequest(1,'query=flightlogs&search=monthyear&month='+month+'&year='+year,'FlightLog','xml')
@@ -631,22 +631,22 @@ def getfuelprices(conn): #Plot fuel prices over time
 	eprice=[]
 	i=-1
 	#(date text, payto text, payfrom text, amount real, reason text, location text, aircraft text, pid real, comment text)
-	for log in c.execute('SELECT date, amount, comment FROM payments WHERE reason = "Refuelling with JetA"'):
+	for log in c.execute('SELECT date, amount, comment FROM payments WHERE reason = "Refuelling with JetA" ORDER BY date'):
 		#User ID: xxxxx Amount (gals): 428.9, $ per Gal: $3.75
 		gals=float(log[2].split(':',3)[2].split(',')[0])
 		pergal=float(log[2].split(':',3)[3].replace(' $',''))
-		pdate=log[0].split()[0]
+		pdate=log[0].split()[0] #Get just date portion
 		#print("i="+str(i)+"  len(dgas)="+str(len(dgas)))
 		if len(dgas)>0 and dgas[i][0]==pdate:
 			#print("Adding "+str(gals)+" gals")
-			dgas[i][1]+=gals
-			dgas[i][2]+=log[1]
+			dgas[i][1]+=gals #Keep total of gallons
+			dgas[i][2]+=log[1] #Keep total of money
 		else:
 			#print("New day with "+str(gals)+" gals")
 			i+=1
 			dgas.append([pdate,gals,log[1]])
 		eprice.append([pdate,pergal])
-	for day in dgas:
+	for day in dgas: #Calculate stats for each day
 		avg=day[2]/day[1]
 		ssprice=0
 		num=0
@@ -1100,6 +1100,7 @@ def sumacpayments(conn,fdate,tdate): #Plot revenue portion by aircraft
 	for i in range(len(ac)): #Sum up all categories for each aircraft
 		for var in items:
 			ac[i][0]+=var[0][i]
+		ac[i][0]-=z[0][i] #z is for garbage, take this back out
 		i+=1
 	pieplot(ac,None,5,"Aircraft Income")
 	
