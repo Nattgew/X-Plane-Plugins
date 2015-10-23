@@ -882,19 +882,21 @@ def plotdates(dlist,title,ylbl,sym,clr,save): #Plot a list of data vs. dates
 	ii=1 if len(sym)>1 else 0 #Changes whether each plot moves down a list of symbols/colors
 	j=0
 	jj=1 if len(clr)>1 else 0
-	print("Iter i "+str(i)+" by "+str(ii)+"  j "+str(j)+" by "+str(jj))
+	#print("Iter i "+str(i)+" by "+str(ii)+"  j "+str(j)+" by "+str(jj))
 	for data in dlist:
 		if len(data[0])==2:
-			ax.plot([date2num(i[0]) for i in data], [i[1] for i in data], sym[i], c=clr[j])
+			ax.plot([date2num(x[0]) for x in data], [x[1] for x in data], sym[i], c=clr[j])
 		else:
-			ax.errorbar([date2num(i[0]) for i in data], [i[1] for i in data], yerr=[i[2] for i in data], fmt=sym[i], c=clr[j])
+			ax.errorbar([date2num(x[0]) for x in data], [x[1] for x in data], yerr=[x[2] for x in data], fmt=sym[i], c=clr[j])
 		i+=ii if i<len(dlist)-2 else -i #Reference next symbol/color, if one is provided for each data entry
 		j+=jj if j<len(dlist)-2 else -j #Go back to zero if reaching length of data list
+	daterange=[min(min(date2num(i[0]) for i in j) for j in dlist),max(max(date2num(i[0]) for i in j) for j in dlist)]
+	pricerange=[min(min(i[1] for i in j) for j in dlist)*0.9,max(max(i[1] for i in j) for j in dlist)*1.1]
 	formatter=DateFormatter('%Y-%m-%d')
 	ax.xaxis.set_major_formatter(formatter)
 	fig.autofmt_xdate()
-	plt.xlim([min(date2num(i[0]) for i in dlist[0]),max(date2num(i[0]) for i in dlist[0])])
-	plt.ylim(0.75*data[:-1][0][1],1.25*data[:-1][0][1])
+	plt.xlim(daterange)
+	plt.ylim(pricerange)
 	plt.title(title,fontsize=12)
 	plt.xlabel("Date")
 	plt.ylabel(ylbl)
@@ -1155,57 +1157,57 @@ def main(argv): #This is where the magic happens
 	fromdate="2014-01-01"
 	todate="2020-12-31"
 	for opt, arg in opts:
-		if opt in ("-a", "--average"):
+		if opt in ("-a", "--average"): #Plots average prices for type
 			avgtype,avg=gettype(arg)
-		elif opt=="-b":
+		elif opt=="-b": #Logs a month of flight logs, based on the date given
 			logs=1
-		elif opt in ("-c", "--cheapest"):
+		elif opt in ("-c", "--cheapest"): #Plots the cheapest aircraft of this type
 			lowtype,low=gettype(arg)
-		elif opt in ("-d", "--duration"):
+		elif opt in ("-d", "--duration"): #Calculates duration to sell for a type (in work)
 			durtype,dur=gettype(arg)
-		elif opt in ("-e", "--commodity"):
+		elif opt in ("-e", "--commodity"): #Maps locations and amounts of commodities
 			locations,cmin,cmax=getcommo(arg)
 			mapper(arg, locations, cmin, cmax, "Locations of Commodities")
-		elif opt in ("-f", "--from"):
+		elif opt in ("-f", "--from"): #First date to be used in different functions
 			fromdate=arg
-		elif opt in ("-g", "--total"):
+		elif opt in ("-g", "--total"): #Plots total aircraft of this type for sale
 			tottype,tot=gettype(arg)
-		elif opt=='-h':
+		elif opt=='-h': #plshelp
 			print(syntaxstring)
 			sys.exit()
-		elif opt in ("-i", "--high"):
+		elif opt in ("-i", "--high"): #Highest price to be considered in other functions
 			highprice=arg
-		elif opt=="-j":
+		elif opt=="-j": #Plots fuel prices, averaged for each day
 			fuel=1
-		elif opt=="-k":
+		elif opt=="-k": #Updates the configuration database
 			cconn=sqlite3.connect('/mnt/data/XPLANE10/XSDK/configs.db')
 			logconfigs(cconn)
 			cconn.close()
-		elif opt in ("-l", "--low"):
+		elif opt in ("-l", "--low"): #Lowest price to be considered in other functions
 			lowprice=arg
-		elif opt in ("-m", "--map"):
+		elif opt in ("-m", "--map"): #Map locations of a type for sale
 			maptype,domap=gettype(arg)
-		elif opt=='-n':
+		elif opt=='-n': #Plots total aircraft for sale (duplicate feature?)
 			tots=1
-		elif opt=="-p":
+		elif opt=="-p": #Log a month of payments based on the date given
 			pay=1
-		elif opt=="-q":
+		elif opt=="-q": #Plots payment totals over date range
 			ppay=1
-		elif opt=="-s":
+		elif opt=="-s": #Plots payment percentage per category
 			spay=1
-		elif opt in ("-t", "--to"):
+		elif opt in ("-t", "--to"): #Last date to be used in different functions
 			todate=arg
-		elif opt=='-u':
+		elif opt=='-u': #Logs the aircraft currently for sale
 			sale=1
-		elif opt=="-v":
+		elif opt=="-v": #Plots the percentages of payment categories per aircraft
 			stot=1
-		elif opt=="-w":
+		elif opt=="-w": #Saves plots for aircraft specified in a file
 			pout=1
-		elif opt in ("-x", "--typestats"):
+		elif opt in ("-x", "--typestats"): #Plots stats for given type
 			stattype,stat=gettype(arg)
-		elif opt in ("-y", "--timeforsale"):
+		elif opt in ("-y", "--timeforsale"): #Plots sale prices per aircraft over time
 			timetype,tfs=gettype(arg)
-		elif opt=="-z":
+		elif opt=="-z": #Temporary - Adds comments to a month of payment logs
 			com=1
 	print("Running option...")
 	if pay+ppay+spay+stot+com+fuel>0:
