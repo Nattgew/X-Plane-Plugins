@@ -98,7 +98,7 @@ def acforsale(conn): #Log aircraft currently for sale
 			rows.append(tuple(row))
 		c.executemany('INSERT INTO allac VALUES (?,?,?,?,?,?,?)',rows)
 		conn.commit()
-		
+
 def salepickens(conn): #Convert log to compact format
 	print("Processing data...")
 	c=getdbcon(conn)
@@ -123,7 +123,7 @@ def salepickens(conn): #Convert log to compact format
 				else:
 					d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,?,1.0)',([value for value in listing]))
 				conn.commit()
-	
+
 def logpaymonth(conn,fromdate): #Log a month of payments
 	year,month,*rest=fromdate.split('-', 2)
 	print("Sending request for payment listing...")
@@ -209,7 +209,7 @@ def getdbcon(conn): #Get cursor for aircraft sale database
 		dtime=c.fetchone()
 		print("Sale data last updated: "+dtime[0])
 	return c
-	
+
 def getpaydbcon(conn): #Get cursor for payment database
 	#print("Initializing payment database cursor...")
 	c = conn.cursor()
@@ -281,7 +281,7 @@ def dudewheresmyairplane(): #Print list of owned planes
 		row=gebtns(plane, [("Location", 0), ("Registration", 0), ("EngineTime", 0), ("TimeLast100hr", 0)])
 		#planes[reg]=(loc,eng,chk)
 		print(row[1]+" at "+row[0]+"  tot: "+row[2]+"  last: "+row[3])
-	
+
 def jobsfrom(apts,price,pax): #High paying jobs from airports
 	jobs=[]
 	print("Sending request for jobs from "+apts+"...")
@@ -374,7 +374,7 @@ def printjobs(jobs,rev): #Print the list of jobs
 	for job in jobs:
 		#print(job[2]+" "+job[3]+" "+job[0]+"-"+job[1]+" $"+str(int(job[4]))+" "+str(distbwt(job[0],job[1]))+" "+job[5])
 		print('%s %s %s-%s $%i %f %s' % (job[2],job[3],job[0],job[1],int(job[4]),distbwt(job[0],job[1]),job[5]))
-	
+
 def cosinedist(lat1,lon1,lat2,lon2): #Use cosine to find distance between coordinates
 	phi1 = math.radians(lat1)
 	phi2 = math.radians(lat2)
@@ -562,7 +562,7 @@ def gettotals(conn,actype,fr,to): #Return list of total aircraft for sale at eac
 	print("Finding total aircraft for sale from "+fr+" to "+to+"...")
 	for query in c.execute('SELECT * FROM queries WHERE qtime BETWEEN ? AND ?', (fr,to)):
 		#print("Reading query "+str(query[0])+" from "+query[1])
-		if actype=="None":
+		if actype=="aircraft":
 			d.execute('SELECT COUNT(*) FROM allac WHERE obsiter = ?', (query[0],))
 		else:
 			d.execute('SELECT COUNT(*) FROM allac WHERE obsiter = ? AND type = ?', (query[0],actype))	
@@ -841,7 +841,7 @@ def mapaclocations(conn, actype): #Map locations of aircraft type for sale
 	locations,cmin,cmax=getcoords([i[0] for i in c.execute(q1)])
 	if len(locations)>0:
 		mapper('ac', locations, cmin, cmax, title)
-	
+
 def getcoords(data): #Get coordinates for a list of airports
 	print("Building airport location dictionary from csv...")
 	loc_dict=build_csv("latlon")
@@ -874,7 +874,7 @@ def getcoords(data): #Get coordinates for a list of airports
 	#else:
 		#center=(lat_tot/pts,lon_tot/pts) # Not currently used, also needs the totals above
 	return locations,(latmin,lonmin),(latmax,lonmax)
-	
+
 def plotdates(dlist,title,ylbl,sym,clr,save): #Plot a list of data vs. dates
 	if clr is None: #Allows for easy defaults I guess
 		clr=['']
@@ -884,13 +884,23 @@ def plotdates(dlist,title,ylbl,sym,clr,save): #Plot a list of data vs. dates
 	fig, ax = plt.subplots()
 	formatter=DateFormatter('%Y-%m-%d %H:%M')
 	ax.xaxis.set_major_formatter(formatter)
+	items=len(dlist)
+	syms=len(sym)
+	clrs=len(clr)
 	print(sym)
 	print(clr)
-	print(len(dlist))
+	print(items)
+	#syms<items
+	##syms==2 -> sym 2 is for last item
+	##else loop
+	#syms==items
+	##one for everyone
+	#syms>items
+	##wat
 	i=0
-	ii=1 if len(sym)>2 else 0 #Changes whether each plot moves down a list of symbols/colors
+	ii=1 if 2<syms<items+1 else 0 #Changes whether each plot moves down a list of symbols/colors
 	j=0
-	jj=1 if len(clr)>2 else 0
+	jj=1 if 2<clrs<items+1 else 0
 	for data in dlist:
 #		print("Iter i "+str(i)+" by "+str(ii)+"  j "+str(j)+" by "+str(jj))
 		if clr[j] is None:
@@ -900,15 +910,15 @@ def plotdates(dlist,title,ylbl,sym,clr,save): #Plot a list of data vs. dates
 			ax.plot([date2num(x[0]) for x in data], [x[1] for x in data], clr[j]+sym[i])
 		else:
 			ax.errorbar([date2num(x[0]) for x in data], [x[1] for x in data], yerr=[x[2] for x in data], fmt=sym[i], c=clr[j])
-		if i<len(dlist)-1: #Reference next symbol/color, if one is provided for each data entry
+		if i<syms-1: #Reference next symbol/color, if one is provided for each data entry
 			i+=ii
 		else: #Go back to zero if reaching length of data list
 			i-=i
-		if j<len(dlist)-1:
+		if j<clrs-1:
 			j+=jj
 		else:
 			j-=j
-		if len(dlist)>1 and data==dlist[-2]: #If only two elements given, second is for the last dataset
+		if items>1 and data==dlist[-2]: #If only two elements given, second is for the last dataset
 			if len(sym)==2:
 				i=1
 			if len(clr)==2:
@@ -936,7 +946,7 @@ def plotdates(dlist,title,ylbl,sym,clr,save): #Plot a list of data vs. dates
 		plt.show()
 	else:
 		plt.savefig('/mnt/data/Dropbox/'+title.replace(' ','_')+'.png')
-	
+
 def plotpayments(conn,fromdate,todate): #Plot payment totals per category
 	c=getpaydbcon(conn)
 	user=getname()
@@ -983,7 +993,7 @@ def plotpayments(conn,fromdate,todate): #Plot payment totals per category
 		fdate += delta
 		i += 1
 	plotdates([refjet, addcrewfee, gndcrewfee],"Money","Money",['-'],None,0)
-	
+
 def sumpayments(conn,fdate,tdate): #Plot portion of income/expense per category
 	c=getpaydbcon(conn)
 	#Income
@@ -1081,7 +1091,7 @@ def sumpayments(conn,fdate,tdate): #Plot portion of income/expense per category
 	exps=[rentexp, assnmtexp, pltfee, addcrewfee, gndcrewfee, bkgfee, ref100, refjet, mxexp, eqinstl, acbought, fborepexp, fboeqpexp, fbobuy, wsbuy100, wsbuyjet, wsbuybld, wsbuysupp]
 	pieplot(revs,None,5,"Revenues")
 	pieplot(exps,None,5,"Expenses")
-	
+
 def sumacpayments(conn,fdate,tdate): #Plot revenue portion by aircraft
 	c=getpaydbcon(conn)
 	d=getpaydbcon(conn)
@@ -1137,7 +1147,7 @@ def sumacpayments(conn,fdate,tdate): #Plot revenue portion by aircraft
 		ac[i][0]-=z[0][i] #z is for garbage, take this back out
 		i+=1
 	pieplot(ac,None,5,"Aircraft Income")
-	
+
 def pieplot(data, total, min, stitle): #Create a pie plot
 	labels=[]
 	sizes=[]
@@ -1164,10 +1174,10 @@ def pieplot(data, total, min, stitle): #Create a pie plot
 	plt.axis('equal') # Set aspect ratio to be equal so that pie is drawn as a circle.
 	plt.title(stitle)
 	plt.show()
-	
+
 def gettype(icao): #Return name of aircraft type or error if not found
 	icaodict=dicts.getactypedict()
-	actype=""
+	actype="aircraft"
 	try:
 		if icao!="":
 			actype=icaodict[icao]
@@ -1179,8 +1189,8 @@ def gettype(icao): #Return name of aircraft type or error if not found
 
 def main(argv): #This is where the magic happens
 	syntaxstring='pricelog.py -acdgmx <aircraft> -bhjknpqsuvz -e <fuel/mtrls> -ft <YYYY-MM-DD> -il <price>'
-	try: #______________o__r________
-		opts, args = getopt.getopt(argv,"a:bc:d:e:f:g:hi:jkl:m:npqst:uvwx:y:z",["duration=","map=","average=","cheapest=","from=","to=","low=","high=","total=","commodity=","typestats=","timeforsale="])
+	try: #_____________no__r________
+		opts, args = getopt.getopt(argv,"a:bc:d:e:f:g:hi:jkl:m:pqst:uvwx:y:z",["duration=","map=","average=","cheapest=","from=","to=","low=","high=","total=","commodity=","typestats=","timeforsale="])
 	except getopt.GetoptError:
 		print(syntaxstring)
 		sys.exit(2)
@@ -1219,8 +1229,6 @@ def main(argv): #This is where the magic happens
 			lowprice=arg
 		elif opt in ("-m", "--map"): #Map locations of a type for sale
 			maptype,domap=gettype(arg)
-		elif opt=='-n': #Plots total aircraft for sale (duplicate feature?)
-			tots=1
 		elif opt=="-p": #Log a month of payments based on the date given
 			pay=1
 		elif opt=="-q": #Plots payment totals over date range
@@ -1258,7 +1266,7 @@ def main(argv): #This is where the magic happens
 			prices=getfuelprices(conn)
 			plotdates([prices],"Average fuel price","Price",['o-'],None,0)
 		conn.close()
-		
+	
 	if logs+stat>0:
 		conn=sqlite3.connect('/mnt/data/XPLANE10/XSDK/flightlogs.db')
 		if stat==1:
@@ -1266,7 +1274,7 @@ def main(argv): #This is where the magic happens
 		if logs==1:
 			loglogmonth(conn,fromdate)
 		conn.close()
-
+	
 	if tot+avg+low+dur+domap+sale+tots+pout+tfs>0:
 		conn=sqlite3.connect('/mnt/data/XPLANE10/XSDK/forsale.db')
 		if domap==1:
@@ -1281,9 +1289,6 @@ def main(argv): #This is where the magic happens
 		if tot==1:
 			totals=gettotals(conn,tottype,fromdate,todate)
 			plotdates([totals],"Number of "+tottype+" for sale","Aircraft",['o-'],None,0)
-		if tots==1:
-			totals=gettotals(conn,"None",fromdate,todate)
-			plotdates([totals],"Aircraft for sale","Aircraft",['o-'],None,0)
 		if avg==1:
 			averages=getaverages(conn,avgtype,fromdate,todate)
 			bprice=getbaseprice(avgtype)
@@ -1307,7 +1312,7 @@ def main(argv): #This is where the magic happens
 			with open('/mnt/data/XPLANE10/XSDK/dailytypes.txt', 'r') as f:
 				for actype in f:
 					actype=actype.strip()
-					print("Found "+actype)
+					print("Saving figure for "+actype)
 					ptype,ret=gettype(actype)
 					if ret==1:
 						lows=getlows(conn,ptype,fromdate,todate)
