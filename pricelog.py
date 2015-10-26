@@ -191,75 +191,83 @@ def logconfigs(conn): #Update database of aircraft configs
 def getdbcon(conn): #Get cursor for aircraft sale database
 	print("Initializing sale database cursor...")
 	c = conn.cursor()
-	c.execute("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table'")
-	exist=c.fetchone()
-	#print("Found " + str(exist[0]) + " tables...")
-	if exist[0]==0: #Table does not exist, create table
-		print("Creating tables...")
-		c.execute('''CREATE TABLE allac
-			 (serial real, type text, loc text, locname text, hours real, price real, obsiter real)''')
-		c.execute('''CREATE TABLE queries
-			 (obsiter real, qtime text)''')
-		c.execute('''CREATE INDEX idx1 ON allac(obsiter)''')
-		c.execute('''CREATE INDEX idx2 ON allac(type)''')
-		c.execute('''CREATE INDEX idx3 ON allac(price)''')
-		c.execute('''CREATE INDEX idx4 ON queries(qtime)''')
-	else:
-		c.execute('SELECT qtime FROM queries ORDER BY iter DESC')
-		dtime=c.fetchone()
-		print("Sale data last updated: "+dtime[0])
+	if not getdbcon.has_been_called:
+		c.execute("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table'")
+		exist=c.fetchone()
+		#print("Found " + str(exist[0]) + " tables...")
+		if exist[0]==0: #Table does not exist, create table
+			print("Creating tables...")
+			c.execute('''CREATE TABLE allac
+				 (serial real, type text, loc text, locname text, hours real, price real, obsiter real)''')
+			c.execute('''CREATE TABLE queries
+				 (obsiter real, qtime text)''')
+			c.execute('''CREATE INDEX idx1 ON allac(obsiter)''')
+			c.execute('''CREATE INDEX idx2 ON allac(type)''')
+			c.execute('''CREATE INDEX idx3 ON allac(price)''')
+			c.execute('''CREATE INDEX idx4 ON queries(qtime)''')
+		else:
+			c.execute('SELECT qtime FROM queries ORDER BY iter DESC')
+			dtime=c.fetchone()
+			print("Sale data last updated: "+dtime[0])
+		getdbcon.has_been_called=True
 	return c
 
 def getpaydbcon(conn): #Get cursor for payment database
 	#print("Initializing payment database cursor...")
 	c = conn.cursor()
-	c.execute("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table'")
-	exist=c.fetchone()
-	if exist[0]==0: #Table does not exist, create table
-		print("Creating payment tables...")
-		c.execute('''CREATE TABLE payments
-			 (date text, payto text, payfrom text, amount real, reason text, location text, aircraft text, pid real, comment text)''')
-		c.execute('''CREATE INDEX idx1 ON payments(date)''')
-	else:
-		c.execute('SELECT date FROM payments ORDER BY date DESC')
-		dtime=c.fetchone()
-		print("Last payment data recorded: "+dtime[0])
+	if not getpaydbcon.has_been_called:
+		c.execute("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table'")
+		exist=c.fetchone()
+		if exist[0]==0: #Table does not exist, create table
+			print("Creating payment tables...")
+			c.execute('''CREATE TABLE payments
+				 (date text, payto text, payfrom text, amount real, reason text, location text, aircraft text, pid real, comment text)''')
+			c.execute('''CREATE INDEX idx1 ON payments(date)''')
+		else:
+			c.execute('SELECT date FROM payments ORDER BY date DESC')
+			dtime=c.fetchone()
+			print("Last payment data recorded: "+dtime[0])
+		 getpaydbcon.has_been_called=True
 	return c
 
 def getlogdbcon(conn): #Get cursor for log database
 	#print("Initializing log database cursor...")
 	c = conn.cursor()
-	c.execute("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table'")
-	exist=c.fetchone()
-	if exist[0]==0: #Table does not exist, create table
-		print("Creating log database tables...")
-		c.execute('''CREATE TABLE logs
-			 (fid real, type text, date text, dist real, sn real, ac text, model text, dep text, arr text, fltime text, income real, pfee real, crew real, bkfee real, bonus real, fuel real, gndfee real, rprice real, rtype text, runits text, rcost real)''')
-		c.execute('''CREATE INDEX idx1 ON logs(date)''')
-		c.execute('''CREATE INDEX idx2 ON logs(type)''')
-		c.execute('''CREATE INDEX idx3 ON logs(dist)''')
-		c.execute('''CREATE INDEX idx4 ON logs(model)''')
-		c.execute('''CREATE INDEX idx5 ON logs(ac)''')
-	else:
-		c.execute('SELECT date FROM logs ORDER BY date DESC')
-		dtime=c.fetchone()
-		print("Last log data recorded: "+dtime[0])
+	if not getlogdbcon.has_been_called:
+		c.execute("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table'")
+		exist=c.fetchone()
+		if exist[0]==0: #Table does not exist, create table
+			print("Creating log database tables...")
+			c.execute('''CREATE TABLE logs
+				 (fid real, type text, date text, dist real, sn real, ac text, model text, dep text, arr text, fltime text, income real, pfee real, crew real, bkfee real, bonus real, fuel real, gndfee real, rprice real, rtype text, runits text, rcost real)''')
+			c.execute('''CREATE INDEX idx1 ON logs(date)''')
+			c.execute('''CREATE INDEX idx2 ON logs(type)''')
+			c.execute('''CREATE INDEX idx3 ON logs(dist)''')
+			c.execute('''CREATE INDEX idx4 ON logs(model)''')
+			c.execute('''CREATE INDEX idx5 ON logs(ac)''')
+		else:
+			c.execute('SELECT date FROM logs ORDER BY date DESC')
+			dtime=c.fetchone()
+			print("Last log data recorded: "+dtime[0])
+		getlogdbcon.has_been_called=True
 	return c
 
 def getconfigdbcon(conn): #Get cursor for config database
 	#print("Initializing config database cursor...")
 	c = conn.cursor()
-	c.execute("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table'")
-	exist=c.fetchone()
-	if exist[0]==0: #Table does not exist, create table
-		print("Creating config tables...")
-		c.execute('''CREATE TABLE aircraft
-			 (ac text, crew real, seats real, cruise real, gph real, fuel real, mtow real, ew real, price real, ext1 real, ltip real, laux real, lmain real, c1 real, c2 real, c3 real, rmain real, raux real, rtip real, ext2 real, fcap real, eng real, engprice real)''')
-		c.execute('''CREATE INDEX idx1 ON aircraft(ac)''')
-		c.execute('''CREATE INDEX idx2 ON aircraft(price)''')
-		c.execute('''CREATE INDEX idx3 ON aircraft(mtow)''')
-		c.execute('''CREATE INDEX idx4 ON aircraft(ew)''')
-		c.execute('''CREATE INDEX idx5 ON aircraft(fcap)''')
+	if not getconfigdbcon.has_been_called:	
+		c.execute("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table'")
+		exist=c.fetchone()
+		if exist[0]==0: #Table does not exist, create table
+			print("Creating config tables...")
+			c.execute('''CREATE TABLE aircraft
+				 (ac text, crew real, seats real, cruise real, gph real, fuel real, mtow real, ew real, price real, ext1 real, ltip real, laux real, lmain real, c1 real, c2 real, c3 real, rmain real, raux real, rtip real, ext2 real, fcap real, eng real, engprice real)''')
+			c.execute('''CREATE INDEX idx1 ON aircraft(ac)''')
+			c.execute('''CREATE INDEX idx2 ON aircraft(price)''')
+			c.execute('''CREATE INDEX idx3 ON aircraft(mtow)''')
+			c.execute('''CREATE INDEX idx4 ON aircraft(ew)''')
+			c.execute('''CREATE INDEX idx5 ON aircraft(fcap)''')
+		getconfigdbcon.has_been_called=True
 	return c
 
 def getmaxiter(conn): #Return the number of latest query, which is also the number of queries (YES IT IS SHUT UP)
@@ -887,16 +895,9 @@ def plotdates(dlist,title,ylbl,sym,clr,save): #Plot a list of data vs. dates
 	items=len(dlist)
 	syms=len(sym)
 	clrs=len(clr)
-	print(sym)
-	print(clr)
-	print(items)
-	#syms<items
-	##syms==2 -> sym 2 is for last item
-	##else loop
-	#syms==items
-	##one for everyone
-	#syms>items
-	##wat
+	# print(sym)
+	# print(clr)
+	# print(items)
 	i=0
 	ii=1 if 2<syms<items+1 else 0 #Changes whether each plot moves down a list of symbols/colors
 	j=0
@@ -1181,10 +1182,10 @@ def gettype(icao): #Return name of aircraft type or error if not found
 	try:
 		if icao!="":
 			actype=icaodict[icao]
-		success=1
+		success=True
 	except (KeyError,IndexError):
 		print("Name for code "+icao+" not found!")
-		success=0
+		success=False
 	return actype, success
 
 def main(argv): #This is where the magic happens
@@ -1194,7 +1195,11 @@ def main(argv): #This is where the magic happens
 	except getopt.GetoptError:
 		print(syntaxstring)
 		sys.exit(2)
-	tot, avg, low, dur, pay, ppay, spay, stot, stat, logs, com, lowprice, fuel, domap, sale, tots, pout, tfs=(0,)*18
+	tot, avg, low, dur, pay, ppay, spay, stot, stat, logs, com, lowprice, fuel, domap, sale, tots, pout, tfs=(False,)*18
+	getdbcon.has_been_called=False #To know when it's the first cursor initialized
+	getpaydbcon.has_been_called=False
+	getlogdbcon.has_been_called=False
+	getconfigdbcon.has_been_called=False
 	highprice=99999999
 	fromdate="2014-01-01"
 	todate="2020-12-31"
@@ -1202,7 +1207,7 @@ def main(argv): #This is where the magic happens
 		if opt in ("-a", "--average"): #Plots average prices for type
 			avgtype,avg=gettype(arg)
 		elif opt=="-b": #Logs a month of flight logs, based on the date given
-			logs=1
+			logs=True
 		elif opt in ("-c", "--cheapest"): #Plots the cheapest aircraft of this type
 			lowtype,low=gettype(arg)
 		elif opt in ("-d", "--duration"): #Calculates duration to sell for a type (in work)
@@ -1220,7 +1225,7 @@ def main(argv): #This is where the magic happens
 		elif opt in ("-i", "--high"): #Highest price to be considered in other functions
 			highprice=arg
 		elif opt=="-j": #Plots fuel prices, averaged for each day
-			fuel=1
+			fuel=True
 		elif opt=="-k": #Updates the configuration database
 			cconn=sqlite3.connect('/mnt/data/XPLANE10/XSDK/configs.db')
 			logconfigs(cconn)
@@ -1230,76 +1235,76 @@ def main(argv): #This is where the magic happens
 		elif opt in ("-m", "--map"): #Map locations of a type for sale
 			maptype,domap=gettype(arg)
 		elif opt=="-p": #Log a month of payments based on the date given
-			pay=1
+			pay=True
 		elif opt=="-q": #Plots payment totals over date range
-			ppay=1
+			ppay=True
 		elif opt=="-s": #Plots payment percentage per category
-			spay=1
+			spay=True
 		elif opt in ("-t", "--to"): #Last date to be used in different functions
 			todate=arg
 		elif opt=='-u': #Logs the aircraft currently for sale
-			sale=1
+			sale=True
 		elif opt=="-v": #Plots the percentages of payment categories per aircraft
-			stot=1
+			stot=True
 		elif opt=="-w": #Saves plots for aircraft specified in a file
-			pout=1
+			pout=True
 		elif opt in ("-x", "--typestats"): #Plots stats for given type
 			stattype,stat=gettype(arg)
 		elif opt in ("-y", "--timeforsale"): #Plots sale prices per aircraft over time
 			timetype,tfs=gettype(arg)
 		elif opt=="-z": #Temporary - Adds comments to a month of payment logs
-			com=1
+			com=True
 	print("Running option...")
-	if pay+ppay+spay+stot+com+fuel>0:
+	if True in (pay, ppay, spay, stot, com, fuel):
 		conn=sqlite3.connect('/mnt/data/XPLANE10/XSDK/payments.db')
-		if pay==1:
+		if pay:
 			logpaymonth(conn,fromdate)
-		if ppay==1:
+		if ppay:
 			plotpayments(conn,fromdate,todate)
-		if spay==1:
+		if spay:
 			sumpayments(conn,fromdate,todate)
-		if stot==1:
+		if stot:
 			sumacpayments(conn,fromdate,todate)
-		if com==1:
+		if com:
 			logpaymonthcom(conn,fromdate)
-		if fuel==1:
+		if fuel:
 			prices=getfuelprices(conn)
 			plotdates([prices],"Average fuel price","Price",['o-'],None,0)
 		conn.close()
 	
-	if logs+stat>0:
+	if True in (logs, stat):
 		conn=sqlite3.connect('/mnt/data/XPLANE10/XSDK/flightlogs.db')
-		if stat==1:
+		if stat:
 			getapstats(conn,stattype)
-		if logs==1:
+		if logs:
 			loglogmonth(conn,fromdate)
 		conn.close()
 	
-	if tot+avg+low+dur+domap+sale+tots+pout+tfs>0:
+	if True in (tot, avg, low, dur, domap, sale, tots, pout, tfs):
 		conn=sqlite3.connect('/mnt/data/XPLANE10/XSDK/forsale.db')
-		if domap==1:
+		if domap:
 			mapaclocations(conn,maptype)
-		if sale==1:
+		if sale:
 			acforsale(conn)
-		if tfs==1:
+		if tfs:
 			times=gettimeforsale(conn,timetype)
 			bprice=getbaseprice(timetype)
 			times.append([[getdtime("2014-01-01 00:01"),bprice],[getdtime("2100-12-31 23:59"),bprice]])
 			plotdates(times,"Prices of "+timetype,"Price",['o-','--'],[None,'r'],0)
-		if tot==1:
+		if tot:
 			totals=gettotals(conn,tottype,fromdate,todate)
 			plotdates([totals],"Number of "+tottype+" for sale","Aircraft",['o-'],None,0)
-		if avg==1:
+		if avg:
 			averages=getaverages(conn,avgtype,fromdate,todate)
 			bprice=getbaseprice(avgtype)
 			baseprice=[[getdtime("2014-01-01 00:01"),bprice],[getdtime("2100-12-31 23:59"),bprice]] #Ensure it covers the whole range
 			plotdates([averages,baseprice],"Average price for "+avgtype,"Price",['o-','--'],['b','r'],0)
-		if low==1:
+		if low:
 			lows=getlows(conn,lowtype,fromdate,todate)
 			bprice=getbaseprice(lowtype)
 			baseprice=[[getdtime("2014-01-01 00:01"),bprice],[getdtime("2100-12-31 23:59"),bprice]]
 			plotdates([lows,baseprice],"Lowest price for "+lowtype,"Price",['o-','--'],['b','r'],0)
-		if dur==1:
+		if dur:
 			listings=getlistings(conn,durtype,lowprice,highprice)
 			durations=[]
 			for listing in listings:
@@ -1307,14 +1312,14 @@ def main(argv): #This is where the magic happens
 				durations.append((listings[2],duration))
 				print(str(listings[2])+": "+str(duration))
 			plotdates([durations],"Time to sell for "+durtype,"Days",['o-'],None,0)
-		if pout==1:
+		if pout:
 			actypes=[]
 			with open('/mnt/data/XPLANE10/XSDK/dailytypes.txt', 'r') as f:
 				for actype in f:
 					actype=actype.strip()
 					print("Saving figure for "+actype)
 					ptype,ret=gettype(actype)
-					if ret==1:
+					if ret:
 						lows=getlows(conn,ptype,fromdate,todate)
 						bprice=getbaseprice(ptype)
 						baseprice=[[getdtime("2014-01-01 00:01"),bprice],[getdtime("2100-12-31 23:59"),bprice]]
