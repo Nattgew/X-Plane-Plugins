@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from XPLMPlanes import *
 from XPLMUtilities import * #Commands
 from XPLMDataAccess import * #Datarefs
