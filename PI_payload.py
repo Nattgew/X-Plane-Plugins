@@ -351,7 +351,9 @@ class PythonInterface:
 			alias = alias.replace('\n','')
 		else: #Try the description?
 			print "FSE - No alias file found, using description instead"
-			alias = XPLMGetDatab(XPLMFindDataRef("sim/aircraft/view/acf_descrip"))
+			aliasb = []
+			XPLMGetDatab(XPLMFindDataRef("sim/aircraft/view/acf_descrip"), aliasb, 0, 500)
+			alias = ''.join(aliasb)
 		#Now attempt to match whatever alias we got
 		i=0
 		found=0
@@ -364,6 +366,7 @@ class PythonInterface:
 				break
 			i+=1 #Keeps track of which plane we are on
 		if found==1:
+			print "Found a match"
 			payload=payloads[i] #Payload corresponding to this airplane
 			#Get aircraft weight properties
 			MTOW=XPLMGetDataf(XPLMFindDataRef("sim/aircraft/weight/acf_m_max"))
