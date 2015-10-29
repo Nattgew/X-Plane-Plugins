@@ -227,7 +227,7 @@ def getpaydbcon(conn): #Get cursor for payment database
 			c.execute('SELECT date FROM payments ORDER BY date DESC')
 			dtime=c.fetchone()
 			print("Last payment data recorded: "+dtime[0])
-		 getpaydbcon.has_been_called=True
+		getpaydbcon.has_been_called=True
 	return c
 
 def getlogdbcon(conn): #Get cursor for log database
