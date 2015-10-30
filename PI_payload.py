@@ -11,6 +11,8 @@ class PythonInterface:
 		self.Desc="Sets empty weight of aircraft to match FSE capacity"
 		self.VERSION="0.1"
 		
+		self.msg = "Everything's shiny, cap'n" #Info to show in popup/console
+		self.infoshow = 0 #Whether info window has been shown yet
 		self.CmdSEWConn = XPLMCreateCommand("fsei/set_empty_weight","Sets empty weight to match FSE")
 		self.CmdSEWConnCB = self.CmdSEWConnCallback
 		XPLMRegisterCommandHandler(self, self.CmdSEWConn, self.CmdSEWConnCB, 0, 0)
@@ -373,15 +375,61 @@ class PythonInterface:
 			EW_now=XPLMGetDataf(XPLMFindDataRef("sim/aircraft/weight/acf_m_empty"))
 			EW=MTOW-payload #EW needed to carry the FSE payload
 			if EW < EW_now:
-				print "FSE - Setting "+alias+" EW from "+str(EW_now)+" to "+str(EW)
+				self.msg = "Setting "+alias+" EW from "+str(EW_now)+"kg to "+str(EW)+"kg"
+				self.showinfo()				
 				XPLMSetDataf(XPLMFindDataRef("sim/aircraft/weight/acf_m_empty"),EW)
 			else:
-				print "FSE - Unchanged "+alias+" EW "+str(EW_now)+" is lower than FSE "+str(EW)
+				self.msg = "Unchanged "+alias+" EW "+str(EW_now)+"kg is lower than FSE "+str(EW)+"kg"
+				self.showinfo()
 		else:
-			print "FSE - Could not identify alias: "+alias
-			
+			self.msg="Could not identify alias: "+alias
+			self.showinfo()
+	
+	def showinfo(self):
+		print self.msg #Print message to log
+		if (self.infoshow == 0):  #Show widget with message
+			self.CreateInfoWidget(500, 480, 272, 87)
+			self.infoshow = 1
+		else:
+			if (not XPIsWidgetVisible(self.ACAliasWidget)):
+				XPShowWidget(self.ACAliasWidget)
+
+	def CreateInfoWidget(self, x, y, w ,h):
+		x2 = x + w
+		y2 = y - h
+
+		self.InfoWidget = XPCreateWidget(x, y, x2, y2, 1, "Hello There", 1, 0, xpWidgetClass_MainWindow)
+		XPSetWidgetProperty(self.InfoWidget, xpProperty_MainWindowHasCloseBoxes, 1)
+
+		MsgCaption = XPCreateWidget(x+7, y-17, x+248, y-37, 1, self.msg, 0, self.InfoWidget, xpWidgetClass_Caption)
+		
+		self.InfoOKButton = XPCreateWidget(x+96, y-62, x+176, y-82, 1, "OK", 0, self.InfoWidget, xpWidgetClass_Button)
+		XPSetWidgetProperty(self.InfoOKButton, xpProperty_ButtonType, xpPushButton)
+
+		self.InfoWidgetCB = self.InfoWidget_cb
+		XPAddWidgetCallback(self, self.InfoWidget, self.InfoWidgetCB)
+
+	def InfoWidget_cb(self, inMessage, inWidget, inParam1, inParam2):
+		if (inMessage == xpMessage_CloseButtonPushed):
+			XPHideWidget(self.InfoWidget)
+			return 1
+
+		if (inMessage == xpMsg_PushButtonPressed):
+			if (inParam1 == self.InfoOKButton):
+				XPHideWidget(self.InfoWidget)
+				return 1
+
+		if (inMessage == xpMsg_Shown):
+			XPSetWidgetDescriptor(self.MsgCaption, self.msg)
+			return 1
+
+		return 0
+		
 	def XPluginStop(self):
 		XPLMUnregisterCommandHandler(self, self.CmdSEWConn, self.CmdSEWConnCB, 0, 0)
+		if self.infoshow == 1:
+			XPDestroyWidget(self, self.InfoWidget, 1)
+			self.infoshow = 0
 
 	def XPluginEnable(self):
 		return 1
