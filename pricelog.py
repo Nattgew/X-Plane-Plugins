@@ -152,7 +152,7 @@ def loglogmonth(conn,fromdate): #Log a month of logs
 		fields=(("Id", 1), ("Type", 0), ("Time", 0), ("Distance", 1), ("SerialNumber", 1), ("Aircraft", 0), ("MakeModel", 0), ("From", 0), ("To", 0), ("FlightTime", 0), ("Income", 2), ("PilotFee", 2), ("CrewCost", 2), ("BookingFee", 2), ("Bonus", 2), ("FuelCost", 2), ("GCF", 2), ("RentalPrice", 2), ("RentalType", 0), ("RentalUnits", 0), ("RentalCost", 2))
 		print("Recording data...")
 		for log in logs:
-			row=gebtns(log, fields)
+			row=getbtns(log, fields)
 			row[2]=row[2].replace('/','-')
 			rows.append(tuple(row))
 		c.executemany('INSERT INTO logs VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',rows)
@@ -286,7 +286,7 @@ def dudewheresmyairplane(): #Print list of owned planes
 	print("Sending request for aircraft list...")
 	airplanes = fserequest(1,'query=aircraft&search=key','Aircraft','xml')
 	for plane in airplanes:
-		row=gebtns(plane, [("Location", 0), ("Registration", 0), ("EngineTime", 0), ("TimeLast100hr", 0)])
+		row=getbtns(plane, [("Location", 0), ("Registration", 0), ("EngineTime", 0), ("TimeLast100hr", 0)])
 		#planes[reg]=(loc,eng,chk)
 		print(row[1]+" at "+row[0]+"  tot: "+row[2]+"  last: "+row[3])
 
@@ -674,7 +674,7 @@ def getfuelprices(conn): #Plot fuel prices over time
 
 def getapstats(conn,actype): #Return something about airplane flight logs
 	#(fid real, type text, time text, dist real, sn real, ac text, model text, dep text, arr text, fltime text, income real, pfee real, crew real, bkfee real, bonus real, fuel real, gndfee real, rprice real, rtype text, runits text, rcost real)
-	c=getdbcon(conn)
+	c=getlogdbcon(conn)
 	gals=0
 	ftime=0
 	dist=0
