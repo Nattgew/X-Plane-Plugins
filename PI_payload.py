@@ -2,6 +2,9 @@
 from XPLMPlanes import *
 from XPLMUtilities import * #Commands
 from XPLMDataAccess import * #Datarefs
+from XPWidgets import *
+from XPStandardWidgets import *
+from XPWidgetDefs import *
 import os
 
 class PythonInterface:
@@ -11,7 +14,8 @@ class PythonInterface:
 		self.Desc="Sets empty weight of aircraft to match FSE capacity"
 		self.VERSION="0.1"
 		
-		self.msg = "Everything's shiny, cap'n" #Info to show in popup/console
+		self.msg1 = "Everything's shiny, cap'n" #Info to show in popup/console
+		self.msg2 = "Not to fret"
 		self.infoshow = 0 #Whether info window has been shown yet
 		self.CmdSEWConn = XPLMCreateCommand("fsei/set_empty_weight","Sets empty weight to match FSE")
 		self.CmdSEWConnCB = self.CmdSEWConnCallback
@@ -21,12 +25,12 @@ class PythonInterface:
 	
 	def CmdSEWConnCallback(self, cmd, phase, refcon):
 		if(phase==0): #KeyDown event
-			print "FSE - Setting empty weight..."
+			#print "FSE - Setting empty weight..."
 			self.setemptyweight()
 		return 0
 	
 	def setemptyweight(self):
-		print "FSE - Here we go..."
+		#print "FSE - Here we go..."
 		#List of payload values in same order as the alias list
 		payloads=[983,976,1170,1873,4253,208,792,31280,44948,278,7802,15880,15880,408,1030,2170,7200,7420,2377,10200,7350,9050,369,2064,346,803,1951,14802,4031,4585,5897,1253,569,1449,382,828,1919,3157,3938,2985,782,782,602,542,548,656,1093,1995,2354,2681,1576,1044,1088,932,661,653,701,2564,1090,2241,1732,1732,507,1951,342,590,1562,3568,28735,31326,29390,13319,354,12530,6849,10772,13880,14401,12071,4019,41443,6373,2051,1068,290,6700,303,217,432,388,470,589,792,590,750,862,1910,777,943,792,939,1618,1084,1008,1909,1878,3357,6714,407,1390,750,422,522,500,509,524,6714,8716,11599,6290,211,16279,7432,6000,7709,1164,1293,2205,355,304,300,927,1459,1519,2221,4661,10928,2404,2404,238,415,522,3142,5070,520,500,5741,5461,2832,2832,4584,14528,18453,20273,38488,31859,78563,1162,2185,4400,8500,9600,8500,1515,233,1079,1700,863,1455,497,15000,11000,3266,351,8166,1610,693,953,480,1420,594,5000,3550,503,2495,5362,9522,599,4792,736,675,5000,29000,3910,2217,1066,4738,544,363,654,3958,2799,2920,3166,2650,2650,217,44600,44650,31421,1746,3593,19918,1848,232,5580,569,516,461,1780,535,499,2470,585,1566,6753,2363,942,3758,1188,2009,1250,1840,657,1895,1500,285,424,424,361,470,379,598,875,592,592,429,559,533,584,408,569,1261,1825,1628,1808,690,659,1213,245,2611,547,732,772,410,1578,238,2767,2081,436,462,450,245,455,569,474,8500,4535,6540,5035,2329,386,860,2879,1339,2078,420,600,1162,1272,753,489,227,587,1430,296,15797,321,15158,338,3505,474,433,6700,478,540,520]
 
@@ -345,14 +349,14 @@ class PythonInterface:
 		aliasFile = os.path.join(planePath, 'xfse_alias.txt')
 
 		if (os.path.exists(aliasFile) and os.path.isfile(aliasFile)): #Aww yiss
-			print "FSE - Reading stored alias from file"
+			#print "FSE - Reading stored alias from file"
 			fd = open(aliasFile, 'r')
 			alias = fd.readline()
 			fd.close()
 			alias = alias.replace('\r','')
 			alias = alias.replace('\n','')
 		else: #Try the description?
-			print "FSE - No alias file found, using description instead"
+			#print "FSE - No alias file found, using description instead"
 			aliasb = []
 			XPLMGetDatab(XPLMFindDataRef("sim/aircraft/view/acf_descrip"), aliasb, 0, 500)
 			alias = ''.join(aliasb)
@@ -368,42 +372,55 @@ class PythonInterface:
 				break
 			i+=1 #Keeps track of which plane we are on
 		if found==1:
-			print "Found a match"
+			#print "Found a match"
 			payload=payloads[i] #Payload corresponding to this airplane
 			#Get aircraft weight properties
 			MTOW=XPLMGetDataf(XPLMFindDataRef("sim/aircraft/weight/acf_m_max"))
 			EW_now=XPLMGetDataf(XPLMFindDataRef("sim/aircraft/weight/acf_m_empty"))
 			EW=MTOW-payload #EW needed to carry the FSE payload
 			if EW < EW_now:
-				self.msg = "Setting "+alias+" EW from "+str(EW_now)+"kg to "+str(EW)+"kg"
+				self.msg1 = "Setting "+alias
+				self.msg2 = "EW from "+str(int(round(EW_now)))+"kg to "+str(int(round(EW)))+"kg"
 				self.showinfo()				
 				XPLMSetDataf(XPLMFindDataRef("sim/aircraft/weight/acf_m_empty"),EW)
 			else:
-				self.msg = "Unchanged "+alias+" EW "+str(EW_now)+"kg is lower than FSE "+str(EW)+"kg"
+				self.msg1 = "Unchanged "+alias
+				self.msg2 = "EW "+str(int(round(EW_now)))+"kg is lower than FSE "+str(int(round(EW)))+"kg"
 				self.showinfo()
 		else:
-			self.msg="Could not identify alias: "+alias
+			self.msg1 = "Could not identify alias:"
+			self.msg2 = alias
 			self.showinfo()
 	
 	def showinfo(self):
-		print self.msg #Print message to log
+		#print self.msg1 #Print message to log
+		#print self.msg2
 		if (self.infoshow == 0):  #Show widget with message
-			self.CreateInfoWidget(500, 480, 272, 87)
+			if len(self.msg2)>len(self.msg1):
+				longest=len(self.msg2)
+			else:
+				longest=len(self.msg1)
+			width=longest*10
+			#print "Using width: "+str(width)
+			self.CreateInfoWidget(400, 480, width, 87)
 			self.infoshow = 1
 		else:
-			if (not XPIsWidgetVisible(self.ACAliasWidget)):
-				XPShowWidget(self.ACAliasWidget)
+			if (not XPIsWidgetVisible(self.InfoWidget)):
+				XPSetWidgetDescriptor(self.MsgCaption1, self.msg1)
+				XPSetWidgetDescriptor(self.MsgCaption2, self.msg2)
+				XPShowWidget(self.InfoWidget)
 
 	def CreateInfoWidget(self, x, y, w ,h):
 		x2 = x + w
 		y2 = y - h
 
-		self.InfoWidget = XPCreateWidget(x, y, x2, y2, 1, "Hello There", 1, 0, xpWidgetClass_MainWindow)
+		self.InfoWidget = XPCreateWidget(x, y, x2, y2, 1, "FSE Weight Fix", 1, 0, xpWidgetClass_MainWindow)
 		XPSetWidgetProperty(self.InfoWidget, xpProperty_MainWindowHasCloseBoxes, 1)
 
-		MsgCaption = XPCreateWidget(x+7, y-17, x+248, y-37, 1, self.msg, 0, self.InfoWidget, xpWidgetClass_Caption)
-		
-		self.InfoOKButton = XPCreateWidget(x+96, y-62, x+176, y-82, 1, "OK", 0, self.InfoWidget, xpWidgetClass_Button)
+		self.MsgCaption1 = XPCreateWidget(x+7, y-17, x+248, y-37, 1, self.msg1, 0, self.InfoWidget, xpWidgetClass_Caption)
+		self.MsgCaption2 = XPCreateWidget(x+7, y-32, x+248, y-52, 1, self.msg2, 0, self.InfoWidget, xpWidgetClass_Caption)
+
+		self.InfoOKButton = XPCreateWidget(x+w/2-40, y-62, x+w/2+40, y-82, 1, "OK", 0, self.InfoWidget, xpWidgetClass_Button)
 		XPSetWidgetProperty(self.InfoOKButton, xpProperty_ButtonType, xpPushButton)
 
 		self.InfoWidgetCB = self.InfoWidget_cb
@@ -420,7 +437,8 @@ class PythonInterface:
 				return 1
 
 		if (inMessage == xpMsg_Shown):
-			XPSetWidgetDescriptor(self.MsgCaption, self.msg)
+			XPSetWidgetDescriptor(self.MsgCaption1, self.msg1)
+			XPSetWidgetDescriptor(self.MsgCaption2, self.msg2)
 			return 1
 
 		return 0
