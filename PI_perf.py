@@ -141,6 +141,10 @@ class getaircraft:
 			self.name="COL4"
 			self.ceiling=25
 			self.setEW(self.name,500)
+		elif desc[0:15]=="['Dornier Do 3" or acf_icao=="D328":
+			self.name="D328"
+			self.ceiling=30
+			self.setEW(self.name,5070)
 		else:
 			if acf_icao!="": #I guess we'll trust it
 				self.name=acf_icao
@@ -514,6 +518,14 @@ class PythonInterface:
 			climb=2500
 			speed=400
 			gph=350
+		elif self.aircraft.name=="D328": #MTOW 24,041 kg
+			flimit=math.pow(0.74,(wgt/1000-20))+25.75 #Just a swag
+			general_fl=int(dist/10)
+			if general_fl>flimit:
+				general_fl=flimit
+			climb=1500
+			speed=260
+			gph=200
 		else:
 			general_fl=int(dist/10+2) #General rule for PC-12 cruise altitude
 			climb=1000
@@ -750,7 +762,7 @@ class PythonInterface:
 			if self.aircraft.prop_type[0]==0: #Fixed pitch
 				RPM=[]
 				XPLMGetDatavf(self.RPM_ref, RPM, 0, self.aircraft.num_eng)
-				pwr=str(int(round(RPM[0]*60/pi)))+" rpm"
+				pwr=str(int(round(RPM[0]*60/math.pi)))+" rpm"
 				TOP_str=""
 			else: #Variable pitch?
 				EGT=[]
