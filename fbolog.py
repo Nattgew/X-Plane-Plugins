@@ -10,13 +10,13 @@ from matplotlib.dates import DateFormatter, date2num
 import matplotlib.pyplot as plt
 
 def getkey(): #Returns API key stored in file
-	with open('/mnt/data/XPLANE10/XSDK/mykey.txt', 'r') as f:
+	with open('/mnt/data/XPLANE10/XSDK/myfbokey.txt', 'r') as f:
 		mykey = f.readline()
 	mykey=mykey.strip()
 	return mykey
 
 def getname(): #Returns username stored in file
-	with open('/mnt/data/XPLANE10/XSDK/mykey.txt', 'r') as f:
+	with open('/mnt/data/XPLANE10/XSDK/myfbokey.txt', 'r') as f:
 		nothing = f.readline()
 		myname = f.readline()
 	myname=myname.strip()
@@ -86,7 +86,7 @@ def logpaymonth(conn,fromdate): #Log a month of payments
 	if payments!=[]:
 		c=getpaydbcon(conn)
 		rows=[]
-		fields=(("Date", 0), ("To", 0), ("From", 0), ("Amount", 2), ("Reason", 0), ("Location", 0), ("Id", 1), ("Aircraft", 0), ("Comment", 0))
+		fields=(("Date", 0), ("To", 0), ("From", 0), ("Amount", 2), ("Reason", 0), ("Location", 0), ("Fbo", 0), ("Aircraft", 0), ("Id", 1),  ("Comment", 0))
 		print("Recording data...")
 		for payment in payments:
 			row=getbtns(payment,fields)
@@ -94,7 +94,7 @@ def logpaymonth(conn,fromdate): #Log a month of payments
 				row[8]=""
 			row[0]=row[0].replace('/','-')
 			rows.append(tuple(row))
-		c.executemany('INSERT INTO payments VALUES (?,?,?,?,?,?,?,?,?)',rows)
+		c.executemany('INSERT INTO payments VALUES (?,?,?,?,?,?,?,?,?,?)',rows)
 		conn.commit()
 
 def getpaydbcon(conn): #Get cursor for payment database
@@ -106,7 +106,7 @@ def getpaydbcon(conn): #Get cursor for payment database
 		if exist[0]==0: #Table does not exist, create table
 			print("Creating payment tables...")
 			c.execute('''CREATE TABLE payments
-				 (date text, payto text, payfrom text, amount real, reason text, location text, aircraft text, pid real, comment text)''')
+				 (date text, payto text, payfrom text, amount real, reason text, location text, fbo text, aircraft text, pid real, comment text)''')
 			c.execute('''CREATE INDEX idx1 ON payments(date)''')
 		else:
 			c.execute('SELECT date FROM payments ORDER BY date DESC')
@@ -178,21 +178,18 @@ def mapper(what, points, mincoords, maxcoords, title): # Put the points on a map
 		x, y = m([i[1] for i in points], [i[0] for i in points])
 		c='b'
 		m.scatter(x,y,s=ptsize,marker=mk,c=c)
-	elif what=="fuel" or what=="mtrl":
-		max=0
-		for loc in points:
-			thous=int(round(loc[2])) #Size of point will be based on fuel amount
-			if thous>max:
-				max=thous
-			loc[2]=thous
+	elif what in ("fuel", "mtrl", "money"):
+		maxsz=max(points[:][2]) #Find largest value in list
+		for loc in points: #Normalize all values
+			loc[2]/=maxsz
 		pts=[] #rows=thous, columns=colors, contents=list of points
-		for i in range(max+1):
+		for i in range(maxsz+1):
 			pts.append([[],[],[]]) #Add a new empty row
 			for loc in points:
 				if loc[2]==i+1: #If size matches, add the point
 					pts[i][loc[3]].append((loc[0],loc[1]))
-		for i in range(max+1): #Set size/color of points
-			sz=(i+1)/6 #Size based on amount
+		for i in range(maxsz+1): #Set size/color of points
+			sz=i #Size based on amount
 			if pts[i]!=[[],[],[]]: #Check if any list has points
 				for j in range(3):
 					if pts[i][j]!=[]: #Check if this list has any points
@@ -218,26 +215,54 @@ def getfborev(conn): #Gets the revenues for FBO's
 	print("Getting FBO logs...")
 	#galjet=["","",0] #1st date, last date, total
 	#gal100=["","",0]
-	assnmtcost,gndcrew,refjet,ref100,repinc,wsjet,ws100,wssupp,wsbld,eqpinstl=([["","",0]] for i in range(10))
-	categories=[("Pay for assignment", assnmtcost), #Tag name, if to, if from
-				("FBO ground crew fee", gndcrew),
-				("Refuelling with JetA", refjet),
-				("Refuelling with 100LL", ref100),
-				("Aircraft maintenance", repinc),
-				("Sale of wholesale JetA", wsjet),
-				("Sale of wholesale 100LL", ws100),
-				("Sale of supplies", wssupp),
-				("Sale of building materials", wsbld),
-				("Installation of equipment in aircraft", eqpinstl)]
-	#(date text, payto text, payfrom text, amount real, reason text, location text, aircraft text, pid real, comment text)
-	for log in c.execute('SELECT date, amount, reason, location, comment FROM payments WHERE payto = ?',(getname(),)):
-		for cat in categories:
-			if log[2]==cat[0]:
-				cat[1]+=log[1]
-		#gals=float(log[4].split(':',3)[2].split(',')[0])
-	for cat in categories:
-		
+	#assnmtcost,gndcrew,refjet,ref100,repinc,wsjet,ws100,wssupp,wsbld,eqpinstl=([["","",0]] for i in range(10))
+	categories=("FBO ground crew fee", "Refuelling with JetA", "Refuelling with 100LL", "Aircraft maintenance", "Sale of wholesale JetA", "Sale of wholesale 100LL", "Sale of supplies", "Sale of building materials", "Installation of equipment in aircraft")
+	revs=[]
+	for fbo in getfbos(conn):
+		revs.append([fbo,0,"",""]) #location, revenue total, first revenue, last revenue
+	#(date text, payto text, payfrom text, amount real, reason text, location text, fbo text, aircraft text, pid real, comment text)
+	for log in c.execute('SELECT date, amount, reason, fbo, comment FROM payments WHERE payto = ? ORDER BY date DESC',(getname(),)):
+		for cat in categories: #See if payment is a category we care about
+			if log[2]==cat:
+				for rev in revs: #See if payment is for FBO we care about
+					if log[3]==rev[0]:
+						rev[1]+=log[1] #Add the revenue
+						dt=getdtime(log[0])
+						if rev[2]=="": #First payment, set the dates
+							rev[2]=dt
+							rev[2]=dt
+						else: #Last payment, update the last date
+							rev[3]=dt
+						break
+					else:
+						print("Did not recognize FBO: "+log[3])
+				break
+	for fbo in revs:
+		delta=fbo[3]-fbo[2]
+		if delta>0:
+			weeks=timedelta.total_seconds(delta)/604800 #Number of seconds in a week
+			fbo[1]/=weeks
+		else: #Can't divide by zero
+			fbo[1]=0
+	#gals=float(log[4].split(':',3)[2].split(',')[0])
+	return revs
 
+def getwkrev(conn): #Gets the revenue/week of FBO's
+	c=getpaydbcon(conn)
+	print("Getting FBO logs...")
+	categories=("FBO ground crew fee", "Refuelling with JetA", "Refuelling with 100LL", "Aircraft maintenance", "Sale of wholesale JetA", "Sale of wholesale 100LL", "Sale of supplies", "Sale of building materials", "Installation of equipment in aircraft")
+	revs=[]
+	fbos=getfbos(conn)
+	c.execute('SELECT date, amount, reason, fbo, comment FROM payments WHERE payto = ? ORDER BY date DESC',(getname(),))
+
+def getfbos(conn): #Returns a list of all user's FBO's in the log
+	c=getpaydbcon(conn)
+	print("Getting list of FBO's...")
+	fbos=[]
+	for place in c.execute('SELECT DISTINCT fbo FROM payments WHERE payto = ?',(getname(),)):
+		if place[0]!="N/A":
+			fbos.append(place[0])
+	return fbos
 
 def getcommo(ctype): # Adds up locations and quantities of stuff to send to the mapper
 	if ctype=="fuel":
@@ -462,23 +487,43 @@ def pieplot(data, total, min, stitle): #Create a pie plot
 	plt.show()
 	
 def main(argv): #This is where the magic happens
-	syntaxstring='pricelog.py -acdgmx <aircraft> -bhjknpqsuvz -e <fuel/mtrls> -ft <YYYY-MM-DD> -il <price>'
+	syntaxstring='fbolog.py -acdgmx <aircraft> -bhjknpqsuvz -e <fuel/mtrls> -ft <YYYY-MM-DD> -il <price>'
 	try: #_____________n___r________
 		opts, args = getopt.getopt(argv,"a:bc:d:e:f:g:hi:jkl:m:opqst:uvwx:y:z",["duration=","map=","average=","cheapest=","from=","to=","low=","high=","total=","commodity=","typestats=","timeforsale="])
 	except getopt.GetoptError:
 		print(syntaxstring)
 		sys.exit(2)
 	tot, avg, low, dur, pay, ppay, spay, stot, stat, logs, com, lowprice, fuel, domap, sale, tots, pout, tfs, fbo=(False,)*19
-	getdbcon.has_been_called=False #To know when it's the first cursor initialized
-	getpaydbcon.has_been_called=False
-	getlogdbcon.has_been_called=False
-	getconfigdbcon.has_been_called=False
+	getpaydbcon.has_been_called=False #To know when it's the first cursor initialized
 	highprice=99999999
 	fromdate="2014-01-01"
 	todate="2020-12-31"
 	for opt, arg in opts:
+		if opt in ("-a", "--average"): #Plots average prices for type
+			avgtype,avg=gettype(arg)
+		elif opt in ("-f", "--from"): #First date to be used in different functions
+			fromdate=arg
+		elif opt=="-p": #Log a month of payments based on the date given
+			pay=True
+		elif opt=="-m": #Map revenues of FBO's
+			maprev=True
+		elif opt=="-g": #Plot revenues of FBO's
+			plrev=True
 	
-	conn.close()
+		if True in (pay, plrev, maprev):
+			conn=sqlite3.connect('/mnt/data/XPLANE10/XSDK/fbopayments.db')
+			if pay:
+				logpaymonth(conn,fromdate)
+			if plrev:
+				
+			if maprev:
+				revs=getfborev(conn)
+				coords,cmin,cmax=getcoords(i[0][:4] for i in revs)
+				locations=[]
+				for i in range(len(coords)):
+					locations.append(coords[i][0],coords[i][1],revs[i][1])
+				mapper(money, locations, cmin, cmax, "Revenue by FBO")
+			conn.close()
 	print("Finished!")
 
 if __name__ == "__main__":
