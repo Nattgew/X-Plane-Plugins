@@ -684,23 +684,44 @@ struct gotAC getshortac(XPLMDataRef desc_ref, XPLMDataRef icao_ref) {
 	} else if (strcmp(buffer, "Embraer ERJ-1")==0 || strcmp(ibuffer, "E140")==0) {
 		strncpy(thisAC.AC,"E140",4);
 		thisAC.has3D=1;
-	} else if (strcmp(buffer, "Lockheed SR-7")==0 || strcmp(ibuffer, "SR71")==0) {
+	} else if (strcmp(buffer, "This is the f")==0 || strcmp(ibuffer, "SR71")==0) {
 		strncpy(thisAC.AC,"SR71",4);
 		thisAC.has3D=1;
-	} else if (strcmp(buffer, "Lockheed F-22")==0 || strcmp(ibuffer, "F22")==0) {
+	} else if (strcmp(buffer, "F22 this is t")==0 || strcmp(ibuffer, "F22")==0) {
 		strncpy(thisAC.AC,"F22",4);
 		thisAC.has3D=1;
-	} else if (strcmp(buffer, "Douglas KC-10")==0 || strcmp(ibuffer, "DC10")==0) {
+	} else if (strcmp(buffer, "KC10 air refu")==0 || strcmp(ibuffer, "DC10")==0) {
 		strncpy(thisAC.AC,"DC10",4);
 		thisAC.has3D=1;
 	} else if (strcmp(buffer, "McDonnell Dou")==0 || strcmp(ibuffer, "F4")==0) {
 		strncpy(thisAC.AC,"F4",4);
 		thisAC.has3D=1;
-	} else if (strcmp(buffer, "Columbia 400")==0 || strcmp(ibuffer, "COL4")==0) {
+	} else if (strcmp(buffer, "This is the n")==0 || strcmp(ibuffer, "COL4")==0) {
 		strncpy(thisAC.AC,"COL4",4);
 		thisAC.has3D=1;
 	} else if (strcmp(buffer, "Dornier Do 32")==0 || strcmp(ibuffer, "D328")==0) {
 		strncpy(thisAC.AC,"D328",4);
+		thisAC.has3D=1;
+	} else if (strcmp(buffer, "C195 Business")==0 || strcmp(ibuffer, "C195")==0) {
+		strncpy(thisAC.AC,"C195",4);
+		thisAC.has3D=1;
+	} else if (strcmp(buffer, "PA-28-161 War")==0 || strcmp(ibuffer, "P28A")==0 || strcmp(buffer, "Piper Archer ")==0 || strcmp(buffer, "Piper Archer ")==0) {
+		strncpy(thisAC.AC,"P28A",4);
+		thisAC.has3D=1;
+	} else if (strcmp(buffer, "MC130P Combat")==0 || strcmp(ibuffer, "C130")==0) {
+		strncpy(thisAC.AC,"C130",4);
+		thisAC.has3D=1;
+	} else if (strcmp(buffer, "PA 28R 200 ::")==0 || strcmp(ibuffer, "P28R")==0 || strcmp(buffer, "Piper Arrow I")==0) {
+		strncpy(thisAC.AC,"P28R",4);
+		thisAC.has3D=1;
+	} else if (strcmp(buffer, "PA 32R 301T :")==0 || strcmp(ibuffer, "P32R")==0) {
+		strncpy(thisAC.AC,"P32R",4);
+		thisAC.has3D=1;
+	} else if (strcmp(buffer, "Piper Seneca ")==0 || strcmp(ibuffer, "PA34")==0) {
+		strncpy(thisAC.AC,"PA34",4);
+		thisAC.has3D=1;
+	} else if (strcmp(buffer, "PA 44 180 Pip")==0 || strcmp(ibuffer, "PA44")==0) {
+		strncpy(thisAC.AC,"PA44",4);
 		thisAC.has3D=1;
 	} else {
 		strncpy(acf_descb,thisAC.AC,4);
