@@ -511,19 +511,19 @@ def mapper(what, points, mincoords, maxcoords, title): # Put the points on a map
 		c='b'
 		m.scatter(x,y,s=ptsize,marker=mk,c=c)
 	elif what=="fuel" or what=="mtrl":
-		max=0
+		maxsz=0
 		for loc in points:
 			thous=int(round(loc[2])) #Size of point will be based on fuel amount
-			if thous>max:
-				max=thous
+			if thous>maxsz:
+				maxsz=thous
 			loc[2]=thous
 		pts=[] #rows=thous, columns=colors, contents=list of points
-		for i in range(max+1):
+		for i in range(maxsz+1):
 			pts.append([[],[],[]]) #Add a new empty row
 			for loc in points:
 				if loc[2]==i+1: #If size matches, add the point
 					pts[i][loc[3]].append((loc[0],loc[1]))
-		for i in range(max+1): #Set size/color of points
+		for i in range(maxsz+1): #Set size/color of points
 			sz=(i+1)/6 #Size based on amount
 			if pts[i]!=[[],[],[]]: #Check if any list has points
 				for j in range(3):
