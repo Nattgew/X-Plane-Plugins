@@ -251,9 +251,28 @@ def getwkrev(conn): #Gets the revenue/week of FBO's
 	c=getpaydbcon(conn)
 	print("Getting FBO logs...")
 	categories=("FBO ground crew fee", "Refuelling with JetA", "Refuelling with 100LL", "Aircraft maintenance", "Sale of wholesale JetA", "Sale of wholesale 100LL", "Sale of supplies", "Sale of building materials", "Installation of equipment in aircraft")
-	revs=[]
-	fbos=getfbos(conn)
-	c.execute('SELECT date, amount, reason, fbo, comment FROM payments WHERE payto = ? ORDER BY date DESC',(getname(),))
+	revs=[] #List of revenue per week for each week
+	fbos=getfbos(conn) #FBO's we care about
+	wk=0 #Track which week is being added
+	for pay in c.execute('SELECT date, amount, reason, fbo, comment FROM payments WHERE payto = ? ORDER BY date DESC',(getname(),)):
+		for cat in categories:
+			if log[2]==cat:
+				for fbo in fbos:
+					if log[3]==fbo: #Ok we actually care about this payment and FBO
+						thedate=getdtime(pay[0])
+						if wk==0: #Add first payment info
+							wk=1
+							revs.append([thedate,pay[1]])
+						else: #Figure it out I guess
+							delta=thedate-revs[0][0]
+							thisweek=timedelta.total_seconds(delta)/604800
+							if thisweek<wk: #Add to current week
+								revs[wk-1][1]+=log[1]
+							else: #Add new week
+								revs.append([thedate,pay[1]])
+						break
+				break
+	return revs
 
 def getfbos(conn): #Returns a list of all user's FBO's in the log
 	c=getpaydbcon(conn)
@@ -501,6 +520,9 @@ def main(argv): #This is where the magic happens
 	for opt, arg in opts:
 		if opt in ("-a", "--average"): #Plots average prices for type
 			avgtype,avg=gettype(arg)
+		elif opt in ("-e", "--commodity"): #Maps locations and amounts of commodities
+			locations,cmin,cmax=getcommo(arg)
+			mapper(arg, locations, cmin, cmax, "Locations of Commodities")
 		elif opt in ("-f", "--from"): #First date to be used in different functions
 			fromdate=arg
 		elif opt=="-p": #Log a month of payments based on the date given
@@ -515,7 +537,13 @@ def main(argv): #This is where the magic happens
 			if pay:
 				logpaymonth(conn,fromdate)
 			if plrev:
-				
+				revs=getwkrev(conn)
+				coords,cmin,cmax=getcoords(i[0][:4] for i in revs)
+				locations=[]
+				for i in range(len(coords)):
+					locations.append(coords[i][0],coords[i][1],revs[i][1])
+					#plotdates(dlist,title,ylbl,sym,clr,save):
+				(money, locations, cmin, cmax, "Revenue by FBO")
 			if maprev:
 				revs=getfborev(conn)
 				coords,cmin,cmax=getcoords(i[0][:4] for i in revs)
