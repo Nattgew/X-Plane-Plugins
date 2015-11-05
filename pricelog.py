@@ -12,15 +12,15 @@ import matplotlib.pyplot as plt
 def getkey(): #Returns API key stored in file
 	with open('/mnt/data/XPLANE10/XSDK/mykey.txt', 'r') as f:
 		mykey = f.readline()
-	mykey=mykey.strip()
-	return mykey
+		mykey=mykey.strip()
+		return mykey
 
 def getname(): #Returns username stored in file
 	with open('/mnt/data/XPLANE10/XSDK/mykey.txt', 'r') as f:
 		nothing = f.readline()
 		myname = f.readline()
-	myname=myname.strip()
-	return myname
+		myname=myname.strip()
+		return myname
 
 def fserequest(ra,rqst,tagname,fmt): #Requests data in format, returns list of requested tag
 	if ra==1:
@@ -437,6 +437,7 @@ def chgdir(hdg,delt): #Add delta to heading and fix if passing 0 or 360
 
 def nearby(icao,rad): #Find other airports within radius of given airport
 	#print("Looking for airports near "+icao)
+	loc_dict=build_csv("latlon")
 	near=""
 	clat,clon=loc_dict[icao]
 	for apt,coords in loc_dict.items():
@@ -446,7 +447,7 @@ def nearby(icao,rad): #Find other airports within radius of given airport
 			if dist<rad:
 				if near=="":
 					near=apt
-				else:					
+				else:
 					near=near+"-"+apt
 	#print(near)
 	return near
