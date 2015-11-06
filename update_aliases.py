@@ -40,7 +40,7 @@ def readxml(data,tagname,ns): #Parses XML, returns list of requested tagname
 	root = tree.getroot()
 	error = root.findall('sfn:Error',ns)
 	if error!=[]:
-		print("Received error: "+error[0].firstChild.nodeValue)
+		print("Received error: "+error[0].text)
 		tags=[]
 	else:
 		tags = root.findall(tagname)
@@ -96,4 +96,3 @@ def genalias(): #Output list of aliases
 			i+=1
 		print(payloads[:][1])
 		print(aliases)
-		
