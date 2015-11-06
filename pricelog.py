@@ -1,5 +1,6 @@
 #!/usr/bin/python
 from xml.dom import minidom
+import xml.etree.ElementTree as etree
 import urllib.request, math, sys, getopt
 import dicts # My script for custom dictionaries
 import os, re, fileinput, csv, sqlite3
@@ -50,6 +51,18 @@ def readxml(data,tagname): #Parses XML, returns list of requested tagname
 		tags = xmldoc.getElementsByTagName(tagname)
 	return tags
 
+# def readxml(data,tagname,ns): #Parses XML, returns list of requested tagname
+	# print("Parsing XML data...")
+	# tree = etree.parse(data)
+	# root = tree.getroot()
+	# error = root.findall('sfn:Error',ns)
+	# if error!=[]:
+		# print("Received error: "+error[0].text)
+		# tags=[]
+	# else:
+		# tags = root.findall(tagname)
+	# return tags
+
 def readcsv(data): #Eats Gary's lunch
 	print("Parsing CSV data...")
 	has_header = csv.Sniffer().has_header(data.read(1024))
@@ -69,7 +82,7 @@ def gebtn(field,tag): #Shorter way to get tags
 def getbtns(field,tags): #Shorter way to get list of tags
 	vals=[]
 	for tag in tags: #Converts value based on second field
-		val=gebtn(field,tag[0])
+		val=gebtn(field,tag[0])  #field.find(tag[0],ns).text
 		if tag[1]==1:
 			val=int(val)
 		elif tag[1]==2:
@@ -89,7 +102,7 @@ def acforsale(conn): #Log aircraft currently for sale
 		now=time.strftime("%Y-%m-%d %H:%M", time.gmtime())
 		row=(count, now)
 		c.execute('INSERT INTO queries VALUES (?,?)',row) #Record date/time of this query
-		fields=[("SerialNumber", 1), ("MakeModel", 0), ("Location", 0), ("LocationName", 0), ("AirframeTime", 0), ("SalePrice", 2)]
+		fields=(("SerialNumber", 1), ("MakeModel", 0), ("Location", 0), ("LocationName", 0), ("AirframeTime", 0), ("SalePrice", 2))
 		rows=[]
 		for airplane in airplanes: #Record aircraft for sale
 			row=getbtns(airplane,fields)
