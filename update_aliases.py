@@ -43,7 +43,8 @@ def readxml(data,tagname,ns): #Parses XML, returns list of requested tagname
 		print("Received error: "+error[0].text)
 		tags=[]
 	else:
-		tags = root.findall(tagname)
+		print("Gettings tags: "+tagname)
+		tags = root.findall(tagname,ns)
 	return tags
 
 def readcsv(data): #Eats Gary's lunch
@@ -68,31 +69,39 @@ def getbtns(field,tags, ns): #Shorter way to get list of tags
 		vals.append(val)
 	return vals
 
-def genalias(): #Output list of aliases
-	ns = {'sfn': 'http://server.fseconomy.net'} #namespace for XML stuff
-	print("Sending request for alias listing...")
-	aliases = fserequest(0,'query=aircraft&search=aliases','AircraftAliases','xml',ns)
-	print("Sending request for configs...")
-	configs = fserequest(1,'query=aircraft&search=configs','AircraftConfig','xml',ns)
-	if configs!=[] and aliases!=[]:
-		payloads=[] #Holds payload calculations
-		print("Processing data...")
-		cfields=(("sfn:MakeModel", 0), ("sfn:MTOW", 1), ("sfn:EmptyWeight", 1))
-		afields=(("MakeModel", 0), ("Alias", 0))
-		aliaslist=[] #holds list of list of aliases
-		i=0 #To store which alias we are adding to
-		for config in configs: #Calculate payloads
-			thisac=getbtns(config, cfields, ns)
-			payload=thisac[1]-thisac[2]
-			payloads.append((thisac[0], payload)) #Store the name and payload
-		for model in aliases: #List the aliases
-			themake=model.find('sfn:MakeModel',ns).text #Get the make/model
-			if themake==payloads[i][0]: #Test if this matches the corresponding payload plane
-				aliaslist.append([]) #Start a new list of aliases
-				for alias in model.findall('sfn:Alias',ns):
-					aliaslist[i].append(alias.text) #Add aliases to list
-			else: #Something went wrong, this doesn't match up
-				print("Config "+thisac[0]+" does not match "+payloads[i][0]
-			i+=1
-		print(payloads[:][1])
-		print(aliases)
+
+ns = {'sfn': 'http://server.fseconomy.net'} #namespace for XML stuff
+print("Sending request for alias listing...")
+aliases = fserequest(0,'query=aircraft&search=aliases','sfn:AircraftAliases','xml',ns)
+print("Sending request for configs...")
+configs = fserequest(1,'query=aircraft&search=configs','sfn:AircraftConfig','xml',ns)
+if configs!=[] and aliases!=[]:
+	payloads=[] #Holds payload calculations
+	print("Processing data...")
+	cfields=(("sfn:MakeModel", 0), ("sfn:MTOW", 1), ("sfn:EmptyWeight", 1))
+	afields=(("MakeModel", 0), ("Alias", 0))
+	aliaslist=[] #holds list of list of aliases
+	i=0 #To store which alias we are adding to
+	print("Getting payloads...")
+	for config in configs: #Calculate payloads
+		thisac=getbtns(config, cfields, ns)
+		payload=thisac[1]-thisac[2]
+		#print(thisac[0],payload)
+		payloads.append((thisac[0], payload)) #Store the name and payload
+	print("Getting aliases...")
+	for model in aliases: #List the aliases
+		themake=model.find('sfn:MakeModel',ns).text #Get the make/model
+		if themake==payloads[i][0]: #Test if this matches the corresponding payload plane
+			print("Appending list for "+themake)
+			aliaslist.append([]) #Start a new list of aliases
+			for alias in model.findall('sfn:Alias',ns):
+				aliaslist[i].append(alias.text) #Add aliases to list
+		else: #Something went wrong, this doesn't match up
+			print("Config "+thisac[0]+" does not match "+payloads[i][0])
+		i+=1
+	paylist=[]
+	for entry in payloads:
+		paylist.append(entry[1])
+	print(paylist)
+	print(aliaslist)
+
