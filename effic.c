@@ -13,8 +13,9 @@
 static XPLMCommandRef CmdATConn;
 static XPLMDataRef FF_ref,TH_ref,PWR_ref,TIM_ref;
 int CmdATConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
+static XPLMWindowID gWindow = NULL;
 
-char * msg1, msg2;
+char *msg1, *msg2;
 int started=0;
 float Nlb=0.22481; // N to lbf
 float Whp=0.00134102209; // W to hp
@@ -127,7 +128,7 @@ PLUGIN_API void XPluginReceiveMessage(XPLMPluginID inFromWho,
 {
 }
 		
-void DrawWindowCB(XPLMWindowID inWindowID, void * inRefcon):
+void DrawWindowCB(XPLMWindowID inWindowID, void * inRefcon) {
 	if (started==1) {
 		int lLeft, lTop, lRight, lBottom;
 		XPLMGetWindowGeometry(inWindowID, &lLeft, &lTop, &lRight, &lBottom);
@@ -144,7 +145,7 @@ float	gameLoopCallback(
                                    int                  inCounter,    
                                    void *               inRefcon)
 {
-	float * FF, TH, PWR;
+	float *FF, *TH, *PWR;
 	XPLMGetDatavf(FF_ref, FF, 0, 1);
 	XPLMGetDatavf(TH_ref, TH, 0, 1);
 	XPLMGetDatavf(PWR_ref, PWR, 0, 1);
