@@ -79,7 +79,6 @@ if configs!=[] and aliases!=[]:
 	payloads=[] #Holds payload calculations
 	print("Processing data...")
 	cfields=(("sfn:MakeModel", 0), ("sfn:MTOW", 1), ("sfn:EmptyWeight", 1))
-	afields=(("MakeModel", 0), ("Alias", 0))
 	aliaslist=[] #holds list of list of aliases
 	i=0 #To store which alias we are adding to
 	print("Getting payloads...")
