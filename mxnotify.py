@@ -70,6 +70,7 @@ def readcsv(data): #Eats Gary's lunch
 
 def getbtns(field,tags): #Shorter way to get list of tags
 	vals=[]
+	ns = {'sfn': 'http://server.fseconomy.net'} #namespace for XML stuff
 	for tag in tags: #Converts value based on second field
 		val=field.find('sfn:'+tag[0],ns).text
 		if tag[1]==1:
@@ -123,6 +124,22 @@ def getshops(icao):
 				options.append(tuple(getbtns(opt, [("Name", 0), ("Owner", 0)])))
 	return options
 
+def isnew(needfixes):
+	oldnews=[]
+	fixed=[]
+	with open('aog.txt', 'r+') as f:
+		for aog in f:
+			for current in needfixes:
+				if current==aog:
+					oldnews.append(current)
+					break
+	with open('aog.txt', 'w') as f:
+		for current in needfixes:
+			f.write(current)
+	for oldie in oldnews:
+		needfixes.remove(oldie)
+	return needfixes
+
 ns = {'sfn': 'http://server.fseconomy.net'} #namespace for XML stuff
 aog=[] #List of planes and FBO options
 print("Sending request for aircraft list...")
@@ -132,12 +149,12 @@ for plane in airplanes:
 	since100=int(plane.find('sfn:TimeLast100hr', ns).text.split(":")[0])
 	mx=0
 	#print(str(nr)+" "+str(since100))
-	if nr>0: #Needs repair
+	if nr>0:
 		mx=1
-	if since100>100: #100 hr past due
-		mx+=2
+	if since100>99: #100 hr past due
+		mx=2
 	if mx>0: #Something is broken
-		row=getbtns(plane, [("Registration", 0), ("MakeModel", 0), ("Location", 0)], ns) #License and registration please
+		row=getbtns(plane, [("Registration", 0), ("MakeModel", 0), ("Location", 0)]) #License and registration please
 		shops=getshops(row[2]) #Get list of shops here
 		if len(shops)==0: #Start looking around
 			relatives=nearest(row[2]) #List of all airports sorted by closest to this one
@@ -146,6 +163,7 @@ for plane in airplanes:
 				if len(shops)>0:
 					break
 		aog.append((row[0],row[1],row[2],mx,shops)) #Reg, Type, Loc, repair, options
+aog=isnew(aog)
 addr,uname,passw=getemail()
 msg="Airplanes in need of repair:"
 #print(msg)
@@ -153,10 +171,8 @@ if len(aog)>0:
 	for plane in aog:
 		if plane[3]==1:
 			repair="repair"
-		elif plane[3]==2:
-			repair="100-hour"
 		else:
-			repair="repair and 100-hr"
+			repair="100-hour"
 		out=plane[0]+"  "+plane[1]+" at "+plane[2]
 		msg+="\n"+out
 		#print(out)
