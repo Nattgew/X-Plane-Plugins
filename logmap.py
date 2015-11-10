@@ -1,9 +1,7 @@
 #!/usr/bin/python
-import math, sys, getopt, csv, sqlite3
+import sys, getopt, sqlite3
 import fseutils # My custom FSE functions
-from datetime import timedelta, date, datetime
 from mpl_toolkits.basemap import Basemap
-from matplotlib.dates import DateFormatter, date2num
 import matplotlib.pyplot as plt
 
 def getlogdbcon(conn): #Get cursor for log database
@@ -105,7 +103,8 @@ def main(argv): #This is where the magic happens
 	todate="2020-12-31"
 	for opt, arg in opts:
 		if opt=="-c": #Maps countries visited
-			countries=getcountries()
+			conn=sqlite3.connect('/mnt/data/XPLANE10/XSDK/flightlogs.db')
+			countries=getcountries(conn)
 			print(countries)
 			mapcountries(countries)
 	print("Finished!")
