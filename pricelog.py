@@ -3,18 +3,12 @@ from xml.dom import minidom
 import xml.etree.ElementTree as etree
 import urllib.request, math, sys, getopt
 import dicts # My script for custom dictionaries
-import csv, sqlite3
-import time
+import fseutils # My custom FSE functions
+import csv, sqlite3, time
 from datetime import timedelta, date, datetime
 from mpl_toolkits.basemap import Basemap
 from matplotlib.dates import DateFormatter, date2num
 import matplotlib.pyplot as plt
-
-def getkey(): #Returns API key stored in file
-	with open('/mnt/data/XPLANE10/XSDK/mykey.txt', 'r') as f:
-		mykey = f.readline()
-		mykey=mykey.strip()
-		return mykey
 
 def getname(): #Returns username stored in file
 	with open('/mnt/data/XPLANE10/XSDK/mykey.txt', 'r') as f:
@@ -23,80 +17,9 @@ def getname(): #Returns username stored in file
 		myname=myname.strip()
 		return myname
 
-def fserequest(ra,rqst,tagname,fmt): #Requests data in format, returns list of requested tag
-	if ra==1:
-		rakey="&readaccesskey="+getkey()
-	else:
-		rakey=""
-	rq = "http://server.fseconomy.net/data?userkey="+getkey()+rakey+'&format='+fmt+'&'+rqst
-	print("Will make request: "+rq)
-	data = urllib.request.urlopen(rq)
-	if fmt=='xml':
-		tags=readxml(data,tagname)
-	elif fmt=='csv':
-		tags=readcsv(data)
-	else:
-		print("Format "+fmt+" not recognized!")
-		tags=[]
-	return tags
-
-# def readxml(data,tagname): #Parses XML, returns list of requested tagname
-	# print("Parsing XML data...")
-	# xmldoc = minidom.parse(data)
-	# error = xmldoc.getElementsByTagName('Error')
-	# if error!=[]:
-		# print("Received error: "+error[0].firstChild.nodeValue)
-		# tags=[]
-	# else:
-		# tags = xmldoc.getElementsByTagName(tagname)
-	# return tags
-
-def readxml(data,tagname): #Parses XML, returns list of requested tagname
-	ns = {'sfn': 'http://server.fseconomy.net'} #namespace for XML stuff
-	print("Parsing XML data...")
-	tree = etree.parse(data)
-	root = tree.getroot()
-	error = root.findall('sfn:Error',ns)
-	if error!=[]:
-		print("Received error: "+error[0].text)
-		tags=[]
-	else:
-		tags = root.findall(tagname)
-	return tags
-
-def readcsv(data): #Eats Gary's lunch
-	print("Parsing CSV data...")
-	has_header = csv.Sniffer().has_header(data.read(1024))
-	data.seek(0) # rewind
-	reader = csv.reader(data)
-	if has_header:
-		next(reader) # skip header row
-	return reader
-
-def gebtn(field,tag): #Shorter way to get tags
-	try:
-		tags=field.find(tag[0],ns).text  #field.getElementsByTagName(tag)[0].firstChild.nodeValue
-	except: #Borked XML, more common than you may think
-		tags=""
-	return tags
-
-def getbtns(field,tags): #Shorter way to get list of tags
-	ns = {'sfn': 'http://server.fseconomy.net'} #namespace for XML stuff
-	vals=[]
-	for tag in tags: #Converts value based on second field
-		val=gebtn(field,tag[0])
-		if tag[1]==1:
-			val=int(val)
-		elif tag[1]==2:
-			val=float(val)
-		elif tag[1]==3:
-			val=int(float(val))
-		vals.append(val)
-	return vals
-
 def acforsale(conn): #Log aircraft currently for sale
 	print("Sending request for sales listing...")
-	airplanes = fserequest(0,'query=aircraft&search=forsale','Aircraft','xml')
+	airplanes = fseutils.fserequest(0,'query=aircraft&search=forsale','Aircraft','xml')
 	if airplanes!=[]:
 		print("Recording data...")
 		c=getdbcon(conn)
@@ -107,7 +30,7 @@ def acforsale(conn): #Log aircraft currently for sale
 		fields=(("SerialNumber", 1), ("MakeModel", 0), ("Location", 0), ("LocationName", 0), ("AirframeTime", 0), ("SalePrice", 2))
 		rows=[]
 		for airplane in airplanes: #Record aircraft for sale
-			row=getbtns(airplane,fields)
+			row=fseutils.getbtns(airplane,fields)
 			row[4]=int(row[4].split(":")[0])
 			row.append(count)
 			rows.append(tuple(row))
@@ -142,14 +65,14 @@ def salepickens(conn): #Convert log to compact format
 def logpaymonth(conn,fromdate): #Log a month of payments
 	year,month,*rest=fromdate.split('-', 2)
 	print("Sending request for payment listing...")
-	payments = fserequest(1,'query=payments&search=monthyear&month='+month+'&year='+year,'Payment','xml')
+	payments = fseutils.fserequest(1,'query=payments&search=monthyear&month='+month+'&year='+year,'Payment','xml')
 	if payments!=[]:
 		c=getpaydbcon(conn)
 		rows=[]
 		fields=(("Date", 0), ("To", 0), ("From", 0), ("Amount", 2), ("Reason", 0), ("Location", 0), ("Id", 1), ("Aircraft", 0), ("Comment", 0))
 		print("Recording data...")
 		for payment in payments:
-			row=getbtns(payment,fields)
+			row=fseutils.getbtns(payment,fields)
 			if row[8]=="null":
 				row[8]=""
 			row[0]=row[0].replace('/','-')
@@ -157,32 +80,16 @@ def logpaymonth(conn,fromdate): #Log a month of payments
 		c.executemany('INSERT INTO payments VALUES (?,?,?,?,?,?,?,?,?)',rows)
 		conn.commit()
 
-def loglogmonth(conn,fromdate): #Log a month of logs
-	year,month,*rest=fromdate.split('-', 2)
-	print("Sending request for logs...")
-	logs = fserequest(1,'query=flightlogs&search=monthyear&month='+month+'&year='+year,'FlightLog','xml')
-	if logs!=[]:
-		c=getlogdbcon(conn)
-		rows=[]
-		fields=(("Id", 1), ("Type", 0), ("Time", 0), ("Distance", 1), ("SerialNumber", 1), ("Aircraft", 0), ("MakeModel", 0), ("From", 0), ("To", 0), ("FlightTime", 0), ("Income", 2), ("PilotFee", 2), ("CrewCost", 2), ("BookingFee", 2), ("Bonus", 2), ("FuelCost", 2), ("GCF", 2), ("RentalPrice", 2), ("RentalType", 0), ("RentalUnits", 0), ("RentalCost", 2))
-		print("Recording data...")
-		for log in logs:
-			row=getbtns(log, fields)
-			row[2]=row[2].replace('/','-')
-			rows.append(tuple(row))
-		c.executemany('INSERT INTO logs VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',rows)
-		conn.commit()
-
 def logconfigs(conn): #Update database of aircraft configs
 	print("Sending request for configs...")
-	configs = fserequest(1,'query=aircraft&search=configs','AircraftConfig','xml')
+	configs = fseutils.fserequest(1,'query=aircraft&search=configs','AircraftConfig','xml')
 	if configs!=[]:
 		c=getconfigdbcon(conn)
 		d=getconfigdbcon(conn)
 		fields=(("MakeModel", 0), ("Crew", 1), ("Seats", 1), ("CruiseSpeed", 1), ("GPH", 1), ("FuelType", 1), ("MTOW", 1), ("EmptyWeight", 1), ("Price", 3), ("Ext1", 1), ("LTip", 1), ("LAux", 1), ("LMain", 1), ("Center1", 1), ("Center2", 1), ("Center3", 1), ("RMain", 1), ("RAux", 1), ("RTip", 1), ("Ext2", 1), ("Engines", 1), ("EnginePrice", 3))
 		print("Updating config data...")
 		for config in configs:
-			row=getbtns(config, fields)
+			row=fseutils.getbtns(config, fields)
 			fcap=0
 			for i in range(9,20): #Calc total fuel capacity
 				fcap+=row[i]
@@ -245,28 +152,6 @@ def getpaydbcon(conn): #Get cursor for payment database
 		getpaydbcon.has_been_called=True
 	return c
 
-def getlogdbcon(conn): #Get cursor for log database
-	#print("Initializing log database cursor...")
-	c = conn.cursor()
-	if not getlogdbcon.has_been_called:
-		c.execute("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table'")
-		exist=c.fetchone()
-		if exist[0]==0: #Table does not exist, create table
-			print("Creating log database tables...")
-			c.execute('''CREATE TABLE logs
-				 (fid real, type text, date text, dist real, sn real, ac text, model text, dep text, arr text, fltime text, income real, pfee real, crew real, bkfee real, bonus real, fuel real, gndfee real, rprice real, rtype text, runits text, rcost real)''')
-			c.execute('''CREATE INDEX idx1 ON logs(date)''')
-			c.execute('''CREATE INDEX idx2 ON logs(type)''')
-			c.execute('''CREATE INDEX idx3 ON logs(dist)''')
-			c.execute('''CREATE INDEX idx4 ON logs(model)''')
-			c.execute('''CREATE INDEX idx5 ON logs(ac)''')
-		else:
-			c.execute('SELECT date FROM logs ORDER BY date DESC')
-			dtime=c.fetchone()
-			print("Last log data recorded: "+dtime[0])
-		getlogdbcon.has_been_called=True
-	return c
-
 def getconfigdbcon(conn): #Get cursor for config database
 	#print("Initializing config database cursor...")
 	c = conn.cursor()
@@ -299,16 +184,16 @@ def getmaxiter(conn): #Return the number of latest query, which is also the numb
 def dudewheresmyairplane(): #Print list of owned planes
 	#planes={}
 	print("Sending request for aircraft list...")
-	airplanes = fserequest(1,'query=aircraft&search=key','Aircraft','xml')
+	airplanes = fseutils.fserequest(1,'query=aircraft&search=key','Aircraft','xml')
 	for plane in airplanes:
-		row=getbtns(plane, [("Location", 0), ("Registration", 0), ("EngineTime", 0), ("TimeLast100hr", 0)])
+		row=fseutils.getbtns(plane, [("Location", 0), ("Registration", 0), ("EngineTime", 0), ("TimeLast100hr", 0)])
 		#planes[reg]=(loc,eng,chk)
 		print(row[1]+" at "+row[0]+"  tot: "+row[2]+"  last: "+row[3])
 
 def jobsfrom(apts,price,pax): #High paying jobs from airports
 	jobs=[]
 	print("Sending request for jobs from "+apts+"...")
-	assignments = fserequest(0,'query=icao&search=jobsfrom&icaos='+apts,'Assignment','xml')
+	assignments = fseutils.fserequest(0,'query=icao&search=jobsfrom&icaos='+apts,'Assignment','xml')
 	for assignment in assignments:
 		jobs=jobstest(assignment,jobs,price,pax)
 		global totalfrom
@@ -318,7 +203,7 @@ def jobsfrom(apts,price,pax): #High paying jobs from airports
 def jobsto(apts,price,pax): #High paying jobs to airports
 	jobs=[]
 	print("Sending request for jobs to "+apts+"...")
-	assignments = fserequest(0,'query=icao&search=jobsto&icaos='+apts,'Assignment','xml')
+	assignments = fseutils.fserequest(0,'query=icao&search=jobsto&icaos='+apts,'Assignment','xml')
 	for assignment in assignments:
 		jobs=jobstest(assignment,jobs,price,pax)
 		global totalto
@@ -326,15 +211,15 @@ def jobsto(apts,price,pax): #High paying jobs to airports
 	return jobs
 
 def jobstest(assignment,jobs,price,pax): #Only add job to array if meeting minumum pax and pay values
-	pay = float(gebtn(assignment, "Pay"))
+	pay = float(fseutils.gebtn(assignment, "Pay"))
 	if pay>price:
-		amt = gebtn(assignment, "Amount")
-		typ = gebtn(assignment, "UnitType")
+		amt = fseutils.gebtn(assignment, "Amount")
+		typ = fseutils.gebtn(assignment, "UnitType")
 		if not(int(amt)>pax and typ=="passengers"):
-			#dep = gebtn(assignment, "FromIcao")
-			arr = gebtn(assignment, "ToIcao")
-			loc = gebtn(assignment, "Location")
-			exp = gebtn(assignment, "Expires")
+			#dep = fseutils.gebtn(assignment, "FromIcao")
+			arr = fseutils.gebtn(assignment, "ToIcao")
+			loc = fseutils.gebtn(assignment, "Location")
+			exp = fseutils.gebtn(assignment, "Expires")
 			jobs.append((loc,arr,amt,typ,pay,exp))
 			#if dep==loc:
 			#	print (amt+" "+typ+" "+dep+"-"+arr+" $"+str(int(pay))+" "+exp)
@@ -344,13 +229,13 @@ def jobstest(assignment,jobs,price,pax): #Only add job to array if meeting minum
 
 def paxto(apts,minpax,maxpax): #Pax jobs to airports (incl green jobs)
 	print("Sending request incl pax jobs to "+apts+"...")
-	assignments = fserequest(0,'query=icao&search=jobsto&icaos='+apts,'Assignment','xml')
+	assignments = fseutils.fserequest(0,'query=icao&search=jobsto&icaos='+apts,'Assignment','xml')
 	jobs=paxtest(assignments,minpax,maxpax,"to")
 	return jobs
 
 def paxfrom(apts,minpax,maxpax): #Pax jobs from airports (incl green jobs)
 	print("Sending request incl pax jobs from "+apts+"...")
-	assignments = fserequest(0,'query=icao&search=jobsfrom&icaos='+apts,'Assignment','xml')
+	assignments = fseutils.fserequest(0,'query=icao&search=jobsfrom&icaos='+apts,'Assignment','xml')
 	jobs=paxtest(assignments,minpax,maxpax,"from")
 	return jobs
 
@@ -359,10 +244,10 @@ def paxtest(assignments,minpax,maxpax,tofrom): #Return assignments meeting min a
 	apts={}
 	jobs=[]
 	for assignment in assignments:
-		loc = gebtn(assignment, "Location")
-		arr = gebtn(assignment, "ToIcao")
-		amt = gebtn(assignment, "Amount")
-		typ = gebtn(assignment, "UnitType")
+		loc = fseutils.gebtn(assignment, "Location")
+		arr = fseutils.gebtn(assignment, "ToIcao")
+		amt = fseutils.gebtn(assignment, "Amount")
+		typ = fseutils.gebtn(assignment, "UnitType")
 		if tofrom=="to":
 			global totalto
 			totalto+=1
@@ -373,9 +258,9 @@ def paxtest(assignments,minpax,maxpax,tofrom): #Return assignments meeting min a
 			key=arr
 		if not(int(amt)>maxpax and typ=="passengers") and typ=="passengers":
 			amt=int(amt)
-			pay = float(gebtn(assignment, "Pay"))
+			pay = float(fseutils.gebtn(assignment, "Pay"))
 			#dep = assignment, "FromIcao")[0].firstChild.nodeValue
-			exp = gebtn(assignment, "Expires")
+			exp = fseutils.gebtn(assignment, "Expires")
 			candidates.append((loc,arr,amt,typ,pay,exp))
 			try:
 				tot=apts[key]
@@ -398,67 +283,15 @@ def printjobs(jobs,rev): #Print the list of jobs
 		#print(job[2]+" "+job[3]+" "+job[0]+"-"+job[1]+" $"+str(int(job[4]))+" "+str(distbwt(job[0],job[1]))+" "+job[5])
 		print('%s %s %s-%s $%i %f %s' % (job[2],job[3],job[0],job[1],int(job[4]),distbwt(job[0],job[1]),job[5]))
 
-def cosinedist(lat1,lon1,lat2,lon2): #Use cosine to find distance between coordinates
-	phi1 = math.radians(lat1)
-	phi2 = math.radians(lat2)
-	dellamb = math.radians(lon2-lon1)
-	R = 3440.06479 # Nmi
-	# gives d in Nmi
-	d = math.acos( math.sin(phi1)*math.sin(phi2) + math.cos(phi1)*math.cos(phi2) * math.cos(dellamb) ) * R
-	return int(round(d))
-
-def inithdg(lat1,lon1,lat2,lon2): #Find heading between coordinates
-	phi1 = math.radians(lat1)
-	phi2 = math.radians(lat2)
-	lamb1 = math.radians(lon1)
-	lamb2 = math.radians(lon2)
-	y = math.sin(lamb2-lamb1) * math.cos(phi2)
-	x = math.cos(phi1)*math.sin(phi2) - math.sin(phi1)*math.cos(phi2)*math.cos(lamb2-lamb1)
-	brng = math.degrees(math.atan2(y, x))
-	if brng<0:
-		brng+=360
-	return brng
-
-def dirbwt(icaofrom,icaoto): #Find bearing from one airport to another
-	lat1,lon1=loc_dict[icaofrom]
-	lat2,lon2=loc_dict[icaoto]
-	hdg=inithdg(lat1,lon1,lat2,lon2)
-	return hdg
-
-def distbwt(icaofrom,icaoto): #Find distance from one airport to another
-	lat1,lon1=loc_dict[icaofrom]
-	lat2,lon2=loc_dict[icaoto]
-	dist=cosinedist(lat1,lon1,lat2,lon2)
-	return dist
-
-def build_csv(info): #Return a dictionary of info using FSE csv file
-	loc_dict = {}
-	with open('/mnt/data/XPLANE10/XSDK/icaodata.csv', 'r') as f:
-		out=readcsv(f)
-		for row in out:
-			if info=="latlon": #airport coordinates
-				loc_dict[row[0]]=(float(row[1]),float(row[2])) #Code = lat, lon
-			elif info=="country": #airport countries
-				loc_dict[row[0]]=row[8] #Code = Country
-	return loc_dict
-
-def chgdir(hdg,delt): #Add delta to heading and fix if passing 0 or 360
-	hdg+=delt
-	if hdg>360:
-		hdg-=360
-	elif hdg<=0:
-		hdg+=360
-	return hdg
-
 def nearby(icao,rad): #Find other airports within radius of given airport
 	#print("Looking for airports near "+icao)
-	loc_dict=build_csv("latlon")
+	loc_dict=fseutils.build_csv("latlon")
 	near=""
 	clat,clon=loc_dict[icao]
 	for apt,coords in loc_dict.items():
 		if apt!=icao:
 			#print("Dist from "+str(clat)+" "+str(clon)+" to "+str(coords[0])+" "+str(coords[1]))
-			dist=cosinedist(clat,clon,coords[0],coords[1])
+			dist=fseutils.cosinedist(clat,clon,coords[0],coords[1])
 			if dist<rad:
 				if near=="":
 					near=apt
@@ -480,87 +313,6 @@ def bigjobs(apts,dir): #Find high paying jobs to/from airports
 	word="from near" if dir==0 else "to"
 	print("Found these "+str(total)+" big jobs "+word+" those airports:")
 
-def dcoord(coord,delta,dirn): # Change coordinate by delta without exceeding a max
-	if dirn=='lon':
-		lmax=179.9 #I'll fix this later
-	else:
-		lmax=89.9
-	new=coord+delta
-	if new<-lmax:
-		new=-lmax
-	elif new>lmax:
-		nex=lmax
-	return new
-
-def mapper(what, points, mincoords, maxcoords, title): # Put the points on a map
-	print("Mapping "+str(len(points))+" points...") #points is list of lists containing lat,lon, then possibly addtional data
-	print("min: "+str(mincoords[0])+","+str(mincoords[1])+"  max: "+str(maxcoords[0])+","+str(maxcoords[1]))
-	if maxcoords[1]-mincoords[1]>180 or maxcoords[0]-mincoords[0]>60: # Big spread, world with center aligned
-		#print("Using world map")
-		m = Basemap(projection='hammer', resolution=None, lon_0=(maxcoords[1]+mincoords[1])/2)
-	else: # Center map on area
-		#print("Using regional map")
-		if len(points)>1:
-			width=maxcoords[1]-mincoords[1]
-			height=maxcoords[0]-mincoords[0]
-		else: # Provide good window for plotting one point
-			width=100
-			height=100
-		#print("Width: "+str(width)+"  Height: "+str(height))
-		llclo=dcoord(mincoords[1],-0.25*width,'lon')
-		llcla=dcoord(mincoords[0],-0.25*height,'lat')
-		urclo=dcoord(maxcoords[1],0.25*width,'lon')
-		urcla=dcoord(maxcoords[0],0.25*height,'lat')
-		#print("ll="+str(llclo)+","+str(llcla)+"  ur="+str(urclo)+","+str(urcla))
-		m = Basemap(projection='cyl', resolution=None, llcrnrlon=llclo, llcrnrlat=llcla, urcrnrlon=urclo, urcrnrlat=urcla)
-	if what=="ac":
-		if len(points) < 30: #Use awesome airplane symbol
-			verts = list(zip([0.,1.,1.,10.,10.,9.,6.,1.,1.,4.,1.,0.,-1.,-4.,-1.,-1.,-5.,-9.,-10.,-10.,-1.,-1.,0.],[9.,8.,3.,-1.,-2.,-2.,0.,0.,-5.,-8.,-8.,-9.,-8.,-8.,-5.,0.,0.,-2.,-2.,-1.,3.,8.,9.])) #Supposed to be an airplane
-			mk=(verts,0)
-			ptsize=50
-		else: #Use boring but more compact dots
-			mk='o'
-			ptsize=2
-		print(points)
-		m.shadedrelief(scale=0.2)
-		x, y = m([i[1] for i in points], [i[0] for i in points])
-		c='b'
-		m.scatter(x,y,s=ptsize,marker=mk,c=c)
-	elif what=="fuel" or what=="mtrl":
-		maxsz=0
-		for loc in points:
-			thous=int(round(loc[2])) #Size of point will be based on fuel amount
-			if thous>maxsz:
-				maxsz=thous
-			loc[2]=thous
-		pts=[] #rows=thous, columns=colors, contents=list of points
-		for i in range(maxsz+1):
-			pts.append([[],[],[]]) #Add a new empty row
-			for loc in points:
-				if loc[2]==i+1: #If size matches, add the point
-					pts[i][loc[3]].append((loc[0],loc[1]))
-		for i in range(maxsz+1): #Set size/color of points
-			sz=(i+1)/6 #Size based on amount
-			if pts[i]!=[[],[],[]]: #Check if any list has points
-				for j in range(3):
-					if pts[i][j]!=[]: #Check if this list has any points
-						print(pts[i][j])
-						x, y = m([k[1] for k in pts[i][j]], [k[0] for k in pts[i][j]]) #Populate points
-						if j==0: #Set color
-							c='#cc9900'
-						elif j==1:
-							c='b'
-						else:
-							c='k'
-						print(sz)
-						m.scatter(x,y,s=sz,marker='o',c=c) #Plot the points with these properties
-						for l in range(len(x)):
-							gals=int(round(i/2.65))
-							plt.text(x[l]-math.sqrt(sz/100),y[l],"~"+str(gals)+" gal",fontsize=7)
-						m.shadedrelief(scale=0.2)
-	plt.title(title,fontsize=12)
-	plt.show()
-
 def gettimeforsale(conn,timetype): # Get data for all ac of timetype for sale
 	c=getdbcon(conn)
 	d=getdbcon(conn)
@@ -573,7 +325,7 @@ def gettimeforsale(conn,timetype): # Get data for all ac of timetype for sale
 		listings.append([])
 		for qp in d.execute('SELECT price, obsiter FROM allac WHERE serial = ?',(dac[0],)):
 			qtime=e.execute('SELECT qtime FROM queries WHERE iter = ?',(qp[1],))
-			date=getdtime(e.fetchone()[0])
+			date=fseutils.getdtime(e.fetchone()[0])
 			#print("AC: "+str(dac[0])+"  "+str(date)+": "+str(qp[0]))
 			listings[i].append([date,int(float(qp[0]))])
 		i+=1
@@ -591,7 +343,7 @@ def gettotals(conn,actype,fr,to): #Return list of total aircraft for sale at eac
 		else:
 			d.execute('SELECT COUNT(*) FROM allac WHERE obsiter = ? AND type = ?', (query[0],actype))	
 		total=int(d.fetchone()[0])
-		totals.append((getdtime(query[1]),total))
+		totals.append((fseutils.getdtime(query[1]),total))
 	return totals
 
 def getaverages(conn,actype,fr,to): #Return list of average prices for aircraft in each query time
@@ -633,12 +385,6 @@ def getbaseprice(actype): #Return the base price for this actype
 		logconfigs(conn) #No match, try updating the configs?
 	conn.close()
 	return baseprice
-
-def getdtime(strin): #Return datetime for the Y-M-D H:M input
-	adate,atime=strin.split()
-	year,month,day=adate.split('-', 2)
-	hour,mnt=atime.split(':')
-	return datetime(int(year),int(month),int(day),int(hour),int(mnt))
 
 def getlows(conn,actype,fr,to): #Return list of lowest price for aircraft in each query
 	c=getdbcon(conn)
@@ -688,96 +434,6 @@ def getfuelprices(conn): #Plot fuel prices over time
 		dprice.append((getdtime(day[0]+" 00:01"),avg,stdev))
 	return dprice
 
-def getapstats(conn,actype): #Return something about airplane flight logs
-	#(fid real, type text, time text, dist real, sn real, ac text, model text, dep text, arr text, fltime text, income real, pfee real, crew real, bkfee real, bonus real, fuel real, gndfee real, rprice real, rtype text, runits text, rcost real)
-	c=getlogdbcon(conn)
-	gals=0
-	ftime=0
-	dist=0
-	tgals=[0,0,0,0,0,0,0,0] #dist <50 <100 <150 <200 <250 <300 <350 >400
-	tftime=[0,0,0,0,0,0,0,0]
-	tdist=[0,0,0,0,0,0,0,0]
-	tflts=[0,0,0,0,0,0,0,0] #Total number of flights
-	aspeed=[[],[],[],[],[],[],[],[]] #for standard deviation calc
-	agph=[[],[],[],[],[],[],[],[]]
-	print("Getting flight logs for "+actype+"...")
-	for log in c.execute('SELECT dist, fltime, fuel FROM logs WHERE model = ? AND type = "flight" AND fuel > 0.0', (actype,)):
-		#print("Found flight: "+str(log[0])+" nmi, "+log[1])
-		gal=float(log[2])/3.5
-		gals+=gal #For overall averages
-		ldist=log[0]
-		dist+=ldist
-		secs=int(log[1].split(':')[0])*3600+int(log[1].split(':')[1])*60
-		ftime+=secs
-		bucket=math.floor(ldist/50) #For averages per distance bucket
-		if bucket>7:
-			bucket=7
-		tgals[bucket]+=gal
-		tftime[bucket]+=secs
-		tdist[bucket]+=ldist
-		tflts[bucket]+=1
-		hrs=secs/3600 #Store actual values for computing standard deviation
-		gph=gal/hrs
-		speed=ldist/hrs
-		agph[bucket].append(gph)
-		aspeed[bucket].append(speed)
-	hrs=ftime/3600 #Print out the overall averages
-	speed=dist/hrs
-	gph=gals/hrs
-	#print("\nStats for "+actype)
-	#print("-----------------------------------------")
-	#print("Avg speed: "+str(int(round(speed)))+" kt")
-	#print("Avg gph: "+str(int(round(gph,2)))+" gph\n")
-	dspeed=[]
-	dgph=[]
-	xax=[]
-	stdgph=[]
-	stdspd=[]
-	for i in range(8):
-		hrs=tftime[i]/3600 #Compute values for the different buckets
-		speed=tdist[i]/hrs
-		gph=tgals[i]/hrs
-		dspeed.append(speed)
-		dgph.append(gph)
-		idx=(i+1)*50 #Generate stuff for x axis
-		val=idx-25
-		if idx<7:
-			lbl="<"+str(idx)
-		else:
-			lbl=">"+str(idx)
-		xax.append((val,lbl))
-		ssgph=0
-		ssspd=0
-		for j in range(tflts[i]): #Compute standard deviation
-			ssgph+=math.pow(aspeed[i][j]-speed,2)
-			ssspd+=math.pow(agph[i][j]-gph,2)
-		stdgph.append(math.sqrt(ssgph/tflts[i]))
-		stdspd.append(math.sqrt(ssspd/tflts[i]))
-	print("Plotting figure for "+actype+" stats...")
-	fig, ax = plt.subplots()
-	# ax.plot([i[0] for i in xax], [i[0] for i in dspeed], 'o-')
-	# ax.plot([i[0] for i in xax], [i[0] for i in dgph], 'o-')
-	ax.errorbar([i[0] for i in xax], [i for i in dspeed], yerr=stdspd, fmt='--o')
-	ax.errorbar([i[0] for i in xax], [i for i in dgph], yerr=stdgph, fmt='--o', c='#cc9900', ecolor='#cc9900')
-	ax.set_xticklabels([i[1] for i in xax])
-	plt.title("Speed and gph for sector length - "+actype,fontsize=12)
-	plt.xlabel("Length")
-	plt.ylabel("Speed/gph")
-	plt.show()
-	print("Plotting figure for "+actype+" distances...")
-	fig, ax = plt.subplots()
-	ind=([i[0]-25 for i in xax])
-	width=20
-	rects1 = ax.bar(ind, tflts, width, color='r')
-	ax.set_ylabel('Flights')
-	ax.set_title('Flights by sector length - '+actype)
-	print(ind)
-	print(width)
-	ax.set_xticks([i+width for i in ind])
-	ax.set_xticklabels( [i[1] for i in xax] )
-	ax.legend( (i[1] for i in xax) )
-	plt.show()
-
 def getcommo(ctype): # Adds up locations and quantities of stuff to send to the mapper
 	if ctype=="fuel":
 		t1="JetA Fuel"
@@ -789,14 +445,14 @@ def getcommo(ctype): # Adds up locations and quantities of stuff to send to the 
 		print("Commodity type "+ctype+" not recognized!")
 	if t1 is not None:
 		print("Sending request for commodities...")
-		commo = fserequest(1,'query=commodities&search=key','Commodity','xml')
+		commo = fseutils.fserequest(1,'query=commodities&search=key','Commodity','xml')
 		print("Sorting results...")
 		stuff = []
 		for item in commo: #Parse commodity info
-			typ = gebtn(item, "Type")
+			typ = fseutils.gebtn(item, "Type")
 			if typ==t1 or typ==t2:
-				loc = gebtn(item, "Location")
-				amt = gebtn(item, "Amount")
+				loc = fseutils.gebtn(item, "Location")
+				amt = fseutils.gebtn(item, "Amount")
 				stuff.append((loc,typ,amt))
 		if stuff!=[]: #Add up quantity per location
 			qty=[] #List to hold quantities and types
@@ -817,7 +473,7 @@ def getcommo(ctype): # Adds up locations and quantities of stuff to send to the 
 				else: #If location already added, then sum with other quantity
 					qty[i][1]+=item[2].split()
 					qty[i][2]=2 #Indicates a mix of t1 and t2
-			coords,cmin,cmax=getcoords(i[0] for i in qty)
+			coords,cmin,cmax=fseutils.getcoords(i[0] for i in qty)
 			if len(coords)==len(qty): #If not, there was some key error I guess
 				locations=[]
 				print("Working with "+str(len(coords))+" coords...")
@@ -831,7 +487,7 @@ def getcommo(ctype): # Adds up locations and quantities of stuff to send to the 
 def getlistings(conn,actype,lo,hi): #Return list of time for aircraft to sell
 	c=getdbcon(conn)
 	d=getdbcon(conn)
-	cdict=build_csv("country")
+	cdict=fseutils.build_csv("country")
 	rdict=dicts.getregiondict()
 	listings=[]
 	print("Finding sell times for: "+actype+", "+str(lo)+" to "+str(hi)+"...")
@@ -862,107 +518,9 @@ def mapaclocations(conn, actype): #Map locations of aircraft type for sale
 	else:
 		q1+=" AND type = '"+actype+"'"
 		title="Locations of "+actype+" for sale"
-	locations,cmin,cmax=getcoords([i[0] for i in c.execute(q1)])
+	locations,cmin,cmax=fseutils.getcoords([i[0] for i in c.execute(q1)])
 	if len(locations)>0:
-		mapper('ac', locations, cmin, cmax, title)
-
-def getcoords(data): #Get coordinates for a list of airports
-	print("Building airport location dictionary from csv...")
-	loc_dict=build_csv("latlon")
-	print("Creating locations list...")
-	locations=[]
-	#lat_tot=0
-	#lon_tot=0
-	latmax,lonmax,latmin,lonmin=100,200,100,200 #garbage to signal init
-	for row in data:
-		try:
-			print(row)
-			lat,lon=loc_dict[row]
-		except KeyError: #Probably "Airborne"
-			print("Key error on: "+str(row))
-			continue
-		locations.append([lat,lon])
-		#lat_tot+=lat
-		#lon_tot+=lon
-		if lat<latmin: #or abs(latmin)>90: #Look for min/max of coordinates
-			latmin=lat
-		if lat>latmax: #or abs(latmax)>90:  #These abs() things just seem wrong to me
-			latmax=lat
-		if lon<lonmin: #or abs(lonmin)>180:
-			lonmin=lon
-		if lon>lonmax: #or abs(lonmax)>180:
-			lonmax=lon
-	pts=len(locations)
-	if pts==0:
-		print("No locations found!")
-	#else:
-		#center=(lat_tot/pts,lon_tot/pts) # Not currently used, also needs the totals above
-	return locations,(latmin,lonmin),(latmax,lonmax)
-
-def plotdates(dlist,title,ylbl,sym,clr,save): #Plot a list of data vs. dates
-	if clr is None: #Allows for easy defaults I guess
-		clr=['']
-	if sym is None:
-		sym=['-o']
-	print("Plotting figure for: "+title)
-	fig, ax = plt.subplots()
-	formatter=DateFormatter('%Y-%m-%d %H:%M')
-	ax.xaxis.set_major_formatter(formatter)
-	items=len(dlist)
-	syms=len(sym)
-	clrs=len(clr)
-	# print(sym)
-	# print(clr)
-	# print(items)
-	i=0
-	ii=1 if 2<syms<items+1 else 0 #Changes whether each plot moves down a list of symbols/colors
-	j=0
-	jj=1 if 2<clrs<items+1 else 0
-	for data in dlist:
-#		print("Iter i "+str(i)+" by "+str(ii)+"  j "+str(j)+" by "+str(jj))
-		if clr[j] is None:
-			clr[j]=''
-		if len(data[0])==2:
-			#print("Plotting data with symbol "+sym[i]+" and color "+clr[j])
-			ax.plot([date2num(x[0]) for x in data], [x[1] for x in data], clr[j]+sym[i])
-		else:
-			ax.errorbar([date2num(x[0]) for x in data], [x[1] for x in data], yerr=[x[2] for x in data], fmt=sym[i], c=clr[j])
-		if i<syms-1: #Reference next symbol/color, if one is provided for each data entry
-			i+=ii
-		else: #Go back to zero if reaching length of data list
-			i-=i
-		if j<clrs-1:
-			j+=jj
-		else:
-			j-=j
-		if items>1 and data==dlist[-2]: #If only two elements given, second is for the last dataset
-			if len(sym)==2:
-				i=1
-			if len(clr)==2:
-				j=1
-	if dlist[-1][1][0]==getdtime("2100-12-31 23:59"): #Don't consider base price in range finding
-		del dlist[-1]
-	daterange=[min(min(date2num(i[0]) for i in j) for j in dlist),max(max(date2num(i[0]) for i in j) for j in dlist)]
-	if isinstance(dlist[0][0][1], (list, tuple)):
-		minprice=min(min(i[1][0] for i in j) for j in dlist)
-		maxprice=max(max(i[1][0] for i in j) for j in dlist)
-	else:
-		minprice=min(min(i[1] for i in j) for j in dlist)
-		maxprice=max(max(i[1] for i in j) for j in dlist)
-	delta=maxprice-minprice
-	pricerange=[minprice-0.1*delta, maxprice+0.1*delta]
-	formatter=DateFormatter('%Y-%m-%d')
-	ax.xaxis.set_major_formatter(formatter)
-	fig.autofmt_xdate()
-	plt.xlim(daterange)
-	plt.ylim(pricerange)
-	plt.title(title,fontsize=12)
-	plt.xlabel("Date")
-	plt.ylabel(ylbl)
-	if save==0:
-		plt.show()
-	else:
-		plt.savefig('/mnt/data/Dropbox/'+title.replace(' ','_')+'.png')
+		fseutils.mapper('ac', locations, cmin, cmax, title)
 
 def plotpayments(conn,fromdate,todate): #Plot payment totals per category
 	c=getpaydbcon(conn)
@@ -1009,7 +567,7 @@ def plotpayments(conn,fromdate,todate): #Plot payment totals per category
 					break
 		fdate += delta
 		i += 1
-	plotdates([refjet, addcrewfee, gndcrewfee],"Money","Money",['-'],None,0)
+	fseutils.plotdates([refjet, addcrewfee, gndcrewfee],"Money","Money",['-'],None,0)
 
 def sumpayments(conn,fdate,tdate): #Plot portion of income/expense per category
 	c=getpaydbcon(conn)
@@ -1101,13 +659,13 @@ def sumpayments(conn,fdate,tdate): #Plot portion of income/expense per category
 		else:
 			expnet.append(net)
 			netexp+=net[0]
-	pieplot(incnet,netinc,5,"Income sources")
-	pieplot(expnet,netexp,5,"Expense sources")
+	fseutils.pieplot(incnet,netinc,5,"Income sources")
+	fseutils.pieplot(expnet,netexp,5,"Expense sources")
 	#Totals income/expenses
 	revs=[rentinc, assnmtinc, acsold, fboref100, fborefjet, fbogndcrew, fborepinc, fboeqpinc, ptrentinc, fbosell, wssell100, wsselljet, wssellbld, wssellsupp]
 	exps=[rentexp, assnmtexp, pltfee, addcrewfee, gndcrewfee, bkgfee, ref100, refjet, mxexp, eqinstl, acbought, fborepexp, fboeqpexp, fbobuy, wsbuy100, wsbuyjet, wsbuybld, wsbuysupp]
-	pieplot(revs,None,5,"Revenues")
-	pieplot(exps,None,5,"Expenses")
+	fseutils.pieplot(revs,None,5,"Revenues")
+	fseutils.pieplot(exps,None,5,"Expenses")
 
 def sumacpayments(conn,fdate,tdate): #Plot revenue portion by aircraft
 	c=getpaydbcon(conn)
@@ -1163,78 +721,36 @@ def sumacpayments(conn,fdate,tdate): #Plot revenue portion by aircraft
 			ac[i][0]+=var[0][i]
 		ac[i][0]-=z[0][i] #z is for garbage, take this back out
 		i+=1
-	pieplot(ac,None,5,"Aircraft Income")
-
-def pieplot(data, total, min, stitle): #Create a pie plot
-	labels=[]
-	sizes=[]
-	other=0
-	if total is None: #Calc total if not given
-		total=0
-		for cat in data:
-			total+=cat[0]
-	for cat in data: #Convert values to a percentage of total, separate smaller categories
-		cat[0]=cat[0]/total*100
-		if cat[0]>min:
-			labels.append(cat[1])
-			sizes.append(cat[0])
-		else:
-			other+=cat[0]
-	if other>0.1:
-		sizes.append(other)
-		labels.append("Other")
-	# The slices will be ordered and plotted counter-clockwise.
-	colors = ['yellowgreen', 'gold', 'lightskyblue', 'lightcoral']
-	#explode = (0, 0.1, 0, 0) # only "explode" the 2nd slice # But I don't wanna explode...
-	plt.pie(sizes, labels=labels, #colors=colors,
-			autopct='%1.1f%%', shadow=True, startangle=90)
-	plt.axis('equal') # Set aspect ratio to be equal so that pie is drawn as a circle.
-	plt.title(stitle)
-	plt.show()
-
-def gettype(icao): #Return name of aircraft type or error if not found
-	icaodict=dicts.getactypedict()
-	actype="aircraft"
-	try:
-		if icao!="":
-			actype=icaodict[icao]
-		success=True
-	except (KeyError,IndexError):
-		print("Name for code "+icao+" not found!")
-		success=False
-	return actype, success
+	fseutils.pieplot(ac,None,5,"Aircraft Income")
 
 def main(argv): #This is where the magic happens
-	syntaxstring='pricelog.py -acdgmx <aircraft> -bhjknpqsuvz -e <fuel/mtrls> -ft <YYYY-MM-DD> -il <price>'
-	try: #_____________no__r________
-		opts, args = getopt.getopt(argv,"a:bc:d:e:f:g:hi:jkl:m:pqst:uvwx:y:z",["duration=","map=","average=","cheapest=","from=","to=","low=","high=","total=","commodity=","typestats=","timeforsale="])
+	syntaxstring='pricelog.py -acdgm <aircraft> -hjknpqsuvz -e <fuel/mtrls> -ft <YYYY-MM-DD> -il <price>'
+	try: #_b___________no__r_____x__
+		opts, args = getopt.getopt(argv,"a:c:d:e:f:g:hi:jkl:m:pqst:uvwy:z",["duration=","map=","average=","cheapest=","from=","to=","low=","high=","total=","commodity=","timeforsale="])
 	except getopt.GetoptError:
 		print(syntaxstring)
 		sys.exit(2)
-	tot, avg, low, dur, pay, ppay, spay, stot, stat, logs, com, lowprice, fuel, domap, sale, tots, pout, tfs=(False,)*18
+	tot, avg, low, dur, pay, ppay, spay, stot, com, lowprice, fuel, domap, sale, tots, pout, tfs=(False,)*18
 	getdbcon.has_been_called=False #To know when it's the first cursor initialized
 	getpaydbcon.has_been_called=False
-	getlogdbcon.has_been_called=False
 	getconfigdbcon.has_been_called=False
 	highprice=99999999
 	fromdate="2014-01-01"
 	todate="2020-12-31"
 	for opt, arg in opts:
 		if opt in ("-a", "--average"): #Plots average prices for type
-			avgtype,avg=gettype(arg)
-		elif opt=="-b": #Logs a month of flight logs, based on the date given
-			logs=True
+			avgtype,avg=fseutils.gettype(arg)
 		elif opt in ("-c", "--cheapest"): #Plots the cheapest aircraft of this type
-			lowtype,low=gettype(arg)
+			lowtype,low=fseutils.gettype(arg)
 		elif opt in ("-d", "--duration"): #Calculates duration to sell for a type (in work)
-			durtype,dur=gettype(arg)
+			durtype,dur=fseutils.gettype(arg)
 		elif opt in ("-e", "--commodity"): #Maps locations and amounts of commodities
 			locations,cmin,cmax=getcommo(arg)
-			mapper(arg, locations, cmin, cmax, "Locations of Commodities")
+			fseutils.mapper(arg, locations, cmin, cmax, "Locations of Commodities")
 		elif opt in ("-f", "--from"): #First date to be used in different functions
 			fromdate=arg
 		elif opt in ("-g", "--total"): #Plots total aircraft of this type for sale
-			tottype,tot=gettype(arg)
+			tottype,tot=fseutils.gettype(arg)
 		elif opt=='-h': #plshelp
 			print(syntaxstring)
 			sys.exit()
@@ -1249,7 +765,7 @@ def main(argv): #This is where the magic happens
 		elif opt in ("-l", "--low"): #Lowest price to be considered in other functions
 			lowprice=arg
 		elif opt in ("-m", "--map"): #Map locations of a type for sale
-			maptype,domap=gettype(arg)
+			maptype,domap=fseutils.gettype(arg)
 		elif opt=="-p": #Log a month of payments based on the date given
 			pay=True
 		elif opt=="-q": #Plots payment totals over date range
@@ -1264,10 +780,8 @@ def main(argv): #This is where the magic happens
 			stot=True
 		elif opt=="-w": #Saves plots for aircraft specified in a file
 			pout=True
-		elif opt in ("-x", "--typestats"): #Plots stats for given type
-			stattype,stat=gettype(arg)
 		elif opt in ("-y", "--timeforsale"): #Plots sale prices per aircraft over time
-			timetype,tfs=gettype(arg)
+			timetype,tfs=fseutils.gettype(arg)
 		elif opt=="-z": #Temporary - Adds comments to a month of payment logs
 			com=True
 	print("Running option...")
@@ -1288,14 +802,6 @@ def main(argv): #This is where the magic happens
 			plotdates([prices],"Average fuel price","Price",['o-'],None,0)
 		conn.close()
 	
-	if True in (logs, stat):
-		conn=sqlite3.connect('/mnt/data/XPLANE10/XSDK/flightlogs.db')
-		if stat:
-			getapstats(conn,stattype)
-		if logs:
-			loglogmonth(conn,fromdate)
-		conn.close()
-	
 	if True in (tot, avg, low, dur, domap, sale, tots, pout, tfs):
 		conn=sqlite3.connect('/mnt/data/XPLANE10/XSDK/forsale.db')
 		if domap:
@@ -1306,20 +812,20 @@ def main(argv): #This is where the magic happens
 			times=gettimeforsale(conn,timetype)
 			bprice=getbaseprice(timetype)
 			times.append([[getdtime("2014-01-01 00:01"),bprice],[getdtime("2100-12-31 23:59"),bprice]])
-			plotdates(times,"Prices of "+timetype,"Price",['o-','--'],[None,'r'],0)
+			fseutils.plotdates(times,"Prices of "+timetype,"Price",['o-','--'],[None,'r'],0)
 		if tot:
 			totals=gettotals(conn,tottype,fromdate,todate)
-			plotdates([totals],"Number of "+tottype+" for sale","Aircraft",['o-'],None,0)
+			fseutils.plotdates([totals],"Number of "+tottype+" for sale","Aircraft",['o-'],None,0)
 		if avg:
 			averages=getaverages(conn,avgtype,fromdate,todate)
 			bprice=getbaseprice(avgtype)
 			baseprice=[[getdtime("2014-01-01 00:01"),bprice],[getdtime("2100-12-31 23:59"),bprice]] #Ensure it covers the whole range
-			plotdates([averages,baseprice],"Average price for "+avgtype,"Price",['o-','--'],['b','r'],0)
+			fseutils.plotdates([averages,baseprice],"Average price for "+avgtype,"Price",['o-','--'],['b','r'],0)
 		if low:
 			lows=getlows(conn,lowtype,fromdate,todate)
 			bprice=getbaseprice(lowtype)
 			baseprice=[[getdtime("2014-01-01 00:01"),bprice],[getdtime("2100-12-31 23:59"),bprice]]
-			plotdates([lows,baseprice],"Lowest price for "+lowtype,"Price",['o-','--'],['b','r'],0)
+			fseutils.plotdates([lows,baseprice],"Lowest price for "+lowtype,"Price",['o-','--'],['b','r'],0)
 		if dur:
 			listings=getlistings(conn,durtype,lowprice,highprice)
 			durations=[]
@@ -1327,7 +833,7 @@ def main(argv): #This is where the magic happens
 				duration=listings[4]-listings[3]
 				durations.append((listings[2],duration))
 				print(str(listings[2])+": "+str(duration))
-			plotdates([durations],"Time to sell for "+durtype,"Days",['o-'],None,0)
+			fseutils.plotdates([durations],"Time to sell for "+durtype,"Days",['o-'],None,0)
 		if pout:
 			actypes=[]
 			with open('/mnt/data/XPLANE10/XSDK/dailytypes.txt', 'r') as f:
@@ -1339,7 +845,7 @@ def main(argv): #This is where the magic happens
 						lows=getlows(conn,ptype,fromdate,todate)
 						bprice=getbaseprice(ptype)
 						baseprice=[[getdtime("2014-01-01 00:01"),bprice],[getdtime("2100-12-31 23:59"),bprice]]
-						plotdates([lows,baseprice],"Lowest price for "+ptype,"Price",['o-','--'],['b','r'],1)
+						fseutils.plotdates([lows,baseprice],"Lowest price for "+ptype,"Price",['o-','--'],['b','r'],1)
 		conn.close()
 	print("Finished!")
 
