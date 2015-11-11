@@ -1,5 +1,10 @@
 #!/usr/bin/python
 
+# This script contains custom dictionaries for FSE stuff
+# Selected aircraft types have their ICAO code listed for easy reference in other scripts
+# In duplicate cases a letter "i" is generally added
+# All countries for FSE airports are also listed with a corresponding region
+
 def getactypedict():
 	dict={"B461": "BAe 146-100 (Avro RJ70)",
 	"CRJ7": "Bombardier CRJ700-ER",
