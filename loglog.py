@@ -1,10 +1,7 @@
 #!/usr/bin/python
-import xml.etree.ElementTree as etree
-import urllib.request, math, sys, getopt
-import csv, sqlite3
+import math, sys, getopt, sqlite3
 import fseutils # My custom FSE functions
 from mpl_toolkits.basemap import Basemap
-from matplotlib.dates import DateFormatter, date2num
 import matplotlib.pyplot as plt
 
 def loglogmonth(conn,fromdate): #Log a month of logs
@@ -135,28 +132,97 @@ def getapstats(conn,actype): #Return something about airplane flight logs
 	ax.legend( (i[1] for i in xax) )
 	plt.show()
 
+def getcountries(conn): #Return list of countries?
+	cdict=fseutils.build_csv("country")
+	c=getlogdbcon(conn)
+	countries=[] #List of countries found
+	#(fid real, type text, date text, dist real, sn real, ac text, model text, dep text, arr text, fltime text, income real, pfee real, crew real, bkfee real, bonus real, fuel real, gndfee real, rprice real, rtype text, runits text, rcost real)
+	for log in c.execute('SELECT dep, arr FROM logs'):
+		logc=(cdict[log[0]],cdict[log[1]]) #Look up countries of these airports
+		match=[0,0] #Track if each has been matched
+		for visited in countries: #Check current list
+			for i in range(2):
+				if logc[i]==visited: #Already in the list
+					match[i]=1
+					if match[i-1]==1: #Other one too, stop looking
+						break
+	for i in range(2):
+		if match[i]==0: #Add to list if not already there
+			countries.append(logc[i])
+	return countries
+
+def mapcountries(countries): #Map list of countries?
+	fig = plt.figure(figsize=(11.7,8.3))
+	plt.subplots_adjust()
+	m = Basemap(projection='hammer', resolution=None, lon_0=0)
+	m.drawcountries(linewidth=0.5)
+	m.drawcoastlines(linewidth=0.5)
+	
+	from shapelib import ShapeFile
+	import dbflib
+	from matplotlib.collections import LineCollection
+	from matplotlib import cm
+	
+	#for ctry in countries:
+	shp = ShapeFile(r"borders/world_adm1")
+	dbf = dbflib.open(r"borders/world_adm1")
+	
+	for npoly in range(shp.info()[0]):
+		shpsegs = []
+		shpinfo = []
+		shp_object = shp.read_obj(npoly)
+		verts = shp_object.vertices()
+		rings = len(verts)
+		for ring in range(rings):
+			lons, lats = zip(*verts[ring])
+			if max(lons)>721. or min(lons)<-721. or max(lats) >91. or min(lats) < -91.:
+				raise ValueError,msg
+			x, y = m(lons, lats)
+			shpsegs.append(zip(x,y))
+			if ring == 0:
+				shapedict = dbf.read_record(npoly)
+			name = shapedict["NAME_1"]
+			
+			shapedict['RINGNUM'] = ring+1
+			shapedict['SHAPENUM'] = npoly+1
+			shpinfo.append(shapedict)
+		print(name)
+		lines = LineCollection(shpsegs,antialiaseds=(1,))
+		lines.set_facecolors(cm.jet(0.5))
+		lines.set_edgecolors('k')
+		lines.set_linewidth(0.3)
+		ax.add_collection(lines)
+	
+	plt.show()
+
 def main(argv): #This is where the magic happens
 	syntaxstring='loglog.py -ax <aircraft>'
-	try: #a_cdefg_ijklmnopqrstuvw_yz
-		opts, args = getopt.getopt(argv,"bx:",["typestats="])
+	try: #a__defg_ijklmnopqrstuvw_yz
+		opts, args = getopt.getopt(argv,"bcx:",["typestats="])
 	except getopt.GetoptError:
 		print(syntaxstring)
 		sys.exit(2)
-	stat, logs=(False,)*2
+	stat, map, logs=(False,)*3
 	getlogdbcon.has_been_called=False
 	highprice=99999999
 	fromdate="2014-01-01"
 	todate="2020-12-31"
 	for opt, arg in opts:
-		elif opt=="-b": #Logs a month of flight logs, based on the date given
+		if opt=="-b": #Logs a month of flight logs, based on the date given
 			logs=True
+		elif opt=="-c": #Maps countries visited
+			map=True			
 		elif opt in ("-x", "--typestats"): #Plots stats for given type
 			stattype,stat=fseutils.gettype(arg)
 
-	if True in (logs, stat):
+	if True in (logs, map, stat):
 		conn=sqlite3.connect('/mnt/data/XPLANE10/XSDK/flightlogs.db')
 		if stat:
 			getapstats(conn,stattype)
+		if map:
+			countries=getcountries(conn)
+			print(countries)
+			mapcountries(countries)
 		if logs:
 			loglogmonth(conn,fromdate)
 		conn.close()
