@@ -3,8 +3,8 @@ from xml.dom import minidom
 import xml.etree.ElementTree as etree
 import urllib.request, math, sys, getopt
 import dicts # My script for custom dictionaries
-import os, re, fileinput, csv, sqlite3
-import locale, time
+import csv, sqlite3
+import time
 from datetime import timedelta, date, datetime
 from mpl_toolkits.basemap import Basemap
 from matplotlib.dates import DateFormatter, date2num
@@ -40,28 +40,29 @@ def fserequest(ra,rqst,tagname,fmt): #Requests data in format, returns list of r
 		tags=[]
 	return tags
 
-def readxml(data,tagname): #Parses XML, returns list of requested tagname
-	print("Parsing XML data...")
-	xmldoc = minidom.parse(data)
-	error = xmldoc.getElementsByTagName('Error')
-	if error!=[]:
-		print("Received error: "+error[0].firstChild.nodeValue)
-		tags=[]
-	else:
-		tags = xmldoc.getElementsByTagName(tagname)
-	return tags
-
-# def readxml(data,tagname,ns): #Parses XML, returns list of requested tagname
+# def readxml(data,tagname): #Parses XML, returns list of requested tagname
 	# print("Parsing XML data...")
-	# tree = etree.parse(data)
-	# root = tree.getroot()
-	# error = root.findall('sfn:Error',ns)
+	# xmldoc = minidom.parse(data)
+	# error = xmldoc.getElementsByTagName('Error')
 	# if error!=[]:
-		# print("Received error: "+error[0].text)
+		# print("Received error: "+error[0].firstChild.nodeValue)
 		# tags=[]
 	# else:
-		# tags = root.findall(tagname)
+		# tags = xmldoc.getElementsByTagName(tagname)
 	# return tags
+
+def readxml(data,tagname): #Parses XML, returns list of requested tagname
+	ns = {'sfn': 'http://server.fseconomy.net'} #namespace for XML stuff
+	print("Parsing XML data...")
+	tree = etree.parse(data)
+	root = tree.getroot()
+	error = root.findall('sfn:Error',ns)
+	if error!=[]:
+		print("Received error: "+error[0].text)
+		tags=[]
+	else:
+		tags = root.findall(tagname)
+	return tags
 
 def readcsv(data): #Eats Gary's lunch
 	print("Parsing CSV data...")
@@ -74,15 +75,16 @@ def readcsv(data): #Eats Gary's lunch
 
 def gebtn(field,tag): #Shorter way to get tags
 	try:
-		tags=field.getElementsByTagName(tag)[0].firstChild.nodeValue
+		tags=field.find(tag[0],ns).text  #field.getElementsByTagName(tag)[0].firstChild.nodeValue
 	except: #Borked XML, more common than you may think
 		tags=""
 	return tags
 
 def getbtns(field,tags): #Shorter way to get list of tags
+	ns = {'sfn': 'http://server.fseconomy.net'} #namespace for XML stuff
 	vals=[]
 	for tag in tags: #Converts value based on second field
-		val=gebtn(field,tag[0])  #field.find(tag[0],ns).text
+		val=gebtn(field,tag[0])
 		if tag[1]==1:
 			val=int(val)
 		elif tag[1]==2:
@@ -480,7 +482,7 @@ def bigjobs(apts,dir): #Find high paying jobs to/from airports
 
 def dcoord(coord,delta,dirn): # Change coordinate by delta without exceeding a max
 	if dirn=='lon':
-		lmax=179.9
+		lmax=179.9 #I'll fix this later
 	else:
 		lmax=89.9
 	new=coord+delta
@@ -882,13 +884,13 @@ def getcoords(data): #Get coordinates for a list of airports
 		locations.append([lat,lon])
 		#lat_tot+=lat
 		#lon_tot+=lon
-		if lat<latmin or abs(latmin)>90: #Look for min/max of coordinates
+		if lat<latmin: #or abs(latmin)>90: #Look for min/max of coordinates
 			latmin=lat
-		if lat>latmax or abs(latmax)>90:
+		if lat>latmax: #or abs(latmax)>90:  #These abs() things just seem wrong to me
 			latmax=lat
-		if lon<lonmin or abs(lonmin)>180:
+		if lon<lonmin: #or abs(lonmin)>180:
 			lonmin=lon
-		if lon>lonmax or abs(lonmax)>180:
+		if lon>lonmax: #or abs(lonmax)>180:
 			lonmax=lon
 	pts=len(locations)
 	if pts==0:
