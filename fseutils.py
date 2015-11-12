@@ -32,7 +32,7 @@ def fserequest(ra,rqst,tagname,fmt): #Requests data in format, returns list of r
 
 def readxml(data,tagname): #Parses XML, returns list of requested tagname
 	ns = {'sfn': 'http://server.fseconomy.net'} #namespace for XML stuff
-	print("Parsing XML data...")
+	print("Parsing XML data for "+tagname+"...")
 	tree = etree.parse(data)
 	root = tree.getroot()
 	error = root.findall('sfn:Error',ns)
@@ -40,7 +40,7 @@ def readxml(data,tagname): #Parses XML, returns list of requested tagname
 		print("Received error: "+error[0].text)
 		tags=[]
 	else:
-		tags = root.findall(tagname)
+		tags = root.findall('sfn:'+tagname,ns)
 	return tags
 
 def readcsv(data): #Eats Gary's lunch
@@ -53,8 +53,9 @@ def readcsv(data): #Eats Gary's lunch
 	return reader
 
 def gebtn(field,tag): #Shorter way to get tags
+	ns = {'sfn': 'http://server.fseconomy.net'} #namespace for XML stuff
 	try:
-		tags=field.find(tag[0],ns).text  #field.getElementsByTagName(tag)[0].firstChild.nodeValue
+		tags=field.find('sfn:'+tag,ns).text  #field.getElementsByTagName(tag)[0].firstChild.nodeValue
 	except: #Borked XML, more common than you may think
 		tags=""
 	return tags
@@ -155,7 +156,7 @@ def getcoords(data): #Get coordinates for a list of airports
 	latmax,lonmax,latmin,lonmin=100,200,100,200 #garbage to signal init
 	for row in data:
 		try:
-			print(row)
+			#print(row)
 			lat,lon=loc_dict[row]
 		except KeyError: #Probably "Airborne"
 			print("Key error on: "+str(row))
@@ -207,7 +208,7 @@ def mapper(what, points, mincoords, maxcoords, title): # Put the points on a map
 		else: #Use boring but more compact dots
 			mk='o'
 			ptsize=2
-		print(points)
+		#print(points)
 		m.shadedrelief(scale=0.2)
 		x, y = m([i[1] for i in points], [i[0] for i in points])
 		c='b'
@@ -230,7 +231,7 @@ def mapper(what, points, mincoords, maxcoords, title): # Put the points on a map
 			if pts[i]!=[[],[],[]]: #Check if any list has points
 				for j in range(3):
 					if pts[i][j]!=[]: #Check if this list has any points
-						print(pts[i][j])
+						#print(pts[i][j])
 						x, y = m([k[1] for k in pts[i][j]], [k[0] for k in pts[i][j]]) #Populate points
 						if j==0: #Set color
 							c='#cc9900'
@@ -238,7 +239,7 @@ def mapper(what, points, mincoords, maxcoords, title): # Put the points on a map
 							c='b'
 						else:
 							c='k'
-						print(sz)
+						#print(sz)
 						m.scatter(x,y,s=sz,marker='o',c=c) #Plot the points with these properties
 						for l in range(len(x)):
 							gals=int(round(i/2.65))
