@@ -367,7 +367,7 @@ def getaverages(conn,actype,fr,to): #Return list of average prices for aircraft 
 			for price in prices:
 				ssprice+=math.pow(price-avg,2)
 			stdev=math.sqrt(ssprice/numforsale)
-			averages.append((getdtime(query[1]),avg,stdev))
+			averages.append((fseutils.getdtime(query[1]),avg,stdev))
 	return averages
 
 def getbaseprice(actype): #Return the base price for this actype
@@ -395,7 +395,7 @@ def getlows(conn,actype,fr,to): #Return list of lowest price for aircraft in eac
 		d.execute('SELECT price FROM allac WHERE obsiter = ? AND type = ? ORDER BY price', (query[0],actype))
 		price=d.fetchone()
 		if price is not None:
-			lows.append((getdtime(query[1]),price))
+			lows.append((fseutils.getdtime(query[1]),price))
 	return lows
 
 def getfuelprices(conn): #Plot fuel prices over time
@@ -431,7 +431,7 @@ def getfuelprices(conn): #Plot fuel prices over time
 				num+=1
 		stdev=math.sqrt(ssprice/num)
 		print("New day "+day[0]+" with "+str(avg)+" per gal, sd "+str(stdev))
-		dprice.append((getdtime(day[0]+" 00:01"),avg,stdev))
+		dprice.append((fseutils.getdtime(day[0]+" 00:01"),avg,stdev))
 	return dprice
 
 def getcommo(ctype): # Adds up locations and quantities of stuff to send to the mapper
@@ -730,7 +730,7 @@ def main(argv): #This is where the magic happens
 	except getopt.GetoptError:
 		print(syntaxstring)
 		sys.exit(2)
-	tot, avg, low, dur, pay, ppay, spay, stot, com, lowprice, fuel, domap, sale, tots, pout, tfs=(False,)*18
+	tot, avg, low, dur, pay, ppay, spay, stot, com, lowprice, fuel, domap, sale, tots, pout, tfs=(False,)*16
 	getdbcon.has_been_called=False #To know when it's the first cursor initialized
 	getpaydbcon.has_been_called=False
 	getconfigdbcon.has_been_called=False
@@ -811,7 +811,7 @@ def main(argv): #This is where the magic happens
 		if tfs:
 			times=gettimeforsale(conn,timetype)
 			bprice=getbaseprice(timetype)
-			times.append([[getdtime("2014-01-01 00:01"),bprice],[getdtime("2100-12-31 23:59"),bprice]])
+			times.append([[fseutils.getdtime("2014-01-01 00:01"),bprice],[fseutils.getdtime("2100-12-31 23:59"),bprice]])
 			fseutils.plotdates(times,"Prices of "+timetype,"Price",['o-','--'],[None,'r'],0)
 		if tot:
 			totals=gettotals(conn,tottype,fromdate,todate)
@@ -819,12 +819,12 @@ def main(argv): #This is where the magic happens
 		if avg:
 			averages=getaverages(conn,avgtype,fromdate,todate)
 			bprice=getbaseprice(avgtype)
-			baseprice=[[getdtime("2014-01-01 00:01"),bprice],[getdtime("2100-12-31 23:59"),bprice]] #Ensure it covers the whole range
+			baseprice=[[fseutils.getdtime("2014-01-01 00:01"),bprice],[fseutils.getdtime("2100-12-31 23:59"),bprice]] #Ensure it covers the whole range
 			fseutils.plotdates([averages,baseprice],"Average price for "+avgtype,"Price",['o-','--'],['b','r'],0)
 		if low:
 			lows=getlows(conn,lowtype,fromdate,todate)
 			bprice=getbaseprice(lowtype)
-			baseprice=[[getdtime("2014-01-01 00:01"),bprice],[getdtime("2100-12-31 23:59"),bprice]]
+			baseprice=[[fseutils.getdtime("2014-01-01 00:01"),bprice],[fseutils.getdtime("2100-12-31 23:59"),bprice]]
 			fseutils.plotdates([lows,baseprice],"Lowest price for "+lowtype,"Price",['o-','--'],['b','r'],0)
 		if dur:
 			listings=getlistings(conn,durtype,lowprice,highprice)
@@ -844,7 +844,7 @@ def main(argv): #This is where the magic happens
 					if ret:
 						lows=getlows(conn,ptype,fromdate,todate)
 						bprice=getbaseprice(ptype)
-						baseprice=[[getdtime("2014-01-01 00:01"),bprice],[getdtime("2100-12-31 23:59"),bprice]]
+						baseprice=[[fseutils.getdtime("2014-01-01 00:01"),bprice],[fseutils.getdtime("2100-12-31 23:59"),bprice]]
 						fseutils.plotdates([lows,baseprice],"Lowest price for "+ptype,"Price",['o-','--'],['b','r'],1)
 		conn.close()
 	print("Finished!")
