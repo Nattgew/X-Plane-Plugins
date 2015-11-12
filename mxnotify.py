@@ -11,9 +11,11 @@ import fseutils # My custom FSE functions
 
 def getemail(): #Gets email info stored in file
 	with open('creds.txt', 'r') as f:
+		srvr=f.readline().strip()
 		addr=f.readline().strip()
 		passw=f.readline().strip()
-		return addr,addr,passw
+		addrto=f.readline().strip()
+		return srvr,addrto,addr,passw
 
 def logacloc(conn): #Log airplane info
 	year,month,*rest=fromdate.split('-', 2)
@@ -81,12 +83,12 @@ def isnew(needfixes):
 	with open('aog.txt', 'r+') as f:
 		for aog in f:
 			for current in needfixes:
-				if current==aog:
-					oldnews.append(current)
+				if current[0]==aog:
+					oldnews.append(current[0])
 					break
 	with open('aog.txt', 'w') as f:
 		for current in needfixes:
-			f.write(current)
+			f.write(current[0])
 	for oldie in oldnews:
 		needfixes.remove(oldie)
 	return needfixes
@@ -95,6 +97,7 @@ ns = {'sfn': 'http://server.fseconomy.net'} #namespace for XML stuff
 aog=[] #List of planes and FBO options
 print("Sending request for aircraft list...")
 airplanes = fseutils.fserequest(1,'query=aircraft&search=key','Aircraft','xml')
+#print(airplanes)
 for plane in airplanes:
 	nr=int(plane.find('sfn:NeedsRepair', ns).text) #Indications repair is needed
 	since100=int(plane.find('sfn:TimeLast100hr', ns).text.split(":")[0])
@@ -115,7 +118,7 @@ for plane in airplanes:
 					break
 		aog.append((row[0],row[1],row[2],mx,shops)) #Reg, Type, Loc, repair, options
 aog=isnew(aog)
-addr,uname,passw=getemail()
+srvr,addrto,addr,passw=getemail()
 msg="Airplanes in need of repair:"
 #print(msg)
 if len(aog)>0:
@@ -138,10 +141,11 @@ if len(aog)>0:
 		#print()
 	message="""\From: %s\nTo: %s\nSubject: FSE Aircraft Mx\n\n%s""" % (addr, addr, msg)
 	try:
-		server=smtplib.SMTP_SSL('smtp.gmail.com', 465)
+		#print("Sending mail from "+addr+" to "+addrto)
+		server=smtplib.SMTP_SSL(srvr, 465)
 		server.ehlo()
-		server.login(uname,passw)
-		server.sendmail(addr,addr,message)
+		server.login(addr,passw)
+		server.sendmail(addr,addrto,message)
 		server.close()
 		print("Successfully sent the mail:")
 	except:
