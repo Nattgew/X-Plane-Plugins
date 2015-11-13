@@ -840,7 +840,7 @@ def main(argv): #This is where the magic happens
 				for actype in f:
 					actype=actype.strip()
 					print("Saving figure for "+actype)
-					ptype,ret=gettype(actype)
+					ptype,ret=fseutils.gettype(actype)
 					if ret:
 						lows=getlows(conn,ptype,fromdate,todate)
 						bprice=getbaseprice(ptype)
