@@ -17,44 +17,6 @@ def getemail(): #Gets email info stored in file
 		addrto=f.readline().strip()
 		return srvr,addrto,addr,passw
 
-def logacloc(conn): #Log airplane info
-	year,month,*rest=fromdate.split('-', 2)
-	print("Sending request for logs...")
-	logs = fseutils.fserequest(1,'query=aircraft&search=key','Aircraft','xml')
-	if logs!=[]:
-		c=getlogdbcon(conn)
-		rows=[]
-		fields=(("Id", 1), ("Type", 0), ("Time", 0), ("Distance", 1), ("SerialNumber", 1), ("Aircraft", 0), ("MakeModel", 0), ("From", 0), ("To", 0), ("FlightTime", 0), ("Income", 2), ("PilotFee", 2), ("CrewCost", 2), ("BookingFee", 2), ("Bonus", 2), ("FuelCost", 2), ("GCF", 2), ("RentalPrice", 2), ("RentalType", 0), ("RentalUnits", 0), ("RentalCost", 2))
-		print("Recording data...")
-		for log in logs:
-			row=fseutils.getbtns(log, fields)
-			row[2]=row[2].replace('/','-')
-			rows.append(tuple(row))
-		c.executemany('INSERT INTO logs VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',rows)
-		conn.commit()
-
-def getacdbcon(conn): #Get cursor for log database
-	#print("Initializing log database cursor...")
-	c = conn.cursor()
-	if not getlogdbcon.has_been_called:
-		c.execute("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table'")
-		exist=c.fetchone()
-		if exist[0]==0: #Table does not exist, create table
-			print("Creating log database tables...")
-			c.execute('''CREATE TABLE logs
-				 (fid real, type text, date text, dist real, sn real, ac text, model text, dep text, arr text, fltime text, income real, pfee real, crew real, bkfee real, bonus real, fuel real, gndfee real, rprice real, rtype text, runits text, rcost real)''')
-			c.execute('''CREATE INDEX idx1 ON logs(date)''')
-			c.execute('''CREATE INDEX idx2 ON logs(type)''')
-			c.execute('''CREATE INDEX idx3 ON logs(dist)''')
-			c.execute('''CREATE INDEX idx4 ON logs(model)''')
-			c.execute('''CREATE INDEX idx5 ON logs(ac)''')
-		else:
-			c.execute('SELECT date FROM logs ORDER BY date DESC')
-			dtime=c.fetchone()
-			print("Last log data recorded: "+dtime[0])
-		getlogdbcon.has_been_called=True
-	return c
-
 def reldist(icao,rad): #Find distances of other airports from given airport
 	#print("Looking for airports near "+icao)
 	loc_dict=fseutils.build_csv("latlon")
@@ -95,7 +57,7 @@ def isnew(needfixes):
 
 ns = {'sfn': 'http://server.fseconomy.net'} #namespace for XML stuff
 aog=[] #List of planes and FBO options
-print("Sending request for aircraft list...")
+#print("Sending request for aircraft list...")
 airplanes = fseutils.fserequest(1,'query=aircraft&search=key','Aircraft','xml')
 #print(airplanes)
 for plane in airplanes:
@@ -147,12 +109,12 @@ if len(aog)>0:
 		server.login(addr,passw)
 		server.sendmail(addr,addrto,message)
 		server.close()
-		print("Successfully sent the mail:")
+		#print("Successfully sent the mail:")
 	except:
 		e = sys.exc_info()[0]
-		print("Failed to send the mail with error:")
-		print(e)
+		#print("Failed to send the mail with error:")
+		#print(e)
 else:
 	msg+="\nNone"
-print()
-print(msg)
+#print()
+#print(msg)

@@ -19,7 +19,7 @@ def fserequest(ra,rqst,tagname,fmt): #Requests data in format, returns list of r
 	else:
 		rakey=""
 	rq = "http://server.fseconomy.net/data?userkey="+getkey()+rakey+'&format='+fmt+'&'+rqst
-	print("Will make request: "+rq)
+	#print("Will make request: "+rq)
 	data = urllib.request.urlopen(rq)
 	if fmt=='xml':
 		tags=readxml(data,tagname)
@@ -32,7 +32,7 @@ def fserequest(ra,rqst,tagname,fmt): #Requests data in format, returns list of r
 
 def readxml(data,tagname): #Parses XML, returns list of requested tagname
 	ns = {'sfn': 'http://server.fseconomy.net'} #namespace for XML stuff
-	print("Parsing XML data for "+tagname+"...")
+	#print("Parsing XML data for "+tagname+"...")
 	tree = etree.parse(data)
 	root = tree.getroot()
 	error = root.findall('sfn:Error',ns)
@@ -44,7 +44,7 @@ def readxml(data,tagname): #Parses XML, returns list of requested tagname
 	return tags
 
 def readcsv(data): #Eats Gary's lunch
-	print("Parsing CSV data...")
+	#print("Parsing CSV data...")
 	has_header = csv.Sniffer().has_header(data.read(1024))
 	data.seek(0) # rewind
 	reader = csv.reader(data)
