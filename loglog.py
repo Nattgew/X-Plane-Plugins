@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 def loglogmonth(conn,fromdate): #Log a month of logs
 	year,month,*rest=fromdate.split('-', 2)
-	print("Sending request for logs...")
+	print("Sending request for logs from "+month+"-"+year+"...")
 	logs = fseutils.fserequest(1,'query=flightlogs&search=monthyear&month='+month+'&year='+year,'FlightLog','xml')
 	if logs!=[]:
 		c=getlogdbcon(conn)
@@ -19,6 +19,8 @@ def loglogmonth(conn,fromdate): #Log a month of logs
 			rows.append(tuple(row))
 		c.executemany('INSERT INTO logs VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',rows)
 		conn.commit()
+	else:
+		print("Got no data!")
 
 def getlogdbcon(conn): #Get cursor for log database
 	#print("Initializing log database cursor...")
@@ -176,7 +178,7 @@ def mapcountries(countries): #Map list of countries?
 		for ring in range(rings):
 			lons, lats = zip(*verts[ring])
 			if max(lons)>721. or min(lons)<-721. or max(lats) >91. or min(lats) < -91.:
-				raise ValueError,msg
+				raise ValueError('Lats/Lons out of range')
 			x, y = m(lons, lats)
 			shpsegs.append(zip(x,y))
 			if ring == 0:
@@ -196,13 +198,13 @@ def mapcountries(countries): #Map list of countries?
 	plt.show()
 
 def main(argv): #This is where the magic happens
-	syntaxstring='loglog.py -ax <aircraft>'
+	syntaxstring='loglog.py -ax <aircraft> --from=<YYYY-MM-DD> --to=<YYYY-MM-DD>'
 	try: #a__defg_ijklmnopqrstuvw_yz
-		opts, args = getopt.getopt(argv,"bcx:",["typestats="])
+		opts, args = getopt.getopt(argv,"bcf:t:x:",["from=","to=","typestats="])
 	except getopt.GetoptError:
 		print(syntaxstring)
 		sys.exit(2)
-	stat, map, logs=(False,)*3
+	stat, cmap, logs=(False,)*3
 	getlogdbcon.has_been_called=False
 	highprice=99999999
 	fromdate="2014-01-01"
@@ -211,15 +213,19 @@ def main(argv): #This is where the magic happens
 		if opt=="-b": #Logs a month of flight logs, based on the date given
 			logs=True
 		elif opt=="-c": #Maps countries visited
-			map=True			
+			cmap=True
+		elif opt in ("-f", "--from"): #First date to be used in different functions
+			fromdate=arg
+		elif opt in ("-t", "--to"): #Last date to be used in different functions
+			todate=arg
 		elif opt in ("-x", "--typestats"): #Plots stats for given type
 			stattype,stat=fseutils.gettype(arg)
 
-	if True in (logs, map, stat):
+	if True in (logs, cmap, stat):
 		conn=sqlite3.connect('/mnt/data/XPLANE10/XSDK/flightlogs.db')
 		if stat:
 			getapstats(conn,stattype)
-		if map:
+		if cmap:
 			countries=getcountries(conn)
 			print(countries)
 			mapcountries(countries)
