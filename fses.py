@@ -409,11 +409,11 @@ def main(argv):
 	try:
 		opts, args = getopt.getopt(argv,"hcpf:t:r:m:n:g:u:",["from=","to=","minrev=","minpax=","maxpax=","fromregion=","toregion="])
 	except getopt.GetoptError:
-		print syntaxstring
+		print(syntaxstring)
 		sys.exit(2)
 	for opt, arg in opts:
 		if opt=='-h':
-			print syntaxstring
+			print(syntaxstring)
 			sys.exit()
 		elif opt=='-c':
 			walk=1
