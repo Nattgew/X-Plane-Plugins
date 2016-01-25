@@ -77,6 +77,7 @@ def getactypedict():
 	"SBR1": "North American T-39 Sabreliner",
 	"BE30": "Beechcraft King Air 300",
 	"L410E": "Let L 410 UVP-E",
+	'L410T': 'Let L 410 UVP-T',
 	"CL30": "Bombardier Challenger 300",
 	"B350": "Beechcraft King Air 350",
 	"BE40": "Raytheon Beechjet / Hawker",
