@@ -311,7 +311,7 @@ def plotdates(dlist,title,ylbl,sym,clr,save): #Plot a list of data vs. dates
 	if save==0:
 		plt.show()
 	else:
-		plt.savefig('/mnt/data/Dropbox/'+title.replace(' ','_')+'.png')
+		plt.savefig('/mnt/data/Dropbox/'+title.replace(' ','_').replace('/','_')+'.png')
 
 def pieplot(data, total, min, stitle): #Create a pie plot
 	labels=[]
