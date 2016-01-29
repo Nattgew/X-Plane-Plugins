@@ -11,6 +11,9 @@
 static float gameLoopCallback(float inElapsedSinceLastCall,
 				float inElapsedTimeSinceLastFlightLoop, int inCounter,	
 				void *inRefcon);
+static float brakeLoopCallback(float inElapsedSinceLastCall,
+				float inElapsedTimeSinceLastFlightLoop, int inCounter,	
+				void *inRefcon);
 static XPLMCommandRef CmdSTConn, CmdLTConn, CmdFTConn, CmdVSupConn, CmdVSdnConn, CmdLCConn, CmdRCConn, CmdUCConn, CmdDCConn, CmdVDConn, CmdVUConn, CmdVLConn, CmdVRConn, CmdCPConn, CmdMBConn, Cmd2BConn, CmdMCConn, CmdMSConn, CmdEOConn, CmdECConn, CmdAMConn, CmdFSConn, CmdSSConn;
 int CmdSTConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
 int CmdLTConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
@@ -36,16 +39,20 @@ int CmdAMConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRef
 int CmdFSConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
 int CmdSSConnCB(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
 //int MyCommandHandler(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void * inRefcon);
-static XPLMDataRef acf_desc_ref, acf_icao_ref, speed_brake_ref, landing_lights_ref, geardep_ref, gearhand_ref, flap_h_pos_ref, ap_vvi_ref, ap_hdg_ref, ap_ref, trim_ail_ref, trim_elv_ref, view_ref, sbrake_ref, flap_ref, axis_assign_ref, axis_values_ref, axis_min_ref, axis_max_ref, axis_rev_ref, ev_ip_ref, is_ev_ref, trackv_ref, cowl_ref, mach_ref, ap_state_ref, sim_time_ref;
+static XPLMDataRef acf_desc_ref, acf_icao_ref, speed_brake_ref, landing_lights_ref, geardep_ref, gearhand_ref, flap_h_pos_ref, ap_vvi_ref, ap_hdg_ref, ap_ref, trim_ail_ref, trim_elv_ref, view_ref, sbrake_ref, flap_ref, axis_assign_ref, axis_values_ref, axis_min_ref, axis_max_ref, axis_rev_ref, ev_ip_ref, is_ev_ref, trackv_ref, cowl_ref, mach_ref, ap_state_ref, sim_time_ref,lbadd_ref,rbadd_ref;
 static int cmdhold=0;
 static int propbrakes=0;
 static int propeng=0;
 static int assignments[100];
 static float mins[100];
 static float maxs[100];
+int revs[100];
 static float proprange, propmin;
+static float lbrange, rbrange, lbmin, rbmin;
 static int rev, i;
 static int propindex=-1;
+static int condindex=-1;
+static int tvecindex=-1;
 
 struct gotAC {
 	char AC[5];
@@ -89,6 +96,9 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
 	axis_min_ref=XPLMFindDataRef("sim/joystick/joystick_axis_minimum");
 	axis_max_ref=XPLMFindDataRef("sim/joystick/joystick_axis_maximum");
 	axis_rev_ref=XPLMFindDataRef("sim/joystick/joystick_axis_reverse");
+
+	lbadd_ref=XPLMFindDataRef("sim/flightmodel/controls/l_brake_add");
+	rbadd_ref=XPLMFindDataRef("sim/flightmodel/controls/r_brake_add");
 	
 	ev_ip_ref=XPLMFindDataRef("sim/network/dataout/external_visual_ip"); //int[20]
 	is_ev_ref=XPLMFindDataRef("sim/network/dataout/is_external_visual"); //int
@@ -171,6 +181,25 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
 
 	CmdSSConn = XPLMCreateCommand("cmod/toggle/simtime","Toggle 1x/32x sim time");
 	XPLMRegisterCommandHandler(CmdSSConn, CmdSSConnCB, 0, (void *) 0);
+
+	float mins[100], maxs[100];
+	int assignments[100];
+	XPLMGetDatavi(axis_assign_ref, assignments, 0, 100);
+	XPLMGetDatavf(axis_min_ref, mins, 0, 100);
+	XPLMGetDatavf(axis_max_ref, maxs, 0, 100);
+	XPLMGetDatavi(axis_rev_ref, revs, 0, 100);
+	
+	float rbmax, lbmax;
+	lbmin=mins[0];
+	rbmin=mins[0];
+	lbmax=maxs[0];
+	rbmax=maxs[0];
+	lbrange=lbmax-lbmin;
+	rbrange=rbmax-rbmin;
+	condindex=20;
+	tvecindex=21;
+
+	XPLMRegisterFlightLoopCallback(brakeLoopCallback, 0.1, NULL);
 
 	printf("CMOD - plugin loaded\n");	
 
@@ -373,12 +402,6 @@ int CmdMSConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //T
 int CmdMBConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //prop axis for speed brakes
 	if (phase==0) {
 		if (propbrakes==0) {
-			float mins[100], maxs[100];
-			int assignments[100], revs[100];
-			XPLMGetDatavi(axis_assign_ref, assignments, 0, 100);
-			XPLMGetDatavf(axis_min_ref, mins, 0, 100);
-			XPLMGetDatavf(axis_max_ref, maxs, 0, 100);
-			XPLMGetDatavi(axis_rev_ref, revs, 0, 100);
 			for (i=0; i<100; i++) {
 				if (assignments[i]==7) { //Guess?
 					propindex=i;
@@ -615,6 +638,28 @@ static float gameLoopCallback(float elapsedSinceLastCall, float inElapsedSim, in
 	if (proper<.0001)
 		proper=-0.5;
 	XPLMSetDataf(sbrake_ref,proper);
+	return 0.5;
+}
+
+static float brakeLoopCallback(float elapsedSinceLastCall, float inElapsedSim, int counter, void *refcon) {
+	//Get current conditions
+	float vals[100], lbaxis, rbaxis, rber, lber;
+	XPLMGetDatavf(axis_values_ref, vals, 0, 100);
+	lbaxis=vals[condindex];
+	rbaxis=vals[tvecindex];
+	lber=lbaxis;
+	rber=rbaxis;
+//	lber=(lbaxis-lbmin)/lbrange;
+//	rber=(rbaxis-rbmin)/rbrange;
+	if (lber<.0001)
+		lber=0.0;
+	if (rber<0.0001)
+		rber=0.0;
+	XPLMSetDataf(rbadd_ref,rber);	
+	XPLMSetDataf(lbadd_ref,lber);
+	
+	printf ("lax: %s  rax: %s",lbaxis,rbaxis);
+	printf ("LB: %s  RB: %s",lber,rber);
 	return 0.5;
 }
 
