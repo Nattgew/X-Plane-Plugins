@@ -5,14 +5,15 @@ from XPLMDataAccess import * #Datarefs
 from XPWidgets import *
 from XPStandardWidgets import *
 from XPWidgetDefs import *
+from XPLMPlugin import * #Plugin messaging
 import os
 
 class PythonInterface:
 	def XPluginStart(self):
 		self.Name="FSE Set Empty Weight"
-		self.Sig= "something.something.FSE"
+		self.Sig= "Nattgew.Tools.FSE"
 		self.Desc="Sets empty weight of aircraft to match FSE capacity"
-		self.VERSION="0.1"
+		self.VERSION="0.2"
 		
 		self.msg1 = "Everything's shiny, cap'n" #Info to show in popup/console
 		self.msg2 = "Not to fret"
@@ -29,11 +30,43 @@ class PythonInterface:
 			self.setemptyweight()
 		return 0
 	
+	def getPayload(self): #Return payload value for current aircraft
+		i=self.getFSEindex()
+		if i>-1:
+			#List of payload values in same order as the alias list
+			payloads=[983,976,1170,1873,4253,208,792,31280,44948,278,7802,15880,15880,408,1030,2170,7200,7420,2377,10200,7350,9050,369,2064,346,803,1951,14802,4031,4585,5897,1253,569,1449,382,828,1919,3157,3938,2985,782,782,602,542,548,656,1093,1995,2354,2681,1576,1044,1088,932,661,653,701,2564,1090,2241,1732,1732,507,1951,342,590,1562,3568,28735,31326,29390,13319,354,12530,6849,10772,13880,14401,12071,4019,41443,6373,2051,1068,290,6700,303,217,432,388,470,589,792,590,750,862,1910,777,943,792,939,1618,1084,1008,1909,1878,3357,6714,407,1390,750,422,522,500,509,524,6714,8716,11599,6290,211,16279,7432,6000,7709,1164,1293,2205,355,304,300,927,1459,1519,2221,4661,10928,2404,2404,238,415,522,3142,5070,520,500,5741,5461,2832,2832,4584,14528,18453,20273,38488,31859,78563,1162,2185,4400,8500,9600,8500,1515,233,1079,1700,863,1455,497,15000,11000,3266,351,8166,1610,693,953,480,1420,594,5000,3550,503,2495,5362,9522,599,4792,736,675,5000,29000,3910,2217,1066,4738,544,363,654,3958,2799,2920,3166,2650,2650,217,44600,44650,31421,1746,3593,19918,1848,232,5580,569,516,461,1780,535,499,2470,585,1566,6753,2363,942,3758,1188,2009,1250,1840,657,1895,1500,285,424,424,361,470,379,598,875,592,592,429,559,533,584,408,569,1261,1825,1628,1808,690,659,1213,245,2611,547,732,772,410,1578,238,2767,2081,436,462,450,245,455,569,474,8500,4535,6540,5035,2329,386,860,2879,1339,2078,420,600,1162,1272,753,489,227,587,1430,296,15797,321,15158,338,3505,474,433,6700,478,540,520]
+			return payloads[i]
+		else:
+			return i
+	
+	def getICAO(self): #Return ICAO code for current aircraft
+		i=self.getFSEindex()
+		if i>-1:
+			#List of ICAO codes in same order as the alias list
+			icaos=["LA60","AC50","AC68","AC90","L39","CH7A","A109","A320","A321","","AS57","C27J","C27J","BL8","AN14","AN2","AN24","AN26","AN28","AN32","AT45","AT75","J1","NOMA","HUSK","ANSN","JPRO","B461","JS32","JS41","DC3T","BASS","BE33","B80S","T34P","BE17","BE18","B190","B190","B190","BE58","BE58","BE36","BE33","BE35","BE76","BE60","BE20","BE30","B350","BE9L","BE80","B60T","BE50","UH1","B06","B06","B212","B407","B412","B430","B430","B47G","UH1","B14C","B103","","","B377","B722","B738","B17G","ST75","CH47","CL30","CL2T","CRJ2","CRJ7","DH8D","LJ60","BR30","","BN2T","BN2P","BU31","CN35","C152","C162","C172","C177","C177","C182","C185","C195","C206","C207","C208","C210","C310","C337","C340","C404","C414","C421","C441","C25","C550","C750","O1","C510","T50","SR20","SR22","COL4","AC11","AC11","CAT","CVLP","CVLT","C46","","FA7X","DHC7","DH8A","DH8C","DH89","DH82","DOVE","HERN","DH80","DHC1","DHC2","DH2T","DHC3","DH3T","DHC4","DHC5","DHC6","DHC6","DA42","DA20","DA40","D228","D328","DO27","DO27","DO28","A26","C117","DC2","DC2","DC3","DC4M","DC6","DC6B","DC7B","DC7C","DC8","EA50","E110","E120","E135","E145","E135","E50P","ERCO","AS50","BK17","EC20","EC35","FA24","C119","C123","FSW3","FA62","F27","TRIM","FBA2","GA8","GC1","G44","G21","HU16","S2P","AA5","G21T","H25B","A748","COUR","DG15","L37","H500","IL14","IL18","JU52","","","MI8","LA25","LEG2","LEG2","LJ45","LJ24","LJ24","LJ25","L410","L410","XL2","C130","C130","CONI","L10A","L10E","L188","","L8","M404","M7","ME08","M200","MU2B","M20T","M20P","MS76","D25","NORS","B25","P51","T28","SBR1","T6","P750","P166","P180","P149","PC12","PC6","J3","PA12","PA18","PA20","PA22","PA22","PA23","PA23","PA24","PA24","P28A","P28R","P28A","P28B","P28A","PA30","PA31","PAY2","PAY1","PAY2","PA32","PA32","PA34","PA38","PA42","PA44","PA46","PA60","PZ04","KODI","CRER","BE40","PRM1","RC3","DR40","DR22","R22","R44","AC11","NAVI","SB20","SF34","SF90","SH36","SC7","F260","SM19","S43","S55","S76","TOBA","TB20","TBM7","TBM8","SP7","S108","L5","RELI","WALR","ECHO","T124","RV7","VISC","WACF","S61","YK12","YK18","YK40","CH80","","Z43"]
+			return icaos[i]
+		else:
+			return i
+	
 	def setemptyweight(self):
+		payload=self.getPayload() #Payload corresponding to this airplane
+		if payload>-1:
+			#Get aircraft weight properties
+			MTOW=XPLMGetDataf(XPLMFindDataRef("sim/aircraft/weight/acf_m_max"))
+			EW_now=XPLMGetDataf(XPLMFindDataRef("sim/aircraft/weight/acf_m_empty"))
+			EW=MTOW-payload #EW needed to carry the FSE payload
+			if EW < EW_now:
+				self.msg1 = "Setting "+alias
+				self.msg2 = "EW from "+str(int(round(EW_now)))+"kg to "+str(int(round(EW)))+"kg"
+				self.showinfo()				
+				XPLMSetDataf(XPLMFindDataRef("sim/aircraft/weight/acf_m_empty"),EW)
+			else:
+				self.msg1 = "Unchanged "+alias
+				self.msg2 = "EW "+str(int(round(EW_now)))+"kg is lower than FSE "+str(int(round(EW)))+"kg"
+				self.showinfo()
+		
+	def getFSEindex(self):
 		#print "FSE - Here we go..."
-		#List of payload values in same order as the alias list
-		payloads=[983,976,1170,1873,4253,208,792,31280,44948,278,7802,15880,15880,408,1030,2170,7200,7420,2377,10200,7350,9050,369,2064,346,803,1951,14802,4031,4585,5897,1253,569,1449,382,828,1919,3157,3938,2985,782,782,602,542,548,656,1093,1995,2354,2681,1576,1044,1088,932,661,653,701,2564,1090,2241,1732,1732,507,1951,342,590,1562,3568,28735,31326,29390,13319,354,12530,6849,10772,13880,14401,12071,4019,41443,6373,2051,1068,290,6700,303,217,432,388,470,589,792,590,750,862,1910,777,943,792,939,1618,1084,1008,1909,1878,3357,6714,407,1390,750,422,522,500,509,524,6714,8716,11599,6290,211,16279,7432,6000,7709,1164,1293,2205,355,304,300,927,1459,1519,2221,4661,10928,2404,2404,238,415,522,3142,5070,520,500,5741,5461,2832,2832,4584,14528,18453,20273,38488,31859,78563,1162,2185,4400,8500,9600,8500,1515,233,1079,1700,863,1455,497,15000,11000,3266,351,8166,1610,693,953,480,1420,594,5000,3550,503,2495,5362,9522,599,4792,736,675,5000,29000,3910,2217,1066,4738,544,363,654,3958,2799,2920,3166,2650,2650,217,44600,44650,31421,1746,3593,19918,1848,232,5580,569,516,461,1780,535,499,2470,585,1566,6753,2363,942,3758,1188,2009,1250,1840,657,1895,1500,285,424,424,361,470,379,598,875,592,592,429,559,533,584,408,569,1261,1825,1628,1808,690,659,1213,245,2611,547,732,772,410,1578,238,2767,2081,436,462,450,245,455,569,474,8500,4535,6540,5035,2329,386,860,2879,1339,2078,420,600,1162,1272,753,489,227,587,1430,296,15797,321,15158,338,3505,474,433,6700,478,540,520]
-
 		#List of aliases for FSE
 		aliaslist=(['Aermacchi MB326H', 'AL60', 'AL60 Cargo', 'AL60 Cargo IFC'],
 		['(EP-AAM) Commander 500', 'AC500 AC-1220', 'AC500 AC1220', 'AC500 Air America Shiny and New', 'AC500 Air America Used and Abused', 'AC500 Air Simba VC', 'AC500 Ansett', 'AC500 AS-1220', 'AC500 AS-1220 VC', 'AC500 AS-1220B', 'AC500 AS-AF06P VC', 'AC500 AS-E04P VC', 'AC500 BG-0806', 'AC500 BG-0806 VC', 'AC500 Black VC', 'AC500 Cargo Altair Clean', 'AC500 Cargo Altair Dirty', 'AC500 Cargo EAC', 'AC500 Cargo NOVC AF', 'AC500 Cargo NOVC Clean', 'AC500 Cargo NOVC Dirty', 'AC500 Cargo Smuggler\'s Dream', 'AC500 Cargo VC - Razorback Universal', 'AC500 Cargo VC AF', 'AC500 Cargo vc Border Patrol', 'AC500 Cargo VC BushPilots_WG', 'AC500 Cargo VC C-GFDA', 'AC500 Cargo VC Clean', 'AC500 Cargo VC Dirty', 'AC500 Cargo VC Dirty AAS', 'AC500 Cargo vc H', 'AC500 Cargo VC N052NE', 'AC500 Cargo VC N054NE', 'AC500 Cargo VC SM', 'AC500 Cargo vc Smugglers Dream', 'AC500 Com-Central', 'AC500 Copper VC', 'AC500 DGF VC', 'AC500 Eagle Air VC', 'AC500 G-HAUL', 'AC500 G-HAUL VC', 'AC500 G-HAULWood VC', 'AC500 GAAR', 'AC500 LEAS', 'AC500 LL-0704', 'AC500 LL-0704 VC', 'AC500 LMA N209LM', 'AC500 LVG VC D-ILFM', 'AC500 N-ACF3', 'AC500 N054NE VC', 'AC500 N22WR', 'AC500 N22WR VC', 'AC500 N22WR VC edit', 'AC500 N4189B', 'AC500 N500MS', 'AC500 N500MS VC', 'AC500 N540NC', 'AC500 N687AK', 'AC500 NASA', 'AC500 NASA VC', 'AC500 NASA ViVa', 'AC500 NC7351', 'AC500 OB-0308', 'AC500 OB-0308 VC', 'AC500 OFH-0110', 'AC500 OFH-0110 VC', 'AC500 SAUK Air', 'AC500 SFB-1775', 'AC500 SFB-1775 VC', 'AC500 T137', 'AC500 Thunderbolt Aviation', 'AC500 TRA', 'AC500 TWA Cargo clean', 'AC500 VC', 'AC500 VC Dirty', 'AC500 VC MAS C-JM039', 'AC500 VC N054NE', 'AC500 VC NA AS1220', 'AC500 VC NA C-FAAN', 'AC500 VC NAS C-FAAN', 'AC500 VC SFA AS-1220', 'AC500 VC SFA NC086A', 'AC500 VC SS AS1220', 'AC500 VC SS AS1220S', 'AC500 VC SS NC022A', 'AC500 VC SS NC086A', 'AC500 VC SS NS203A', 'AC500 VC SS NS406A', 'AC500 VC SS NS408A', 'AC500 VC SS NS410A', 'AC500 VC SSA C-JM026', 'AC500 VC SS_AS-1220', 'AC500 VC SS_AS-1220S', 'AC500 VC SS_N-A406A', 'AC500 VC SS_N-A410A', 'AC500 VC SS_N-A5RNA', 'AC500 VC SS_N-A607A', 'AC500 VC TFT', 'AC500 White Shrike', 'AC500-A', 'AC500-A Cargo', 'AC500-A Skydive', 'AC500C Pruple', 'AC500S Bahamasair', 'AC500S Bahamasair new colours', 'AC500S Blue Shrike', 'AC500S Blue ShrikeB', 'AC500S Hoover', 'AC500S MAV', 'AC500S N2901TA', 'AC500S White Shrike', 'AC500S White ShrikeB', 'AC500vc', 'AC500W', 'AC500W C-GFDA', 'AC500W G-HAULwood VC', 'AC500W GHAULWood VC', 'AC500W N052NE', 'AC500W N054NE', 'AC500W N500AS VC', 'AC500W N500MS Black Randi VC', 'AC500W N500MS VC', 'AC500W N500MS VC Grainy', 'AC500W N500MS VC N07BMC', 'AC500W VH-ULA "TINY DANCER" VC', 'AC500W VH-WAH VC', 'AC520 Cargo', 'AC520 Factory Blue', 'AC520 Factory Green', 'AC520 N2609', 'AC520 NDW02', 'AC520 Pegasus', 'AC520 Pegasus (1)', 'AC520 RED CROSS', 'AC520 Texas', 'AC520vc Factory Blue', 'AC520vc Factory Green', 'AC520vc N2609', 'AC520vc Pegasus', 'AC520vc Texas', 'AC560 Factory N2649B', 'AC560 Factory Spanish Red', 'AC560 Spanish Red', 'AC560A Tasair', 'AC560vc Cardinal', 'AC560vc Factory HB-PAC', 'AC560vc Factory N2649B', 'AC560vc Factory Orange', 'AC560vc Factory Spanish Red', 'AC560vc Lukla Air Service', 'AC560vc N58D', 'AC560vc NedAir Adventure', 'AC560vc Tasair', 'AC560vc Weasel C-WSLA', 'AC560vc-1956 (paint circa 1969) N58D', 'Aero Commander 500S', 'Aero Design AC500C', 'Aero Design AC500C Hoover', 'AeroCommander 500 Cargo VC Dirty', 'Alaskan Winds AC500 Cargo VC', 'Alaskan Winds AC500S Shrike', 'Deer Valley Flying Club AC500 VC', 'Deer Valley Flying Club AC500vc', 'DVFC Aero Commander 500', 'GA-AI ac500s blue shrike'],
@@ -373,24 +406,12 @@ class PythonInterface:
 			i+=1 #Keeps track of which plane we are on
 		if found==1:
 			#print "Found a match"
-			payload=payloads[i] #Payload corresponding to this airplane
-			#Get aircraft weight properties
-			MTOW=XPLMGetDataf(XPLMFindDataRef("sim/aircraft/weight/acf_m_max"))
-			EW_now=XPLMGetDataf(XPLMFindDataRef("sim/aircraft/weight/acf_m_empty"))
-			EW=MTOW-payload #EW needed to carry the FSE payload
-			if EW < EW_now:
-				self.msg1 = "Setting "+alias
-				self.msg2 = "EW from "+str(int(round(EW_now)))+"kg to "+str(int(round(EW)))+"kg"
-				self.showinfo()				
-				XPLMSetDataf(XPLMFindDataRef("sim/aircraft/weight/acf_m_empty"),EW)
-			else:
-				self.msg1 = "Unchanged "+alias
-				self.msg2 = "EW "+str(int(round(EW_now)))+"kg is lower than FSE "+str(int(round(EW)))+"kg"
-				self.showinfo()
+			return i
 		else:
 			self.msg1 = "Could not identify alias:"
 			self.msg2 = alias
 			self.showinfo()
+			return -1
 	
 	def showinfo(self):
 		#print self.msg1 #Print message to log
@@ -456,4 +477,12 @@ class PythonInterface:
 		pass
 
 	def XPluginReceiveMessage(self, inFromWho, inMessage, inParam):
+		if inMessage==311: #ICAO
+			icao=self.getICAO()
+			if icao!=-1:
+				XPLMSendMessageToPlugin(inFromWho,312,icao)
+		elif inMessage==313: #Payload
+			payload=self.getPayload()
+			if payload!=-1:
+				XPLMSendMessageToPlugin(inFromWho,314,payload)
 		pass
