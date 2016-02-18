@@ -13,14 +13,6 @@ def getname(): #Returns username stored in file
 	myname=myname.strip()
 	return myname
 
-def getemail(): #Gets email info stored in file
-	with open('creds.txt', 'r') as f:
-		srvr=f.readline().strip()
-		addr=f.readline().strip()
-		passw=f.readline().strip()
-		addrto=f.readline().strip()
-		return srvr,addrto,addr,passw
-
 def reldist(icao,rad): #Find distances of other airports from given airport
 	#print("Looking for airports near "+icao)
 	loc_dict=fseutils.build_csv("latlon")
@@ -74,19 +66,7 @@ if len(aog)>0:
 					msg+=thislog[2]+"-"+thislog[3]+" "+thislog[4]+" "+str(thislog[5])+" "+thislog[1]+"\n"
 				elif thislog[0]=="refuel":
 					msg+="Refuel: "+thislog[2]+" "+thislog[1]+"\n"
-	message="""\From: %s\nTo: %s\nSubject: FSE Aircraft Activity\n\n%s""" % (addr, addr, msg)
-	try:
-		#print("Sending mail from "+addr+" to "+addrto)
-		server=smtplib.SMTP_SSL(srvr, 465)
-		server.ehlo()
-		server.login(addr,passw)
-		server.sendmail(addr,addrto,message)
-		server.close()
-		#print("Successfully sent the mail:")
-	except:
-		e = sys.exc_info()[0]
-		#print("Failed to send the mail with error:")
-		#print(e)
+	fseutils.sendemail("FSE Aircraft Activity",msg)
 else:
 	msg+="\nNone"
 #print()
