@@ -27,17 +27,33 @@ def acforsale(conn): #Log aircraft currently for sale
 		now=time.strftime("%Y-%m-%d %H:%M", time.gmtime())
 		row=(count, now) #Record time and index of this iteration
 		c.execute('INSERT INTO queries VALUES (?,?)',row) #Record date/time of this query
+		goodones=[]
+		file='/mnt/data/XPLANE10/XSDK/pricewatch.csv'
+		with open(file, 'r') as f:
+			has_header = csv.Sniffer().has_header(f.read(1024)) #could not determine delimiter
+			f.seek(0)  # rewind
+			reader = csv.reader(f)
+			if has_header:
+				next(reader)  # skip header row
+			for row in reader:
+				goodones.append((row[0],row[1],int(row[2]),int(row[3]))) #actype, icao?, price, hours
 		fields=(("SerialNumber", 1), ("MakeModel", 0), ("Location", 0), ("LocationName", 0), ("AirframeTime", 0), ("SalePrice", 2))
-		rows=[]
-		with open('/mnt/data/XPLANE10/XSDK/pricewatch.txt', 'r') as f:
-			for airplane in airplanes: #Record aircraft for sale
-				row=fseutils.getbtns(airplane,fields)
-				row[4]=int(row[4].split(":")[0])
-				row.append(count) #Add iteration to end
-				rows.append(tuple(row)) #Add row as tuple to list
-				for actype in f.readlines():
-					
+		rows=[] #List to INSERT, each row is a tuple
+		bargains=[]
+		for airplane in airplanes: #Record aircraft for sale
+			row=fseutils.getbtns(airplane,fields)
+			row[4]=int(row[4].split(":")[0])
+			row.append(count) #Add iteration to end
+			rows.append(tuple(row)) #Add row as tuple to list
+			for option in goodones:
+				if row[1]==option[0] and row[5]<option[2] and row[4]<option[3]:
+					bargains.append(option[1]+" | $"+str(row[5])+" | "+str(row[4])+" hrs | "+row[2])
 		c.executemany('INSERT INTO allac VALUES (?,?,?,?,?,?,?)',rows)
+		if bargains!=[]: #Found some bargains to send by email
+			msg="Good aircraft deals: \n"
+			for bargain in bargains:
+				msg+="\n"+bargain
+			fseutils.sendemail("Aircraft Deals",msg)
 		conn.commit()
 
 def salepickens(conn): #Convert log to compact format
