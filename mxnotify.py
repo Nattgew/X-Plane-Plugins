@@ -9,14 +9,6 @@ import fseutils # My custom FSE functions
 # from matplotlib.dates import DateFormatter, date2num
 # import matplotlib.pyplot as plt
 
-def getemail(): #Gets email info stored in file
-	with open('creds.txt', 'r') as f:
-		srvr=f.readline().strip()
-		addr=f.readline().strip()
-		passw=f.readline().strip()
-		addrto=f.readline().strip()
-		return srvr,addrto,addr,passw
-
 def reldist(icao,rad): #Find distances of other airports from given airport
 	#print("Looking for airports near "+icao)
 	loc_dict=fseutils.build_csv("latlon")
@@ -101,19 +93,7 @@ if len(aog)>0:
 			#print(out)
 		msg+="\n"
 		#print()
-	message="""\From: %s\nTo: %s\nSubject: FSE Aircraft Mx\n\n%s""" % (addr, addr, msg)
-	try:
-		#print("Sending mail from "+addr+" to "+addrto)
-		server=smtplib.SMTP_SSL(srvr, 465)
-		server.ehlo()
-		server.login(addr,passw)
-		server.sendmail(addr,addrto,message)
-		server.close()
-		#print("Successfully sent the mail:")
-	except:
-		e = sys.exc_info()[0]
-		#print("Failed to send the mail with error:")
-		#print(e)
+	fseutils.sendemail("FSE Aircraft Mx",msg)
 else:
 	msg+="\nNone"
 #print()
