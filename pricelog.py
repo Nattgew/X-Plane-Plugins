@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 
 def getname(): #Returns username stored in file
 	with open('/mnt/data/XPLANE10/XSDK/mykey.txt', 'r') as f:
-		nothing = f.readline()
+		nothing = f.readline() #skip the key
 		myname = f.readline()
 		myname=myname.strip()
 		return myname
@@ -23,17 +23,20 @@ def acforsale(conn): #Log aircraft currently for sale
 	if airplanes!=[]:
 		print("Recording data...")
 		c=getdbcon(conn)
-		count=getmaxiter(conn)+1
+		count=getmaxiter(conn)+1 #Index for this new iteration
 		now=time.strftime("%Y-%m-%d %H:%M", time.gmtime())
-		row=(count, now)
+		row=(count, now) #Record time and index of this iteration
 		c.execute('INSERT INTO queries VALUES (?,?)',row) #Record date/time of this query
 		fields=(("SerialNumber", 1), ("MakeModel", 0), ("Location", 0), ("LocationName", 0), ("AirframeTime", 0), ("SalePrice", 2))
 		rows=[]
-		for airplane in airplanes: #Record aircraft for sale
-			row=fseutils.getbtns(airplane,fields)
-			row[4]=int(row[4].split(":")[0])
-			row.append(count)
-			rows.append(tuple(row))
+		with open('/mnt/data/XPLANE10/XSDK/pricewatch.txt', 'r') as f:
+			for airplane in airplanes: #Record aircraft for sale
+				row=fseutils.getbtns(airplane,fields)
+				row[4]=int(row[4].split(":")[0])
+				row.append(count) #Add iteration to end
+				rows.append(tuple(row)) #Add row as tuple to list
+				for actype in f.readlines():
+					
 		c.executemany('INSERT INTO allac VALUES (?,?,?,?,?,?,?)',rows)
 		conn.commit()
 
@@ -180,138 +183,6 @@ def getmaxiter(conn): #Return the number of latest query, which is also the numb
 	else:
 		current=0
 	return current
-
-def dudewheresmyairplane(): #Print list of owned planes
-	#planes={}
-	print("Sending request for aircraft list...")
-	airplanes = fseutils.fserequest(1,'query=aircraft&search=key','Aircraft','xml')
-	for plane in airplanes:
-		row=fseutils.getbtns(plane, [("Location", 0), ("Registration", 0), ("EngineTime", 0), ("TimeLast100hr", 0)])
-		#planes[reg]=(loc,eng,chk)
-		print(row[1]+" at "+row[0]+"  tot: "+row[2]+"  last: "+row[3])
-
-def jobsfrom(apts,price,pax): #High paying jobs from airports
-	jobs=[]
-	print("Sending request for jobs from "+apts+"...")
-	assignments = fseutils.fserequest(0,'query=icao&search=jobsfrom&icaos='+apts,'Assignment','xml')
-	for assignment in assignments:
-		jobs=jobstest(assignment,jobs,price,pax)
-		global totalfrom
-		totalfrom+=1
-	return jobs
-
-def jobsto(apts,price,pax): #High paying jobs to airports
-	jobs=[]
-	print("Sending request for jobs to "+apts+"...")
-	assignments = fseutils.fserequest(0,'query=icao&search=jobsto&icaos='+apts,'Assignment','xml')
-	for assignment in assignments:
-		jobs=jobstest(assignment,jobs,price,pax)
-		global totalto
-		totalto+=1
-	return jobs
-
-def jobstest(assignment,jobs,price,pax): #Only add job to array if meeting minumum pax and pay values
-	pay = float(fseutils.gebtn(assignment, "Pay"))
-	if pay>price:
-		amt = fseutils.gebtn(assignment, "Amount")
-		typ = fseutils.gebtn(assignment, "UnitType")
-		if not(int(amt)>pax and typ=="passengers"):
-			#dep = fseutils.gebtn(assignment, "FromIcao")
-			arr = fseutils.gebtn(assignment, "ToIcao")
-			loc = fseutils.gebtn(assignment, "Location")
-			exp = fseutils.gebtn(assignment, "Expires")
-			jobs.append((loc,arr,amt,typ,pay,exp))
-			#if dep==loc:
-			#	print (amt+" "+typ+" "+dep+"-"+arr+" $"+str(int(pay))+" "+exp)
-			#else:
-			#	print (amt+" "+typ+" @"+loc+"-"+arr+" $"+str(int(pay))+" "+exp)
-	return jobs
-
-def paxto(apts,minpax,maxpax): #Pax jobs to airports (incl green jobs)
-	print("Sending request incl pax jobs to "+apts+"...")
-	assignments = fseutils.fserequest(0,'query=icao&search=jobsto&icaos='+apts,'Assignment','xml')
-	jobs=paxtest(assignments,minpax,maxpax,"to")
-	return jobs
-
-def paxfrom(apts,minpax,maxpax): #Pax jobs from airports (incl green jobs)
-	print("Sending request incl pax jobs from "+apts+"...")
-	assignments = fseutils.fserequest(0,'query=icao&search=jobsfrom&icaos='+apts,'Assignment','xml')
-	jobs=paxtest(assignments,minpax,maxpax,"from")
-	return jobs
-
-def paxtest(assignments,minpax,maxpax,tofrom): #Return assignments meeting min and max pax requirements
-	candidates=[]
-	apts={}
-	jobs=[]
-	for assignment in assignments:
-		loc = fseutils.gebtn(assignment, "Location")
-		arr = fseutils.gebtn(assignment, "ToIcao")
-		amt = fseutils.gebtn(assignment, "Amount")
-		typ = fseutils.gebtn(assignment, "UnitType")
-		if tofrom=="to":
-			global totalto
-			totalto+=1
-			key=loc
-		else:
-			global totalfrom
-			totalfrom+=1
-			key=arr
-		if not(int(amt)>maxpax and typ=="passengers") and typ=="passengers":
-			amt=int(amt)
-			pay = float(fseutils.gebtn(assignment, "Pay"))
-			#dep = assignment, "FromIcao")[0].firstChild.nodeValue
-			exp = fseutils.gebtn(assignment, "Expires")
-			candidates.append((loc,arr,amt,typ,pay,exp))
-			try:
-				tot=apts[key]
-				tot+=amt
-			except (KeyError,IndexError):
-				tot=amt
-			apts[key]=tot
-	for option in candidates:
-		tot=apts[option[0]]
-		if tot>minpax:
-			jobs.append(option)
-	return jobs
-
-def printjobs(jobs,rev): #Print the list of jobs
-	if rev==1:
-		list=jobs
-	else:
-		list=reversed(jobs)
-	for job in jobs:
-		#print(job[2]+" "+job[3]+" "+job[0]+"-"+job[1]+" $"+str(int(job[4]))+" "+str(distbwt(job[0],job[1]))+" "+job[5])
-		print('%s %s %s-%s $%i %f %s' % (job[2],job[3],job[0],job[1],int(job[4]),distbwt(job[0],job[1]),job[5]))
-
-def nearby(icao,rad): #Find other airports within radius of given airport
-	#print("Looking for airports near "+icao)
-	loc_dict=fseutils.build_csv("latlon")
-	near=""
-	clat,clon=loc_dict[icao]
-	for apt,coords in loc_dict.items():
-		if apt!=icao:
-			#print("Dist from "+str(clat)+" "+str(clon)+" to "+str(coords[0])+" "+str(coords[1]))
-			dist=fseutils.cosinedist(clat,clon,coords[0],coords[1])
-			if dist<rad:
-				if near=="":
-					near=apt
-				else:
-					near=near+"-"+apt
-	#print(near)
-	return near
-
-def bigjobs(apts,dir): #Find high paying jobs to/from airports
-	total=0
-	for airport in apts:
-		if dir==0:
-			area=nearby(airport,50)
-			jobs=jobsfrom(area,30000,8)  #30k is big, right?
-		else:
-			jobs=jobsto(airport,30000,8)
-		printjobs(jobs,0)
-		total+=len(jobs)
-	word="from near" if dir==0 else "to"
-	print("Found these "+str(total)+" big jobs "+word+" those airports:")
 
 def gettimeforsale(conn,timetype): # Get data for all ac of timetype for sale
 	c=getdbcon(conn)
