@@ -15,7 +15,7 @@ def getkey(): #Returns API key stored in file
 		return mykey
 
 def getemail(): #Gets email info stored in file
-	with open('creds.txt', 'r') as f:
+	with open('/mnt/data/XPLANE10/XSDK/creds.txt', 'r') as f:
 		srvr=f.readline().strip()
 		addr=f.readline().strip()
 		passw=f.readline().strip()
@@ -35,7 +35,7 @@ def sendemail(subj,msg): #Sends email
 		#print("Successfully sent the mail:")
 	except:
 		#e = sys.exc_info()[0]
-		#print("Failed to send the mail with error:")
+		print("Failed to send the mail with error:")
 		#print(e)
 
 def fserequest(ra,rqst,tagname,fmt): #Requests data in format, returns list of requested tag
