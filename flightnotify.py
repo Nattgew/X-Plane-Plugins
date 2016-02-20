@@ -7,7 +7,7 @@ import fseutils # My custom FSE functions
 from datetime import timedelta, date, datetime
 
 def getname(): #Returns username stored in file
-	with open('/mnt/data/XPLANE10/XSDK/myfbokey.txt', 'r') as f:
+	with open('/mnt/data/XPLANE10/XSDK/mykey.txt', 'r') as f:
 		nothing = f.readline()
 		myname = f.readline()
 	myname=myname.strip()
@@ -30,6 +30,7 @@ today = date.today() - timedelta(1)
 month=today.month
 year=today.year
 day=today.day
+me=getname()
 ns = {'sfn': 'http://server.fseconomy.net'} #namespace for XML stuff
 plogs=[]
 #print("Sending request for aircraft list...")
@@ -44,20 +45,20 @@ for plane in airplanes:
 		thepilot=flt.find('sfn:Pilot', ns).text
 		#2016/02/04 02:48:34
 		fltdtime = datetime.strptime(fltime, '%Y/%m/%d %H:%M:%S')
-		if fltdtime.day==day and fltdtime.month==month and thepilot!=getname():
+		if fltdtime.day==day and fltdtime.month==month and thepilot!=me:
 			logtype=flt.find('sfn:Type', ns).text
 			row=[logtype,thepilot]
 			if logtype=="flight":
 				row.append=fseutils.getbtns(flt, [("From", 0), ("To", 0), ("FlightTime", 0), ("Bonus", 2)])
 			elif logtype=="refuel":
-				row.append=fseutils.getbtns(flt, [(("FuelCost", 2)])
+				row.append=fseutils.getbtns(flt, [("FuelCost", 2)])
 			plogs[i][1].extend(row)
-	i++
+	i+=1
 
-srvr,addrto,addr,passw=getemail()
 msg="Airplane rentals on "+str(month)+"/"+str(day)+":\n"
 #print(msg)
-if len(aog)>0:
+if len(plogs)>0:
+	print("Adding flights to message")
 	for plane in plogs:
 		if plane[1]!=[]:
 			msg+="\n"+plane[0]+":\n"
@@ -68,6 +69,7 @@ if len(aog)>0:
 					msg+="Refuel: "+thislog[2]+" "+thislog[1]+"\n"
 	fseutils.sendemail("FSE Aircraft Activity",msg)
 else:
+	print("No flights found")
 	msg+="\nNone"
 #print()
 #print(msg)
