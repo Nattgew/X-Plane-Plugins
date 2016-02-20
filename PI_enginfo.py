@@ -49,6 +49,8 @@ class PythonInterface:
 		# self.ind_ITT_ref=XPLMFindDataRef("sim/cockpit2/engine/indicators/ITT_deg_C")
 		# self.ind_EGT_ref=XPLMFindDataRef("sim/cockpit2/engine/indicators/EGT_deg_C")
 		# self.ind_CHT_ref=XPLMFindDataRef("sim/cockpit2/engine/indicators/CHT_deg_C")
+		self.lbr_ref=XPLMFindDataRef("sim/cockpit2/controls/left_brake_ratio")
+		self.rbr_ref=XPLMFindDataRef("sim/cockpit2/controls/right_brake_ratio")
 		
 		self.wgt_MTOW_ref=XPLMFindDataRef("sim/aircraft/weight/acf_m_max")	#MTOW lbs
 		self.wgt_EW_ref=XPLMFindDataRef("sim/aircraft/weight/acf_m_empty")	#EW lbs
@@ -221,11 +223,15 @@ class PythonInterface:
 		pld=XPLMGetDataf(self.wgt_pld_ref)	#float	660+	yes	kgs	payload
 		tot=XPLMGetDataf(self.wgt_tot_ref)	#float	660+	no	kgs
 		fkg=XPLMGetDataf(self.wgt_fkg_ref)	#float	660+	no	kgs
+
+		lbr=XPLMGetDataf(self.lbr_ref)
+		rbr=XPLMGetDataf(self.rbr_ref)
 		
 		self.msg[0]=str(self.acf_desc)
 		self.msg[1]="MTOW: "+str(int(round(MTOW)))+"lb   EW: "+str(int(round(EW)))+"lb"
 		self.msg[2]="Current weight: "+str(int(round(tot)))+"lb"
 		self.msg[3]="Payload: "+str(int(round(pld)))+"kg"
-		self.msg[4]="Fuel: "+str(int(round(flb)))+"lb / "+str(int(round(fkg)))+"kg"
+#		self.msg[4]="Fuel: "+str(int(round(flb)))+"lb / "+str(int(round(fkg)))+"kg"
+		self.msg[4]="LB: "+str(int(round(lbr,2)))+"  RB: "+str(int(round(rbr,2)))
 		print "XDMG = Got info..."
 
