@@ -43,12 +43,11 @@ static XPLMDataRef acf_desc_ref, acf_icao_ref, speed_brake_ref, landing_lights_r
 static int cmdhold=0;
 static int propbrakes=0;
 static int propeng=0;
-static int assignments[100];
-static float mins[100];
-static float maxs[100];
+int assignments[100];
 int revs[100];
-static float proprange, propmin;
-static float lbrange, rbrange, lbmin, rbmin;
+//float mins[100], maxs[100];
+//static float proprange, propmin;
+//static float lbrange, rbrange, lbmin, rbmin;
 static int rev, i;
 static int propindex=-1;
 static int condindex=-1;
@@ -182,20 +181,19 @@ PLUGIN_API int XPluginStart(char *outName, char *outSig, char *outDesc)
 	CmdSSConn = XPLMCreateCommand("cmod/toggle/simtime","Toggle 1x/32x sim time");
 	XPLMRegisterCommandHandler(CmdSSConn, CmdSSConnCB, 0, (void *) 0);
 
-	float mins[100], maxs[100];
-	int assignments[100];
 	XPLMGetDatavi(axis_assign_ref, assignments, 0, 100);
-	XPLMGetDatavf(axis_min_ref, mins, 0, 100);
-	XPLMGetDatavf(axis_max_ref, maxs, 0, 100);
+	//XPLMGetDatavf(axis_min_ref, mins, 0, 100);
+	//XPLMGetDatavf(axis_max_ref, maxs, 0, 100);
 	XPLMGetDatavi(axis_rev_ref, revs, 0, 100);
 	
 	float rbmax, lbmax;
-	lbmin=mins[0];
-	rbmin=mins[0];
-	lbmax=maxs[0];
-	rbmax=maxs[0];
-	lbrange=lbmax-lbmin;
-	rbrange=rbmax-rbmin;
+	//lbmin=mins[0];
+	//rbmin=mins[0];
+	//lbmax=maxs[0];
+	//rbmax=maxs[0];
+	//lbrange=lbmax-lbmin;
+	//rbrange=rbmax-rbmin;
+	propindex=13; //At long last
 	condindex=20;
 	tvecindex=21;
 
@@ -402,27 +400,18 @@ int CmdMSConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //T
 int CmdMBConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //prop axis for speed brakes
 	if (phase==0) {
 		if (propbrakes==0) {
-			for (i=0; i<100; i++) {
-				if (assignments[i]==7) { //Guess?
-					propindex=i;
-					break;
-				}
+			if (revs[propindex]==1) { //Evidently we DO want the reverse of this axis
+				rev=0;
+			} else {
+				rev=1;
 			}
-			propindex=13; //At long last
-			if (propindex>-1) {
-				if (revs[propindex]==1) { //Evidently we DO want the reverse of this axis
-					rev=0;
-				} else {
-					rev=1;
-				}
-				float propmax;
-				propmin=mins[0];
-				propmax=maxs[0];
-				proprange=propmax-propmin;
-				XPLMRegisterFlightLoopCallback(gameLoopCallback, 0.5, NULL);
-				XPLMSpeakString("Started propbrake");
-				propbrakes=1;
-			}
+			float propmax;
+			//propmin=mins[0];
+			//propmax=maxs[0];
+			//proprange=propmax-propmin;
+			XPLMRegisterFlightLoopCallback(gameLoopCallback, 0.5, NULL);
+			XPLMSpeakString("Started propbrake");
+			propbrakes=1;
 		} else {
 			XPLMUnregisterFlightLoopCallback(gameLoopCallback, NULL);
 			propbrakes=0;
@@ -544,7 +533,6 @@ void increment(XPLMDataRef dataref, float del, int num) {
 
 int Cmd2BConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //Prop axis controls engine 2
 	if (phase==0) {
-		int assignments[100];
 		XPLMGetDatavi(axis_assign_ref, assignments, 0, 100);
 		if (propeng==1) {
 			for (i=0; i<100; i++) {
@@ -631,8 +619,8 @@ static float gameLoopCallback(float elapsedSinceLastCall, float inElapsedSim, in
 	//Get current conditions
 	float vals[100], propaxis, proper;
 	XPLMGetDatavf(axis_values_ref, vals, 0, 100);
-	propaxis=vals[propindex];
-	proper=(propaxis-propmin)/proprange;
+	proper=vals[propindex];
+	//proper=(propaxis-propmin)/proprange;
 	if (rev==1)
 		proper=1-proper;
 	if (proper<.0001)
