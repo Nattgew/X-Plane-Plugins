@@ -401,9 +401,9 @@ int CmdMBConnCB(XPLMCommandRef cmd, XPLMCommandPhase phase, void * refcon) { //p
 	if (phase==0) {
 		if (propbrakes==0) {
 			if (revs[propindex]==1) { //Evidently we DO want the reverse of this axis
-				rev=0;
-			} else {
 				rev=1;
+			} else {
+				rev=0;
 			}
 			float propmax;
 			//propmin=mins[0];
@@ -667,7 +667,7 @@ struct gotAC getshortac(XPLMDataRef desc_ref, XPLMDataRef icao_ref) {
 	char acf_descb[261], acf_icaob[41];
 	char buffer[14], ibuffer[5];
 	XPLMGetDatab(desc_ref, acf_descb, 0, 260);
-	XPLMGetDatab(icao_ref, acf_icaob, 0, 40);
+	XPLMGetDatab(icao_ref, acf_icaob, 0, 4);
 	strncpy(buffer, acf_descb, 13);
 	buffer[13]='\0';
 	strncpy(ibuffer, acf_icaob, 4);
@@ -675,7 +675,7 @@ struct gotAC getshortac(XPLMDataRef desc_ref, XPLMDataRef icao_ref) {
 	if (strcmp(buffer, "Boeing 737-80")==0 || strcmp(ibuffer, "B738")==0) {
 		strncpy(thisAC.AC,"B738",4);
 		thisAC.has3D=0;
-	} else if (strcmp(buffer, "Pilatus PC-12")==0 || strcmp(buffer, "Pilatus PC12")==0 || strcmp(ibuffer, "PC12")==0) {
+	} else if (strcmp(buffer, "Pilatus PC-12")==0 || strcmp(buffer, "Pilatus PC12 ")==0 || strcmp(ibuffer, "PC12")==0) {
 		strncpy(thisAC.AC,"PC12",4);
 		thisAC.has3D=1;
 	} else if (strcmp(buffer, "B1900 for X-p")==0 || strcmp(ibuffer, "BE19")==0) {
@@ -755,6 +755,9 @@ struct gotAC getshortac(XPLMDataRef desc_ref, XPLMDataRef icao_ref) {
 		thisAC.has3D=1;
 	} else if (strcmp(buffer, "PA 44 180 Pip")==0 || strcmp(ibuffer, "PA44")==0) {
 		strncpy(thisAC.AC,"PA44",4);
+		thisAC.has3D=1;
+	} else if (strcmp(buffer, "T210M Centuri")==0 || strcmp(ibuffer, "T210")==0) {
+		strncpy(thisAC.AC,"C210",4);
 		thisAC.has3D=1;
 	} else {
 		strncpy(acf_descb,thisAC.AC,4);
