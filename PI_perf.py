@@ -356,7 +356,7 @@ class PythonInterface:
 	def build_dict(self): #return dictionary of airport altitudes
 		alt_dict = {}
 		dir2=os.path.join('Resources','default scenery','default apt dat','Earth nav data','apt.dat')
-		dir1=os.path.join('Custom Scenery','x_Prefab_Fse_Airports','Earth nav data','apt.dat')
+		dir1=os.path.join('Custom Scenery','x_Prefab_FSE_Airports','Earth nav data','apt.dat')
 		for line in fileinput.input([dir1,dir2]): # I am forever indebted to Padraic Cunningham for this code
 			params=line.split()
 			try:
