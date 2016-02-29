@@ -298,7 +298,7 @@ def plotdates(dlist,title,ylbl,sym,clr,save): #Plot a list of data vs. dates
 			clr[j]=''
 		if len(data[0])==2:
 			#print("Plotting data with symbol "+sym[i]+" and color "+clr[j])
-			ax.plot([date2num(x[0]) for x in data], [x[1] for x in data], clr[j]+sym[i])
+			ax.plot([date2num(x[0]) for x in data], [x[1] for x in data], clr[j]+sym[i], ms=4)
 		else:
 			ax.errorbar([date2num(x[0]) for x in data], [x[1] for x in data], yerr=[x[2] for x in data], fmt=sym[i], c=clr[j])
 		if i<syms-1: #Reference next symbol/color, if one is provided for each data entry
