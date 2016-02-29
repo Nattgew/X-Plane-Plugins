@@ -35,7 +35,7 @@ def printsleep(towait):
 requests=0
 i=0 #Index of plane in list
 foundlogs=0
-daysago=7 #How many days back to go
+daysago=2 #How many days back to go
 k=0 #Index of month in list
 listofdays=[]
 listofmonths=[]
@@ -48,7 +48,7 @@ for j in range(daysago):
 	history=today - timedelta(j+1)
 	listofdays.append(history)
 #	print(str(listofdays[j].month)+"/"+str(listofdays[j].day))
-	if history.month!=listofmonths[k]
+	if history.month!=listofmonths[k]:
 		listofmonths.append(history.month)
 		k+=1
 me=getname()
@@ -100,9 +100,9 @@ numdays=len(listofdays)
 if numdays==1:
 	daystr=str(listofdays[0].month)+"/"+str(listofdays[0].day)
 else:
-	daystr=str(listofdays[0].month)+"/"+str(listofdays[0].day)+"-"+str(listofdays[numdays].month)+"/"+str(listofdays[numdays].day)
+	daystr=str(listofdays[0].month)+"/"+str(listofdays[0].day)+"-"+str(listofdays[numdays-1].month)+"/"+str(listofdays[numdays-1].day)
 msg="Airplane rentals on "+daystr+":\n"
-#print(msg)
+print(msg)
 if foundlogs>0:
 	print(plogs)
 	for plane in plogs:
