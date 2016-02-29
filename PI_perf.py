@@ -34,117 +34,121 @@ class getaircraft:
 		self.flaps=(0,1)
 		self.maxcabin=0
 		self.agl=2000
-		if desc[0:27]=="['Boeing 737-800 xversion 4" or acf_icao=="B738":
+		if desc[0:27]=="['Boeing 737-800 xversion 4" or acf_icao=="['B738']":
 			self.name="B738"
 			self.flaps=(0.125,0.375,0.625,0.875,1) #1 5 15 30 40
 			self.ceiling=42
-		elif desc=="['Pilatus PC-12']" or desc=="['Pilatus PC12']" or acf_icao=="PC12":
+		elif desc[0:16]=="['Pilatus PC-12" or desc[0:15]=="['Pilatus PC12" or acf_icao=="['PC12']":
 			self.name="PC12"
 			self.setEW(self.name,1895)
 			self.flaps=(0.3,0.7,1) #15 30 40    (0.333333,0.666667,1) Carenado
 			self.ceiling=30
 			self.maxcabin=10000
 			self.agl=1000
-		elif desc[0:9]=="['BE1900D" or desc[0:19]=="['B1900 for X-plane" or acf_icao=="B190":
+		elif desc[0:9]=="['BE1900D" or desc[0:19]=="['B1900 for X-plane" or acf_icao=="['B190']":
 			self.name="B190"
 			self.setEW(self.name,2985)
 			self.ceiling=25
 			self.maxcabin=10000
 			self.agl=1500
-		elif desc=="['Bombardier Challenger 300']" or acf_icao=="CL30":
+		elif desc=="['Bombardier Challenger 300']" or acf_icao=="['CL30']":
 			self.name="CL30"
 			self.setEW(self.name,6849)
 			self.ceiling=45
-		elif desc[0:21]=="['C208B Grand Caravan" or acf_icao=="C208":
+		elif desc[0:21]=="['C208B Grand Caravan" or acf_icao=="['C208']":
 			self.name="C208"
 			self.setEW(self.name,1910)
 			self.ceiling=25
 			self.maxcabin=10000
 			self.agl=1000
-		elif desc[0:13]=="['Dash 8 Q400" or acf_icao=="DH8D":
+		elif desc[0:13]=="['Dash 8 Q400" or acf_icao=="['DH8D']":
 			self.name="DH8D"
 			self.setEW(self.name,12071)
 			self.flaps=(0.25,0.5,0.75,1) #5 10 15 35
 			self.ceiling=27
 			self.agl=1500
-		elif desc=="['L-1049G Constellation']" or acf_icao=="CONI":
+		elif desc=="['L-1049G Constellation']" or acf_icao=="['CONI']":
 			self.name="CONI"
 			self.setEW(self.name,31421)
 			self.ceiling=24
 			self.agl=1500
-		elif desc=="['Douglas DC-3']" or acf_icao=="DC3":
+		elif desc=="['Douglas DC-3']" or acf_icao=="['DC3']":
 			self.name="DC3"
 			self.setEW(self.name,4584)
 			self.ceiling=23
 			self.agl=1000
-		elif desc=="['Cessna Citation X']" or acf_icao=="C750":
+		elif desc=="['Cessna Citation X']" or acf_icao=="['C750']":
 			self.name="C750"
 			self.setEW(self.name,6714)
 			self.ceiling=51
-		elif desc=="['Dassault Falcon 7X']" or acf_icao=="FA7X":
+		elif desc=="['Dassault Falcon 7X']" or acf_icao=="['FA7X']":
 			self.name="FA7X"
 			self.setEW(self.name,16279)
 			self.ceiling=51
-		elif desc=="['Let L-410']" or acf_icao=="L410":
+		elif desc=="['Let L-410']" or acf_icao=="['L410']":
 			self.name="L410"
 			self.setEW(self.name,2650)
 			self.ceiling=20
 			self.agl=1500
-		elif desc[0:15]=="['Ilushin IL-14" or acf_icao=="IL14":
+		elif desc[0:15]=="['Ilushin IL-14" or acf_icao=="['IL14']":
 			self.name="IL14"
 			self.setEW(self.name,5000)
 			self.ceiling=24
 			self.agl=1500
-		elif desc[0:15]=="['C-27J Spartan" or acf_icao=="C27J":
+		elif desc[0:15]=="['C-27J Spartan" or acf_icao=="['C27J']":
 			self.name="C27J"
 			self.setEW(self.name,15880)
 			self.ceiling=30
 			self.agl=1500
-		elif desc[0:15]=="['Boeing 757-20" or acf_icao=="B752":
+		elif desc[0:15]=="['Boeing 757-20" or acf_icao=="['B752']":
 			self.name="B752"
 			self.ceiling=42
 			self.flaps=(0.166667,0.333333,.5,0.666667,0.833333,1) #1,5,15,20,25,30
-		elif desc[0:15]=="['Bombardier Ca" or acf_icao=="CRJ2":
+		elif desc[0:15]=="['Bombardier Ca" or acf_icao=="['CRJ2']":
 			self.name="CRJ2"
 			self.ceiling=41
 			self.flaps=(0.25,0.5,0.75,1) #8,20,30,45
 			self.setEW(self.name,13880)
-		elif desc[0:15]=="['Embraer ERJ-1" or acf_icao=="E140":
+		elif desc[0:15]=="['Embraer ERJ-1" or acf_icao=="['E140']":
 			self.name="E140"
 			self.ceiling=37
 			self.flaps=(0.25,0.5,0.75,1) #FIX ME
 			self.setEW(self.name,9600) #8500 E135, 9600 E145
-		elif desc[0:15]=="['Antonov AN-2" or acf_icao=="AN2":
+		elif desc[0:15]=="['Antonov AN-2" or acf_icao=="['AN2']":
 			self.name="AN2"
 			self.ceiling=14.75
 			self.setEW(self.name,2170)
-		elif desc[0:15]=="['King Air C90" or acf_icao=="C90B":
+		elif desc[0:15]=="['King Air C90" or acf_icao=="['C90B']":
 			self.name="C90B"
 			self.ceiling=28.45
 			self.setEW(self.name,1576)
-		elif desc[0:15]=="['The biggest a" or acf_icao=="B744":
+		elif desc[0:15]=="['The biggest a" or acf_icao=="['B744']":
 			self.name="B744"
 			self.ceiling=45
-		elif desc[0:15]=="['Lockheed SR-7" or acf_icao=="SR71":
+		elif desc[0:15]=="['Lockheed SR-7" or acf_icao=="['SR71']":
 			self.name="SR71"
 			self.ceiling=85
-		elif desc[0:15]=="['Lockheed F-22" or acf_icao=="F22":
+		elif desc[0:15]=="['Lockheed F-22" or acf_icao=="['F22']":
 			self.name="F22"
 			self.ceiling=60
-		elif desc[0:15]=="['Douglas KC-10" or acf_icao=="DC10":
+		elif desc[0:15]=="['Douglas KC-10" or acf_icao=="['DC10']":
 			self.name="DC10"
 			self.ceiling=42
-		elif desc[0:15]=="['Douglas F-4" or acf_icao=="F4":
+		elif desc[0:15]=="['Douglas F-4" or acf_icao=="['F4']":
 			self.name="F4"
 			self.ceiling=60
-		elif desc[0:15]=="['Columbia 400" or acf_icao=="COL4":
+		elif desc[0:15]=="['Columbia 400" or acf_icao=="['COL4']":
 			self.name="COL4"
 			self.ceiling=25
 			self.setEW(self.name,500)
-		elif desc[0:15]=="['Dornier Do 3" or acf_icao=="D328":
+		elif desc[0:15]=="['Dornier Do 3" or acf_icao=="['D328']":
 			self.name="D328"
 			self.ceiling=30
 			self.setEW(self.name,5070)
+		elif desc[0:15]=="['T210M Centur" or acf_icao=="['T210']" or acf_icao=="['C210']":
+			self.name="C210"
+			self.ceiling=27
+			self.setEW(self.name,777)
 		else:
 			if acf_icao!="": #I guess we'll trust it
 				self.name=acf_icao
