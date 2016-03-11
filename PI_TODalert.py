@@ -43,9 +43,13 @@ class PythonInterface:
 		self.gameLoopCB=self.gameLoopCallback
 		XPLMRegisterFlightLoopCallback(self, self.gameLoopCB, 1, 0)
 		
-		self.CmdSHConn = XPLMCreateCommand("todalert/armed","Toggles whether alarm is armed")
-		self.CmdSHConnCB  = self.CmdSHConnCallback
-		XPLMRegisterCommandHandler(self, self.CmdSHConn,  self.CmdSHConnCB, 0, 0)
+		self.CmdArmConn = XPLMCreateCommand("todalert/armed","Toggles whether alarm is armed")
+		self.CmdArmConnCB  = self.CmdArmConnCallback
+		XPLMRegisterCommandHandler(self, self.CmdArmConn,  self.CmdArmConnCB, 0, 0)
+		
+		self.CmdWinConn = XPLMCreateCommand("todalert/show_window","Toggles settings window")
+		self.CmdWinConnCB  = self.CmdWinConnCallback
+		XPLMRegisterCommandHandler(self, self.CmdWinConn,  self.CmdWinConnCB, 0, 0)
 		
 		self.MenuItem1 = 0			#Flag if main window has already been created
 		Item = XPLMAppendMenuItem(XPLMFindPluginsMenu(), "TOD Alert", 0, 1)
@@ -66,9 +70,19 @@ class PythonInterface:
 	def KeyCallback(self, inWindowID, inKey, inFlags, inVirtualKey, inRefcon, losingFocus):
 		pass 
 
-	def CmdSHConnCallback(self, cmd, phase, refcon):
+	def CmdArmConnCallback(self, cmd, phase, refcon):
 		if(phase==0): #KeyDown event
-			print "TODALERT = CMD set altimeter"
+			print "TODALERT = CMD toggle armed"
+			self.armed=0 if self.armed==1 else 1
+		return 0
+		
+	def CmdWinConnCallback(self, cmd, phase, refcon):
+		if(phase==0): #KeyDown event
+			print "TODALERT = CMD toggle window"
+			if(not XPIsWidgetVisible(self.SWidget)):
+				XPShowWidget(self.SWidget)
+			else:
+				XPHideWidget(self.SWidget)
 		return 0
 
 	def DrawWindowCallback(self, inWindowID, inRefcon):
@@ -81,7 +95,8 @@ class PythonInterface:
 			gResult=XPLMDrawString(color, left+5, top-20, self.msg1, 0, xplmFont_Basic)
 
 	def XPluginStop(self):
-		XPLMUnregisterCommandHandler(self, self.CmdSHConn, self.CmdSHConnCB, 0, 0)
+		XPLMUnregisterCommandHandler(self, self.CmdArmConn, self.CmdArmConnCB, 0, 0)
+		XPLMUnregisterCommandHandler(self, self.CmdWinConn, self.CmdWinConnCB, 0, 0)
 		XPLMUnregisterFlightLoopCallback(self, self.gameLoopCB, 0);
 		XPLMDestroyWindow(self, self.gWindow)
 		
@@ -148,7 +163,7 @@ class PythonInterface:
 		# Sound caption
 		SoundCaption = XPCreateWidget(x+20, y-90, x+50, y-110,1, "Play sound", 0, self.SWidget,xpWidgetClass_Caption)
 
-		# Pause option
+		# Sound option
 		self.SoundOpt = XPCreateWidget(x+140, y-90, x+210, y-110,1, "", 0, self.SWidget,xpWidgetClass_Button)
 		XPSetWidgetProperty(self.SoundOpt, xpProperty_ButtonType, xpRadioButton)
 		XPSetWidgetProperty(self.SoundOpt, xpProperty_ButtonBehavior, xpButtonBehaviorCheckBox)
@@ -194,7 +209,7 @@ class PythonInterface:
 				
 		return 0
 
-		def SMenuHandler(self, inMenuRef, inItemRef):
+	def SMenuHandler(self, inMenuRef, inItemRef):
 		# If menu selected create our widget dialog
 		if (inItemRef == 1):
 			if (self.MenuItem1 == 0):
@@ -213,6 +228,8 @@ class PythonInterface:
 			if self.pause==1:
 				self.msg1+=" Sim paused!"
 				XPLMCommandOnce(self.pause_cmd)
+			if self.sound==1:
+				pass #Someday
 		else:
 			self.alarm=0
 		
