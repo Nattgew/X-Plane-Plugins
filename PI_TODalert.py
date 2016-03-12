@@ -30,8 +30,8 @@ class PythonInterface:
 		self.sound=0 #Whether sound is played (in work)
 		self.alarm=0 #Whether alarm is currently triggered
 		self.msg1=""
-		winPosX=20
-		winPosY=500
+		winPosX=500
+		winPosY=600
 		win_w=250
 		win_h=45
 
@@ -58,7 +58,7 @@ class PythonInterface:
 		XPLMAppendMenuItem(self.Id, "Settings", 1, 1)
 		
 		#Create the Main Window Widget
-		self.CreateSWidget(221, 640, 210, 135)
+		self.CreateSWidget(221, 640, 210, 160)
 		self.MenuItem1 = 1
 		XPHideWidget(self.SWidget)
 		
@@ -71,12 +71,14 @@ class PythonInterface:
 		pass 
 
 	def CmdArmConnCallback(self, cmd, phase, refcon):
+		print "TODALERT | OMG u armd an dangrus"
 		if(phase==0): #KeyDown event
 			print "TODALERT = CMD toggle armed"
 			self.armed=0 if self.armed==1 else 1
 		return 0
 		
 	def CmdWinConnCallback(self, cmd, phase, refcon):
+		print "TODALERT | OMG u prss da butn"
 		if(phase==0): #KeyDown event
 			print "TODALERT = CMD toggle window"
 			if(not XPIsWidgetVisible(self.SWidget)):
@@ -92,7 +94,7 @@ class PythonInterface:
 			left=int(lLeft[0]); top=int(lTop[0]); right=int(lRight[0]); bottom=int(lBottom[0])
 			XPLMDrawTranslucentDarkBox(left,top,right,bottom)
 			color=1.0, 1.0, 1.0
-			gResult=XPLMDrawString(color, left+5, top-20, self.msg1, 0, xplmFont_Basic)
+			gResult=XPLMDrawString(color, left+20, top, self.msg1, 0, xplmFont_Basic)
 
 	def XPluginStop(self):
 		XPLMUnregisterCommandHandler(self, self.CmdArmConn, self.CmdArmConnCB, 0, 0)
@@ -136,7 +138,7 @@ class PythonInterface:
 		TODcaption = XPCreateWidget(x+20, y-30, x+50, y-50,1, "TOD (nmi)", 0, self.SWidget,xpWidgetClass_Caption)
 
 		# TOD field
-		self.TODedit = XPCreateWidget(x+130, y-30, x+185, y-50,1, _TAINI, 0, self.SWidget,xpWidgetClass_TextField)
+		self.TODedit = XPCreateWidget(x+130, y-30, x+185, y-50,1, "0", 0, self.SWidget,xpWidgetClass_TextField)
 		XPSetWidgetProperty(self.TODedit, xpProperty_TextFieldType, xpTextEntryField)
 		XPSetWidgetProperty(self.TODedit, xpProperty_Enabled, 1)
 
@@ -201,7 +203,8 @@ class PythonInterface:
 				return 1
 
 		if (inMessage == xpMsg_Shown):
-			XPSetWidgetDescriptor(self.TODedit, self.alertdist)
+			print "TODALERT | Client window opened"
+			XPSetWidgetDescriptor(self.TODedit, str(self.alertdist))
 			XPSetWidgetProperty(self.ArmOpt, xpProperty_ButtonState, int(self.armed))
 			XPSetWidgetProperty(self.PauseOpt, xpProperty_ButtonState, int(self.pause))
 			XPSetWidgetProperty(self.SoundOpt, xpProperty_ButtonState, int(self.sound))
@@ -224,6 +227,7 @@ class PythonInterface:
 		dist=XPLMGetDataf(self.gps_dist_ref)
 		if self.armed==1 and dist<self.alertdist:
 			self.alarm=1
+			self.armed=0
 			self.msg1="Currently "+str(int(round(dist)))+" nmi from dest!"
 			if self.pause==1:
 				self.msg1+=" Sim paused!"
