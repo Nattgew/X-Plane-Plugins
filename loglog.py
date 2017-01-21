@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 import math, sys, getopt, sqlite3
 import fseutils # My custom FSE functions
 from mpl_toolkits.basemap import Basemap
@@ -198,10 +198,11 @@ def mapcountries(countries): #Map list of countries?
 	plt.show()
 
 def main(argv): #This is where the magic happens
-	syntaxstring='loglog.py -ax <aircraft> --from=<YYYY-MM-DD> --to=<YYYY-MM-DD>'
+	syntaxstring='loglog.py -abx <aircraft> --from=<YYYY-MM-DD> --to=<YYYY-MM-DD>'
 	try: #a__defg_ijklmnopqrstuvw_yz
 		opts, args = getopt.getopt(argv,"bcf:t:x:",["from=","to=","typestats="])
 	except getopt.GetoptError:
+		print("Errored")
 		print(syntaxstring)
 		sys.exit(2)
 	stat, cmap, logs=(False,)*3
