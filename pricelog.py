@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 from xml.dom import minidom
 import xml.etree.ElementTree as etree
 import urllib.request, math, sys, getopt
@@ -11,7 +11,7 @@ from matplotlib.dates import DateFormatter, date2num
 import matplotlib.pyplot as plt
 
 def getname(): #Returns username stored in file
-	with open('/mnt/data/XPLANE10/XSDK/mykey.txt', 'r') as f:
+	with open('/mnt/data/XPLANE/XSDK/mykey.txt', 'r') as f:
 		nothing = f.readline() #skip the key
 		myname = f.readline()
 		myname=myname.strip()
@@ -28,7 +28,7 @@ def acforsale(conn): #Log aircraft currently for sale
 		row=(count, now) #Record time and index of this iteration
 		c.execute('INSERT INTO queries VALUES (?,?)',row) #Record date/time of this query
 		goodones=[]
-		file='/mnt/data/XPLANE10/XSDK/pricewatch.csv'
+		file='/mnt/data/XPLANE/XSDK/pricewatch.csv'
 		with open(file, 'r') as f:
 			has_header = csv.Sniffer().has_header(f.read(1024)) #could not determine delimiter
 			f.seek(0)  # rewind
@@ -83,7 +83,7 @@ def salepickens(conn): #Convert log to compact format
 
 def logpaymonth(conn,fromdate): #Log a month of payments
 	year,month,*rest=fromdate.split('-', 2)
-	print("Sending request for payment listing...")
+	print("Sending request for payment listing for "+fromdate+"...")
 	payments = fseutils.fserequest(1,'query=payments&search=monthyear&month='+month+'&year='+year,'Payment','xml')
 	if payments!=[]:
 		c=getpaydbcon(conn)
@@ -98,6 +98,8 @@ def logpaymonth(conn,fromdate): #Log a month of payments
 			rows.append(tuple(row))
 		c.executemany('INSERT INTO payments VALUES (?,?,?,?,?,?,?,?,?)',rows)
 		conn.commit()
+	else:
+		print("No payments received for: "+'query=payments&search=monthyear&month='+month+'&year='+year,'Payment')
 
 def logconfigs(conn): #Update database of aircraft configs
 	print("Sending request for configs...")
@@ -174,7 +176,7 @@ def getpaydbcon(conn): #Get cursor for payment database
 def getconfigdbcon(conn): #Get cursor for config database
 	#print("Initializing config database cursor...")
 	c = conn.cursor()
-	if not getconfigdbcon.has_been_called:	
+	if not getconfigdbcon.has_been_called:
 		c.execute("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table'")
 		exist=c.fetchone()
 		if exist[0]==0: #Table does not exist, create table
@@ -228,7 +230,7 @@ def gettotals(conn,actype,fr,to): #Return list of total aircraft for sale at eac
 		if actype=="aircraft":
 			d.execute('SELECT COUNT(*) FROM allac WHERE obsiter = ?', (query[0],))
 		else:
-			d.execute('SELECT COUNT(*) FROM allac WHERE obsiter = ? AND type = ?', (query[0],actype))	
+			d.execute('SELECT COUNT(*) FROM allac WHERE obsiter = ? AND type = ?', (query[0],actype))
 		total=int(d.fetchone()[0])
 		totals.append((fseutils.getdtime(query[1]),total))
 	return totals
@@ -258,7 +260,7 @@ def getaverages(conn,actype,fr,to): #Return list of average prices for aircraft 
 	return averages
 
 def getbaseprice(actype): #Return the base price for this actype
-	conn=sqlite3.connect('/mnt/data/XPLANE10/XSDK/configs.db')
+	conn=sqlite3.connect('/mnt/data/XPLANE/XSDK/configs.db')
 	c=getconfigdbcon(conn)
 	for i in range(2):
 		c.execute('SELECT price FROM aircraft WHERE ac = ?',(actype,))
@@ -390,10 +392,10 @@ def getlistings(conn,actype,lo,hi): #Return list of time for aircraft to sell
 						listings[i][4]=query[0] #Update "to" date in current list
 						match=1
 					else: #Price/region changed, assume not sold, remove old listing and will append a new one
-						listings.remove(listings[i]) 
+						listings.remove(listings[i])
 					break
 			if match==0: #New/updated listing: SN, region, price, first iter, last iter
-				listings.append([sale[0],region,int(sale[2]),query[0],query[0]]) 
+				listings.append([sale[0],region,int(sale[2]),query[0],query[0]])
 	return listings
 
 def mapaclocations(conn, actype): #Map locations of aircraft type for sale
@@ -493,6 +495,7 @@ def sumpayments(conn,fdate,tdate): #Plot portion of income/expense per category
 	wsbuyjet=[0,"JetA bought"]
 	wsbuybld=[0,"Building materials"]
 	wsbuysupp=[0,"Supplies"]
+	ownership=[0,"Ownership Fee"]
 	categories=[("Rental of aircraft", rentinc, rentexp), #Tag name, if to, if from
 				("Pay for assignment", assnmtinc, assnmtexp),
 				("Crew fee", addcrewfee, addcrewfee),
@@ -508,11 +511,12 @@ def sumpayments(conn,fdate,tdate): #Plot portion of income/expense per category
 				("Sale of building materials", wssellbld, wsbuybld),
 				("Group payment", grpay, grpay),
 				("Pilot fee", pltfee, pltfee),
-				("Installation of equipment in aircraft", fboeqpinc, eqinstl)]
+				("Installation of equipment in aircraft", fboeqpinc, eqinstl),
+				("Ownership Fee", ownership, ownership)]
 	user=getname()
 	fromdate=fdate+" 00:01"
 	todate=tdate+" 23:59"
-	print("Tallying payments from"+str(fdate[0])+"-"+str(fdate[1])+" to "+str(tdate[0])+"-"+str(tdate[1])+"...")
+	print("Tallying payments from "+str(fdate[0])+"-"+str(fdate[1])+" to "+str(tdate[0])+"-"+str(tdate[1])+"...")
 	#(date text, to text, from text, amount real, reason text, location real, aircraft real)
 	for payment in c.execute('SELECT payfrom, amount, reason FROM payments WHERE date BETWEEN ? AND ?',(fromdate,todate)):
 		for cat in categories:
@@ -536,9 +540,9 @@ def sumpayments(conn,fdate,tdate): #Plot portion of income/expense per category
 	bld=[wssellbld[0]-wsbuybld[0],"Building Mtrls"]
 	incnets=[rent, assnmt, ac, ws100, wsjet, fborep, fboeqp, ptrent, fbo, sup, bld]
 	incnet=[]
-	expnet=[ref100, refjet, bkgfee, gndcrewfee, addcrewfee, pltfee, mxexp] #Always negative
+	expnet=[ref100, refjet, bkgfee, gndcrewfee, addcrewfee, pltfee, mxexp, ownership] #Always negative
 	netinc=0
-	netexp=ref100[0]+refjet[0]+bkgfee[0]+gndcrewfee[0]+addcrewfee[0]+pltfee[0]+mxexp[0]
+	netexp=ref100[0]+refjet[0]+bkgfee[0]+gndcrewfee[0]+addcrewfee[0]+pltfee[0]+mxexp[0]+ownership[0]
 	for net in incnets: #Test if category represents an expense or income
 		if net[0]>0:
 			incnet.append(net)
@@ -569,7 +573,7 @@ def sumacpayments(conn,fdate,tdate): #Plot revenue portion by aircraft
 	refjet=[[],"JetA pumped"]
 	mxexp=[[],"Maintenance"]
 	eqinstl=[[],"Equipment installed"]
-	acbuy=[[],"Aircraft bought"]	
+	acbuy=[[],"Aircraft bought"]
 	z=[[],""]
 	items=[rent,assnmtinc,pltfee,addcrewfee,gndcrewfee,bkgfee,ref100,refjet,mxexp,eqinstl,acbuy,z]
 	categories=[("Rental of aircraft", rent, rent),
@@ -646,7 +650,7 @@ def main(argv): #This is where the magic happens
 		elif opt=="-j": #Plots fuel prices, averaged for each day
 			fuel=True
 		elif opt=="-k": #Updates the configuration database
-			cconn=sqlite3.connect('/mnt/data/XPLANE10/XSDK/configs.db')
+			cconn=sqlite3.connect('/mnt/data/XPLANE/XSDK/configs.db')
 			logconfigs(cconn)
 			cconn.close()
 		elif opt in ("-l", "--low"): #Lowest price to be considered in other functions
@@ -673,7 +677,7 @@ def main(argv): #This is where the magic happens
 			com=True
 	print("Running option...")
 	if True in (pay, ppay, spay, stot, com, fuel):
-		conn=sqlite3.connect('/mnt/data/XPLANE10/XSDK/payments.db')
+		conn=sqlite3.connect('/mnt/data/XPLANE/XSDK/payments.db')
 		if pay:
 			logpaymonth(conn,fromdate)
 		if ppay:
@@ -686,11 +690,11 @@ def main(argv): #This is where the magic happens
 			logpaymonthcom(conn,fromdate)
 		if fuel:
 			prices=getfuelprices(conn)
-			plotdates([prices],"Average fuel price","Price",['o-'],None,0)
+			fseutils.plotdates([prices],"Average fuel price","Price",['o-'],None,0)
 		conn.close()
-	
+
 	if True in (tot, avg, low, dur, domap, sale, tots, pout, tfs):
-		conn=sqlite3.connect('/mnt/data/XPLANE10/XSDK/forsale.db')
+		conn=sqlite3.connect('/mnt/data/XPLANE/XSDK/forsale.db')
 		if domap:
 			mapaclocations(conn,maptype)
 		if sale:
@@ -723,7 +727,7 @@ def main(argv): #This is where the magic happens
 			fseutils.plotdates([durations],"Time to sell for "+durtype,"Days",['o-'],None,0)
 		if pout:
 			actypes=[]
-			with open('/mnt/data/XPLANE10/XSDK/dailytypes.txt', 'r') as f:
+			with open('/mnt/data/XPLANE/XSDK/dailytypes.txt', 'r') as f:
 				for actype in f:
 					actype=actype.strip()
 					print("Saving figure for "+actype)

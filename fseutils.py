@@ -9,13 +9,13 @@ import matplotlib.pyplot as plt
 import smtplib, sys
 
 def getkey(): #Returns API key stored in file
-	with open('/mnt/data/XPLANE10/XSDK/mykey.txt', 'r') as f:
+	with open('/mnt/data/XPLANE/XSDK/mykey.txt', 'r') as f:
 		mykey = f.readline()
 		mykey=mykey.strip()
 		return mykey
 
 def getemail(): #Gets email info stored in file
-	with open('/mnt/data/XPLANE10/XSDK/creds.txt', 'r') as f:
+	with open('/mnt/data/XPLANE/XSDK/creds.txt', 'r') as f:
 		srvr=f.readline().strip()
 		addr=f.readline().strip()
 		passw=f.readline().strip()
@@ -142,7 +142,7 @@ def getdtime(strin): #Return datetime for the Y-M-D H:M input
 
 def build_csv(info): #Return a dictionary of info using FSE csv file
 	loc_dict = {}
-	with open('/mnt/data/XPLANE10/XSDK/icaodata.csv', 'r') as f:
+	with open('/mnt/data/XPLANE/XSDK/icaodata.csv', 'r') as f:
 		out=readcsv(f)
 		for row in out:
 			if info=="latlon": #airport coordinates
@@ -274,6 +274,10 @@ def mapper(what, points, mincoords, maxcoords, title): # Put the points on a map
 	plt.show()
 
 def plotdates(dlist,title,ylbl,sym,clr,save): #Plot a list of data vs. dates
+	print("sym: ")
+	print(sym)
+	print("clr:")
+	print(clr)
 	if clr is None: #Allows for easy defaults I guess
 		clr=['']
 	if sym is None:
@@ -297,10 +301,14 @@ def plotdates(dlist,title,ylbl,sym,clr,save): #Plot a list of data vs. dates
 		if clr[j] is None:
 			clr[j]=''
 		if len(data[0])==2:
-			#print("Plotting data with symbol "+sym[i]+" and color "+clr[j])
+			print("Plotting data with symbol "+sym[i]+" and color "+clr[j])
 			ax.plot([date2num(x[0]) for x in data], [x[1] for x in data], clr[j]+sym[i], ms=4)
 		else:
-			ax.errorbar([date2num(x[0]) for x in data], [x[1] for x in data], yerr=[x[2] for x in data], fmt=sym[i], c=clr[j])
+			print("Plotting data with symbol "+sym[i]+" and color "+clr[j])
+			if clr[j]=='':
+				ax.errorbar([date2num(x[0]) for x in data], [x[1] for x in data], yerr=[x[2] for x in data], fmt=sym[i])
+			else:
+				ax.errorbar([date2num(x[0]) for x in data], [x[1] for x in data], yerr=[x[2] for x in data], fmt=sym[i], c=clr[j])
 		if i<syms-1: #Reference next symbol/color, if one is provided for each data entry
 			i+=ii
 		else: #Go back to zero if reaching length of data list
