@@ -37,18 +37,18 @@ def acforsale(conn): #Log aircraft currently for sale
 				next(reader)  # skip header row
 			for row in reader:
 				goodones.append((row[0],row[1],int(row[2]),int(row[3]))) #actype, icao?, price, hours
-		fields=(("SerialNumber", 1), ("MakeModel", 0), ("Location", 0), ("LocationName", 0), ("AirframeTime", 0), ("SalePrice", 2))
+		fields=(("SerialNumber", 1), ("MakeModel", 0), ("Location", 0), ("AirframeTime", 0), ("SalePrice", 2))
 		rows=[] #List to INSERT, each row is a tuple
 		bargains=[]
 		for airplane in airplanes: #Record aircraft for sale
 			row=fseutils.getbtns(airplane,fields)
-			row[4]=int(row[4].split(":")[0])
+			row[3]=int(row[3].split(":")[0]) #Get hours as int
 			row.append(count) #Add iteration to end
 			rows.append(tuple(row)) #Add row as tuple to list
-			for option in goodones:
-				if row[1]==option[0] and row[5]<option[2] and row[4]<option[3]:
-					bargains.append(option[1]+" | $"+str(row[5])+" | "+str(row[4])+" hrs | "+row[2])
-		c.executemany('INSERT INTO allac VALUES (?,?,?,?,?,?,?)',rows)
+			for option in goodones: #Check if any sales meet criteria for notify
+				if row[1]==option[0] and row[4]<option[2] and row[3]<option[3]:
+					bargains.append(option[1]+" | $"+str(row[4])+" | "+str(row[3])+" hrs | "+row[2])
+		c.executemany('INSERT INTO allac VALUES (?,?,?,?,?,?)',rows)
 		if bargains!=[]: #Found some bargains to send by email
 			msg="Good aircraft deals: \n"
 			for bargain in bargains:
@@ -141,13 +141,15 @@ def getdbcon(conn): #Get cursor for aircraft sale database
 		if exist[0]==0: #Table does not exist, create table
 			print("Creating tables...")
 			c.execute('''CREATE TABLE allac
-				 (serial real, type text, loc text, locname text, hours real, price real, obsiter real)''')
+				 (serial real, type text, loc text, hours real, price real, obsiter real)''')
 			c.execute('''CREATE TABLE queries
 				 (obsiter real, qtime text)''')
 			c.execute('''CREATE INDEX idx1 ON allac(obsiter)''')
 			c.execute('''CREATE INDEX idx2 ON allac(type)''')
 			c.execute('''CREATE INDEX idx3 ON allac(price)''')
 			c.execute('''CREATE INDEX idx4 ON queries(qtime)''')
+			c.execute('''CREATE INDEX idx5 ON allac(loc)''')
+			c.execute('''CREATE INDEX idx6 ON allac(hours)''')
 		else:
 			c.execute('SELECT qtime FROM queries ORDER BY iter DESC')
 			dtime=c.fetchone()
