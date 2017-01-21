@@ -159,16 +159,16 @@ def mapcountries(countries): #Map list of countries?
 	m = Basemap(projection='hammer', resolution=None, lon_0=0)
 	m.drawcountries(linewidth=0.5)
 	m.drawcoastlines(linewidth=0.5)
-	
+
 	from shapelib import ShapeFile
 	import dbflib
 	from matplotlib.collections import LineCollection
 	from matplotlib import cm
-	
+
 	#for ctry in countries:
 	shp = ShapeFile(r"borders/world_adm1")
 	dbf = dbflib.open(r"borders/world_adm1")
-	
+
 	for npoly in range(shp.info()[0]):
 		shpsegs = []
 		shpinfo = []
@@ -184,7 +184,7 @@ def mapcountries(countries): #Map list of countries?
 			if ring == 0:
 				shapedict = dbf.read_record(npoly)
 			name = shapedict["NAME_1"]
-			
+
 			shapedict['RINGNUM'] = ring+1
 			shapedict['SHAPENUM'] = npoly+1
 			shpinfo.append(shapedict)
@@ -194,7 +194,7 @@ def mapcountries(countries): #Map list of countries?
 		lines.set_edgecolors('k')
 		lines.set_linewidth(0.3)
 		ax.add_collection(lines)
-	
+
 	plt.show()
 
 def main(argv): #This is where the magic happens
@@ -223,7 +223,7 @@ def main(argv): #This is where the magic happens
 			stattype,stat=fseutils.gettype(arg)
 
 	if True in (logs, cmap, stat):
-		conn=sqlite3.connect('/mnt/data/XPLANE10/XSDK/flightlogs.db')
+		conn=sqlite3.connect('/mnt/data/XPLANE/XSDK/flightlogs.db')
 		if stat:
 			getapstats(conn,stattype)
 		if cmap:
