@@ -124,7 +124,7 @@ def logconfigs(conn): #Update database of aircraft configs
 				for i in range(len(row)):
 					if current[i]!=row[i]: #Check if field has changed
 						print("Updating "+row[0]+": "+cols[i]+" "+str(current[i])+" -> "+str(row[i]))
-						d.execute('UPDATE aircraft SET ? = ? WHERE ac = ?',(cols[i], current[i], row[0]))
+						d.execute('UPDATE aircraft SET {} = ? WHERE ac = ?'.format(cols[i]),(row[i], row[0]))
 			else:
 				print("Adding new config: "+row[0])
 				c.execute('INSERT INTO aircraft VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',row)
