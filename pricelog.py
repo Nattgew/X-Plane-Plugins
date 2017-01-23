@@ -14,7 +14,7 @@ def getname(): #Returns username stored in file
 	with open('/mnt/data/XPLANE/XSDK/mykey.txt', 'r') as f:
 		nothing = f.readline() #skip the key
 		myname = f.readline()
-		myname=myname.strip()
+		myname=myname.strip() #remove newline
 		return myname
 
 def acforsale(conn): #Log aircraft currently for sale
@@ -27,7 +27,7 @@ def acforsale(conn): #Log aircraft currently for sale
 		now=time.strftime("%Y-%m-%d %H:%M", time.gmtime())
 		row=(count, now) #Record time and index of this iteration
 		c.execute('INSERT INTO queries VALUES (?,?)',row) #Record date/time of this query
-		goodones=[]
+		goodones=[] #List of aircraft criteria will be read from file
 		file='/mnt/data/XPLANE/XSDK/pricewatch.csv'
 		with open(file, 'r') as f:
 			has_header = csv.Sniffer().has_header(f.read(1024)) #could not determine delimiter
@@ -39,16 +39,16 @@ def acforsale(conn): #Log aircraft currently for sale
 				goodones.append((row[0],row[1],int(row[2]),int(row[3]))) #actype, icao?, price, hours
 		fields=(("SerialNumber", 1), ("MakeModel", 0), ("Location", 0), ("AirframeTime", 0), ("SalePrice", 2))
 		rows=[] #List to INSERT, each row is a tuple
-		bargains=[]
+		bargains=[] #List of aircraft for sale matching criteria
 		for airplane in airplanes: #Record aircraft for sale
-			row=fseutils.getbtns(airplane,fields)
+			row=fseutils.getbtns(airplane,fields) #Extract the relevant fields
 			row[3]=int(row[3].split(":")[0]) #Get hours as int
 			row.append(count) #Add iteration to end
 			rows.append(tuple(row)) #Add row as tuple to list
 			for option in goodones: #Check if any sales meet criteria for notify
 				if row[1]==option[0] and row[4]<option[2] and row[3]<option[3]:
 					bargains.append(option[1]+" | $"+str(row[4])+" | "+str(row[3])+" hrs | "+row[2])
-		c.executemany('INSERT INTO allac VALUES (?,?,?,?,?,?)',rows)
+		c.executemany('INSERT INTO allac VALUES (?,?,?,?,?,?)',rows) #Add all of the aircraft to the log
 		if bargains!=[]: #Found some bargains to send by email
 			msg="Good aircraft deals: \n"
 			for bargain in bargains:
@@ -56,12 +56,19 @@ def acforsale(conn): #Log aircraft currently for sale
 			fseutils.sendemail("Aircraft Deals",msg)
 		conn.commit()
 
-def salepickens(conn): #Convert log to compact format
+def salepickens(conn): #Convert log to compact format - in work
+	#Making a new db where each entry has a range of observations instead of one
+	#This reduces the number of rows for aircraft that continue to show up for sale, at the cost of another column
+	#Right now it is set up to group listings by region or country
+	#This may not be necessary as there are many rows that are exact duplicates (aircraft does not get flown)
+	#See getlistings() for similar behavior
 	print("Processing data...")
 	c=getdbcon(conn)
 	d=getdbcon(conn)
+	#Got dictionary of which region each airport is in
 	rdict=dicts.getregiondict()
 	now=time.strftime("%Y-%m-%d %H:%M", time.gmtime())
+	#Create a new table to hold the converted info
 	c.execute('''CREATE TABLE listings
 			 (serial real, type text, loc text, locname text, hours real, price real, firstiter real, lastiter real)''')
 	c.execute('''CREATE INDEX idx1 ON listings(firstiter)''')
@@ -69,33 +76,49 @@ def salepickens(conn): #Convert log to compact format
 	c.execute('''CREATE INDEX idx3 ON listings(price)''')
 	c.execute('''CREATE INDEX idx4 ON listings(lastiter)''')
 	for i in range(getmaxiter(conn)):
-			for listing in c.execute('SELECT * FROM allac WHERE obsiter = ?',(i+1,)):
-				if i>0:
-					d.execute('SELECT loc FROM listings WHERE serial = ? AND price = ? AND lastiter = ?',(listing[0], listing[5], i))
-					result=d.fetchone()
-					if rdict[result[0]]!=rdict[listing[2]]:
-						d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,?,?)',([value for value in listing],i+1))
-					else:
-						d.execute('UPDATE listings SET lastiter = ? WHERE serial = ? AND price = ? AND lastiter = ?',(i+1,listing[0], listing[5], i))
+		#Process each query time
+		for listing in c.execute('SELECT * FROM allac WHERE obsiter = ?',(i+1,)):
+			#All queries but the first
+			if i>0:
+				#Look for same airplane, same price, from previous iteration
+				d.execute('SELECT loc FROM listings WHERE serial = ? AND price = ? AND lastiter = ?',(listing[0], listing[5], i))
+				result=d.fetchone()
+				#Check if location is in same region as previous query
+				if rdict[result[0]]!=rdict[listing[2]]:
+					#Not same region, insert new row
+					d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,?,?)',([value for value in listing],i+1))
 				else:
-					d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,?,1.0)',([value for value in listing]))
-				conn.commit()
+					#Same region, only last iter needs to be updated
+					d.execute('UPDATE listings SET lastiter = ? WHERE serial = ? AND price = ? AND lastiter = ?',(i+1,listing[0], listing[5], i))
+			else:
+				#No previous queries to look at, just insert the data
+				d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,?,1.0)',([value for value in listing]))
+			conn.commit()
 
 def logpaymonth(conn,fromdate): #Log a month of payments
-	year,month,*rest=fromdate.split('-', 2)
+	year,month,*rest=fromdate.split('-', 2) #Get the year and month from the date
 	print("Sending request for payment listing for "+fromdate+"...")
 	payments = fseutils.fserequest(1,'query=payments&search=monthyear&month='+month+'&year='+year,'Payment','xml')
+	#Check if we received any data
 	if payments!=[]:
 		c=getpaydbcon(conn)
-		rows=[]
+		rows=[] #To hold processed rows
+		#Fields to log
 		fields=(("Date", 0), ("To", 0), ("From", 0), ("Amount", 2), ("Reason", 0), ("Location", 0), ("Id", 1), ("Aircraft", 0), ("Comment", 0))
-		print("Recording data...")
+		print("Processing data...")
+		#Process the results
 		for payment in payments:
+			#Get all of the fields we want to log
 			row=fseutils.getbtns(payment,fields)
+			#Set null comments to blank
 			if row[8]=="null":
 				row[8]=""
+			#Replace slashes in date with dashes
 			row[0]=row[0].replace('/','-')
+			#Add to list for later db insertion
 			rows.append(tuple(row))
+		#Add all processed rows to db
+		print("Adding to database...")
 		c.executemany('INSERT INTO payments VALUES (?,?,?,?,?,?,?,?,?)',rows)
 		conn.commit()
 	else:
@@ -105,27 +128,36 @@ def logconfigs(conn): #Update database of aircraft configs
 	print("Sending request for configs...")
 	configs = fseutils.fserequest(1,'query=aircraft&search=configs','AircraftConfig','xml')
 	if configs!=[]:
+		#For reading current db info
 		c=getconfigdbcon(conn)
+		#For writing any updates
 		d=getconfigdbcon(conn)
+		#Fields we will log
 		fields=(("MakeModel", 0), ("Crew", 1), ("Seats", 1), ("CruiseSpeed", 1), ("GPH", 1), ("FuelType", 1), ("MTOW", 1), ("EmptyWeight", 1), ("Price", 3), ("Ext1", 1), ("LTip", 1), ("LAux", 1), ("LMain", 1), ("Center1", 1), ("Center2", 1), ("Center3", 1), ("RMain", 1), ("RAux", 1), ("RTip", 1), ("Ext2", 1), ("Engines", 1), ("EnginePrice", 3))
 		print("Updating config data...")
+		#Process each aircraft
 		for config in configs:
+			#Get the fields for this aircraft
 			row=fseutils.getbtns(config, fields)
 			fcap=0
 			for i in range(9,20): #Calc total fuel capacity
 				fcap+=row[i]
+			#Add total fuel capacity field after the tank fields
 			row.insert(20,fcap)
 			c.execute('SELECT * FROM aircraft WHERE ac = ?',(row[0],)) #Get stored info for current aircraft
 			current=c.fetchone()
+			#Check for this aircraft in existing db based on the name
 			if current is not None and len(current)>0:
+				#Get list of column names, to make sure we don't miss one
 				cols=[]
-				for col in c.execute('''PRAGMA table_info(aircraft)'''): #Get list of column names
+				for col in c.execute('''PRAGMA table_info(aircraft)'''):
 					cols.append(col[1])
 				for i in range(len(row)):
 					if current[i]!=row[i]: #Check if field has changed
 						print("Updating "+row[0]+": "+cols[i]+" "+str(current[i])+" -> "+str(row[i]))
 						d.execute('UPDATE aircraft SET {} = ? WHERE ac = ?'.format(cols[i]),(row[i], row[0]))
 			else:
+				#Couldn't find the aircraft in the db, adding new entry
 				print("Adding new config: "+row[0])
 				c.execute('INSERT INTO aircraft VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',row)
 			conn.commit()
@@ -133,12 +165,17 @@ def logconfigs(conn): #Update database of aircraft configs
 
 def getdbcon(conn): #Get cursor for aircraft sale database
 	print("Initializing sale database cursor...")
+	#Create the cursor, which is the main thing this function is for
 	c = conn.cursor()
+	#Check if we've already initialized this
+	#If we have, none of this is necessary to do again
 	if not getdbcon.has_been_called:
+		#Check if there are any tables in the db
+		#If db does not exist we create a new one
 		c.execute("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table'")
 		exist=c.fetchone()
 		#print("Found " + str(exist[0]) + " tables...")
-		if exist[0]==0: #Table does not exist, create table
+		if exist[0]==0: #Tables do not exist, create tables
 			print("Creating tables...")
 			c.execute('''CREATE TABLE allac
 				 (serial real, type text, loc text, hours real, price real, obsiter real)''')
@@ -151,10 +188,13 @@ def getdbcon(conn): #Get cursor for aircraft sale database
 			c.execute('''CREATE INDEX idx5 ON allac(loc)''')
 			c.execute('''CREATE INDEX idx6 ON allac(hours)''')
 		else:
+			#Tables already exist, just check on last query time
 			c.execute('SELECT qtime FROM queries ORDER BY iter DESC')
 			dtime=c.fetchone()
 			print("Sale data last updated: "+dtime[0])
+		#Remember that this has been called
 		getdbcon.has_been_called=True
+	#Return the cursor
 	return c
 
 def getpaydbcon(conn): #Get cursor for payment database
@@ -193,7 +233,7 @@ def getconfigdbcon(conn): #Get cursor for config database
 		getconfigdbcon.has_been_called=True
 	return c
 
-def getmaxiter(conn): #Return the number of latest query, which is also the number of queries (YES IT IS SHUT UP)
+def getmaxiter(conn): #Return the number of latest query, which is also the total number of queries (YES IT IS SHUT UP)
 	c = conn.cursor()
 	c.execute('SELECT iter FROM queries ORDER BY iter DESC')
 	count=c.fetchone()
@@ -205,70 +245,99 @@ def getmaxiter(conn): #Return the number of latest query, which is also the numb
 	return current
 
 def gettimeforsale(conn,timetype): # Get data for all ac of timetype for sale
+	#Returns list, containing a list for each aircraft, which lists all times it was for sale
+	#For reading all serials
 	c=getdbcon(conn)
+	#For reading the price and date of each serial
 	d=getdbcon(conn)
+	#For reading the query info
 	e=getdbcon(conn)
 	print("Getting sales data for "+timetype+"...")
 	listings=[]
 	i=0
 	#(serial real, type text, loc text, locname text, hours real, price real, obsiter real)
 	for dac in c.execute('SELECT DISTINCT serial FROM allac WHERE type = ?',(timetype,)):
+		#Add a list to the list
 		listings.append([])
 		for qp in d.execute('SELECT price, obsiter FROM allac WHERE serial = ?',(dac[0],)):
 			qtime=e.execute('SELECT qtime FROM queries WHERE iter = ?',(qp[1],))
 			date=fseutils.getdtime(e.fetchone()[0])
 			#print("AC: "+str(dac[0])+"  "+str(date)+": "+str(qp[0]))
+			#Add this listing to the list for this aircraft
 			listings[i].append([date,int(float(qp[0]))])
-		i+=1
+		i+=1 #Move on to new serial
 	return listings
 
 def gettotals(conn,actype,fr,to): #Return list of total aircraft for sale at each query time
+	#For getting relevant queries
 	c=getdbcon(conn)
+	#For getting number of aircraft
 	d=getdbcon(conn)
+	#List, each entry will be a tuple of datetime and total
 	totals=[]
 	print("Finding total aircraft for sale from "+fr+" to "+to+"...")
 	for query in c.execute('SELECT * FROM queries WHERE qtime BETWEEN ? AND ?', (fr,to)):
 		#print("Reading query "+str(query[0])+" from "+query[1])
 		if actype=="aircraft":
+			#Count all aircraft
 			d.execute('SELECT COUNT(*) FROM allac WHERE obsiter = ?', (query[0],))
 		else:
+			#Count a specific aircraft type
 			d.execute('SELECT COUNT(*) FROM allac WHERE obsiter = ? AND type = ?', (query[0],actype))
 		total=int(d.fetchone()[0])
+		#Add datetime and total to the list
 		totals.append((fseutils.getdtime(query[1]),total))
 	return totals
 
 def getaverages(conn,actype,fr,to): #Return list of average prices for aircraft in each query time
+	#TODO: throw out values well outside the stdev
+	#Find relevant queries
 	c=getdbcon(conn)
+	#Select price of listings
 	d=getdbcon(conn)
+	#List containing tuples of datetime,average,stdev
 	averages=[]
-	fr=fr+" 00:01" #Add times to match the values in table
+	fr=fr+" 00:01" #Add times to match the format in table
 	to=to+" 23:59"
 	print("Finding averages for: "+actype+" from "+fr+" to "+to+"...")
 	for query in c.execute('SELECT * FROM queries WHERE qtime BETWEEN ? AND ?', (fr,to)): #Find the queries in this time range
+		#Total planes, for calculating average
 		numforsale=0
+		#Total price, for calculating average
 		totalprice=0
+		#List of prices for calculating stdev
 		prices=[]
+		#Get prices for this query and aircraft type
 		for sale in d.execute('SELECT price FROM allac WHERE obsiter = ? AND type = ?', (query[0],actype)):
+			#Add to total price
 			totalprice+=int(sale[0])
+			#Add price to list
 			prices.append(sale[0])
+			#Add one for total aircraft
 			numforsale+=1
 		if numforsale>0:
+			#Calculate average price
 			avg=totalprice/numforsale
+			#Sum of squares
 			ssprice=0
+			#Sum the squares
 			for price in prices:
 				ssprice+=math.pow(price-avg,2)
+			#Calculate stdev
 			stdev=math.sqrt(ssprice/numforsale)
+			#Add this to the list
 			averages.append((fseutils.getdtime(query[1]),avg,stdev))
 	return averages
 
 def getbaseprice(actype): #Return the base price for this actype
+	#Open the db where this information lives
 	conn=sqlite3.connect('/mnt/data/XPLANE/XSDK/configs.db')
 	c=getconfigdbcon(conn)
 	for i in range(2):
 		c.execute('SELECT price FROM aircraft WHERE ac = ?',(actype,))
 		price=c.fetchone()
 		if price is not None:
-			baseprice=price[0]+73333 #Add equipment price
+			baseprice=price[0]+73333 #Add equipment price, assume fully loaded
 			break
 		elif i==1:
 			baseprice=0
@@ -278,28 +347,40 @@ def getbaseprice(actype): #Return the base price for this actype
 	return baseprice
 
 def getlows(conn,actype,fr,to): #Return list of lowest price for aircraft in each query
+	#For getting relevant queries
 	c=getdbcon(conn)
+	#For getting prices
 	d=getdbcon(conn)
+	#List with tuples of datetime,low price
 	lows=[]
 	print("Finding low low prices for: "+actype+"...")
 	for query in c.execute('SELECT * FROM queries WHERE qtime BETWEEN ? AND ?', (fr,to)):
+		#Order by price for this type and get the lowest one
 		d.execute('SELECT price FROM allac WHERE obsiter = ? AND type = ? ORDER BY price', (query[0],actype))
 		price=d.fetchone()
 		if price is not None:
+			#If we got a valid price add to list
 			lows.append((fseutils.getdtime(query[1]),price))
 	return lows
 
 def getfuelprices(conn): #Plot fuel prices over time
+	#For getting payments from db
 	c=getpaydbcon(conn)
 	print("Getting flight logs...")
+	#One list entry per day
+	#Each entry is list of total for gallons and money
 	dgas=[]
+	#List of datetime,avg,stdev for each day
 	dprice=[]
+	#List of payments, with date and price per gal
 	eprice=[]
 	i=-1
 	#(date text, payto text, payfrom text, amount real, reason text, location text, aircraft text, pid real, comment text)
 	for log in c.execute('SELECT date, amount, comment FROM payments WHERE reason = "Refuelling with JetA" ORDER BY date'):
-		#User ID: xxxxx Amount (gals): 428.9, $ per Gal: $3.75
+		#comment in log[2] = User ID: xxxxx Amount (gals): 428.9, $ per Gal: $3.75
+		#Extract gallons based on position of colon and comma
 		gals=float(log[2].split(':',3)[2].split(',')[0])
+		#Extracts price per gallon based on position of colon and dollar sign
 		pergal=float(log[2].split(':',3)[3].replace(' $',''))
 		pdate=log[0].split()[0] #Get just date portion
 		#print("i="+str(i)+"  len(dgas)="+str(len(dgas)))
@@ -310,22 +391,33 @@ def getfuelprices(conn): #Plot fuel prices over time
 		else:
 			#print("New day with "+str(gals)+" gals")
 			i+=1
+			#Add a new row for this day, initialize with current payment data
 			dgas.append([pdate,gals,log[1]])
+		#Add this payment date and price per gallon to list
 		eprice.append([pdate,pergal])
 	for day in dgas: #Calculate stats for each day
+		#Calculate average price/gal for this day
 		avg=day[2]/day[1]
+		#For sum of squares
 		ssprice=0
+		#For number of payments
 		num=0
 		for price in eprice:
+			#Find payments in list matching this day
 			if price[0]==day[0]:
+				#Add to sum of squares
 				ssprice+=math.pow(price[1]-avg,2)
+				#Another payment
 				num+=1
+		#Calculate stdev
 		stdev=math.sqrt(ssprice/num)
-		print("New day "+day[0]+" with "+str(avg)+" per gal, sd "+str(stdev))
+		#print("New day "+day[0]+" with "+str(avg)+" per gal, sd "+str(stdev))
+		#Add datetime,avg,stdev to list that we will return
 		dprice.append((fseutils.getdtime(day[0]+" 00:01"),avg,stdev))
 	return dprice
 
 def getcommo(ctype): # Adds up locations and quantities of stuff to send to the mapper
+	#This lets us use t1,t2 for either fuel or material
 	if ctype=="fuel":
 		t1="JetA Fuel"
 		t2="100LL Fuel"
@@ -338,15 +430,21 @@ def getcommo(ctype): # Adds up locations and quantities of stuff to send to the 
 		print("Sending request for commodities...")
 		commo = fseutils.fserequest(1,'query=commodities&search=key','Commodity','xml')
 		print("Sorting results...")
+		#For list of the commodity we are looking for
 		stuff = []
 		for item in commo: #Parse commodity info
+			#Find they type of commodity
 			typ = fseutils.gebtn(item, "Type")
 			if typ==t1 or typ==t2:
+				#If it's they type we want, get location and amount
 				loc = fseutils.gebtn(item, "Location")
 				amt = fseutils.gebtn(item, "Amount")
+				#Add to list of commodities
 				stuff.append((loc,typ,amt))
 		if stuff!=[]: #Add up quantity per location
-			qty=[] #List to hold quantities and types
+			qty=[] #List to hold locations, quantities and types
+			#The stuff list returns t1 and t2 amounts as separate entries
+			#We will combine this into one entry per location here
 			for item in stuff:
 				match=-1
 				i=-1
@@ -356,40 +454,56 @@ def getcommo(ctype): # Adds up locations and quantities of stuff to send to the 
 						match=1
 						break
 				if match==-1: #If location not added, then add new location/quantity
+					#Value of idx indicates type of commodity here
 					if item[1]==t1:
 						idx=0
 					else: #t2
 						idx=1
+					#Add location, amount, and type code
 					qty.append([item[0],int(item[2].split()[0]),idx])
 				else: #If location already added, then sum with other quantity
-					qty[i][1]+=item[2].split()
-					qty[i][2]=2 #Indicates a mix of t1 and t2
+					qty[i][1]+=item[2].split() #Add quantity to existing value
+					qty[i][2]=2 #idx 2 indicates a mix of t1 and t2
+			#Get list of coordinates for the airports
 			coords,cmin,cmax=fseutils.getcoords(i[0] for i in qty)
 			if len(coords)==len(qty): #If not, there was some key error I guess
+				#List to hold coordinates and quantities, for mapping
 				locations=[]
 				print("Working with "+str(len(coords))+" coords...")
 				for i in range(len(coords)):
 					print("Apending "+str(coords[i][0])+","+str(coords[i][1])+","+str(qty[i][1])+","+str(qty[i][2]))
+					#Add the coordinates, quantities, and types to list
 					locations.append([coords[i][0],coords[i][1],qty[i][1],qty[i][2]])
 				return locations,cmin,cmax
+			else:
+				print("Could not find coords for all airports!")
 		else:
 			print("No "+ctype+" found!")
 
 def getlistings(conn,actype,lo,hi): #Return list of time for aircraft to sell
+	#For getting query info
 	c=getdbcon(conn)
+	#For getting listings
 	d=getdbcon(conn)
+	#For getting dictionary listing country of each airport
 	cdict=fseutils.build_csv("country")
+	#For getting dctionary listing region of each country
 	rdict=dicts.getregiondict()
+	#For holding the listing data
 	listings=[]
 	print("Finding sell times for: "+actype+", "+str(lo)+" to "+str(hi)+"...")
 	for query in c.execute('SELECT obsiter FROM queries'):
 	#serial real, type text, loc text, locname text, hours real, price real, obsiter real
 		for sale in d.execute('SELECT serial, loc, price FROM allac WHERE obsiter = ? AND type = ? AND price BETWEEN ? AND ?', (query[0],actype,lo,hi)):
+			#Look up the country
 			country=cdict[sale[1]]
+			#Look up the region of the country
 			region=rdict[country]
 			match=0
 			for i in range(len(listings)):
-				if sale[0]==listings[i][0]: #Check for matching listing
+				#Check if this serial is already in list
+				if sale[0]==listings[i][0]:
+					#Check if region and price are the same
 					if region==listings[i][1] and sale[2]==listings[i][2]:
 						listings[i][4]=query[0] #Update "to" date in current list
 						match=1
@@ -401,28 +515,45 @@ def getlistings(conn,actype,lo,hi): #Return list of time for aircraft to sell
 	return listings
 
 def mapaclocations(conn, actype): #Map locations of aircraft type for sale
+	#For getting listing data
 	c=getdbcon(conn)
+	#Get most recent iteration
 	iters=getmaxiter(conn)
 	q1="SELECT loc FROM allac WHERE obsiter = "+str(iters) #To allow adding to query
+	#Check if we were passed an aircraft type
 	if actype=="":
+		#Title for the map
 		title="Locations of all aircraft for sale"
 	else:
+		#Add to query the aircraft type
 		q1+=" AND type = '"+actype+"'"
 		title="Locations of "+actype+" for sale"
+	#Gett coordinates for the airports
 	locations,cmin,cmax=fseutils.getcoords([i[0] for i in c.execute(q1)])
+	#If we got locations then map them
 	if len(locations)>0:
 		fseutils.mapper('ac', locations, cmin, cmax, title)
 
 def plotpayments(conn,fromdate,todate): #Plot payment totals per category
+	#For getting the payment data
 	c=getpaydbcon(conn)
+	#Get user name
 	user=getname()
+	#timedelta of one day
 	delta=timedelta(days=1)
+	#Fields for from date
 	fyear,fmonth,fday=fromdate.split('-', 2)
+	#Fields for to date
 	tyear,tmonth,tday=todate.split('-', 2)
+	#Make dates for from and to
 	fdate=date(int(fyear),int(fmonth),int(fday))
 	tdate=date(int(tyear),int(tmonth),int(tday))
+	#Initialize the payment lists
 	rentexp, rentinc, assnmtexp, assnmtinc, pltfee, addcrewfee, gndcrewfee, bkgfee, ref100, refjet, mxexp, eqinstl, acsold, acbought, fboref100, fborefjet, fbogndcrew, fborepinc, fborepexp, fboeqpexp, fboeqpinc, ptrentinc, ptrentexp, fbosell, fbobuy, wsbuy100, wssell100, wsbuyjet, wsselljet, wsbuybld, wssellbld, wsbuysupp, wssellsupp, grpay=([[fdate,0]] for i in range(34))
+	#List of list names
 	allthat=[rentexp, rentinc, assnmtexp, assnmtinc, pltfee, addcrewfee, gndcrewfee, bkgfee, ref100, refjet, mxexp, eqinstl, acsold, acbought, fboref100, fborefjet, fbogndcrew, fborepinc, fborepexp, fboeqpexp, fboeqpinc, ptrentinc, ptrentexp, fbosell, fbobuy, wsbuy100, wssell100, wsbuyjet, wsselljet, wsbuybld, wssellbld, wsbuysupp, wssellsupp, grpay]
+	#Category names for the different payment types, and corresponding lists
+	#[1] is income, [2] is expense
 	categories=[("Rental of aircraft", rentinc, rentexp),
 				("Pay for assignment", assnmtinc, assnmtexp),
 				("Crew fee", addcrewfee, addcrewfee),
@@ -443,21 +574,26 @@ def plotpayments(conn,fromdate,todate): #Plot payment totals per category
 	print('Tallying daily payments from %i-%i to %i-%i...' % (fdate.year,fdate.month,tdate.year,tdate.month))
 	#(date text, to text, from text, amount real, reason text, location real, aircraft real)
 	while fdate <= tdate:
+		#From and to dates to use in query
 		fdateq=fdate.isoformat()+" 00:00:01" #To match logged format
 		tdateq=fdate.isoformat()+" 23:59:59"
 		if i>0:
 			for var in allthat:
-				var.append([fdate,var[i-1][1]]) #Carry over the previous totals to new date
+				#Carry over the previous totals to new date
+				var.append([fdate,var[i-1][1]])
+		#Get all of the payments between the from and to dates
 		for payment in c.execute('SELECT payfrom, amount, reason FROM payments WHERE date BETWEEN ? AND ?',(fdateq,tdateq)):
 			for cat in categories:
-				if payment[2]==cat[0]: #Test if category matches
-					if payment[0]!=user: #If payment not from user
+				if payment[2]==cat[0]: #Test if category name matches
+					if payment[0]!=user: #If payment not from user, it is income
 						cat[1][i][1]+=payment[1]
-					else:
+					else: #It is expense
 						cat[2][i][1]+=payment[1]
 					break
+		#Next day
 		fdate += delta
 		i += 1
+	#I guess we're just plotting these expenses for now
 	fseutils.plotdates([refjet, addcrewfee, gndcrewfee],"Money","Money",['-'],None,0)
 
 def sumpayments(conn,fdate,tdate): #Plot portion of income/expense per category
@@ -546,7 +682,7 @@ def sumpayments(conn,fdate,tdate): #Plot portion of income/expense per category
 	netinc=0
 	netexp=ref100[0]+refjet[0]+bkgfee[0]+gndcrewfee[0]+addcrewfee[0]+pltfee[0]+mxexp[0]+ownership[0]
 	for net in incnets: #Test if category represents an expense or income
-		if net[0]>0:
+		if net[0]>0: #That's based on whether it's negative, this isn't rocket science
 			incnet.append(net)
 			netinc+=net[0]
 		else:
@@ -617,17 +753,44 @@ def sumacpayments(conn,fdate,tdate): #Plot revenue portion by aircraft
 	fseutils.pieplot(ac,None,5,"Aircraft Income")
 
 def main(argv): #This is where the magic happens
-	syntaxstring='pricelog.py -acdgm <aircraft> -hjknpqsuvz -e <fuel/mtrls> -ft <YYYY-MM-DD> -il <price>'
+	#TODO: Make sure that functions can consistently take an option to map all aircraft/dates if none is given
+	syntaxstring=("pricelog.py -acdgm <aircraft> -hjknpqsuvz -e <fuel/mtrls> -ft <YYYY-MM-DD> -il <price>\n"
+			" Options:\n"
+			"   -a, --average     Plots average prices for a type (type required)\n"
+			"   -c, --cheapest    Plots cheapest prices for a type (type required)\n"
+			"   -d, --duration    Plots time for a type to sell (type required) (in work)\n"
+			"   -e, --commodity   Maps locations and amounts of commodities (type required)\n"
+			"   -g, --total       Plots total aircraft for sale of type (type aircraft for all)\n"
+			"   -h, --help        Prints this info\n"
+			"   -j                Plots fuel prices averaged for each day\n"
+			"   -k                Updates aircraft configuration database\n"
+			"   -m, --map         Plots location of a type for sale (no type will map all)\n"
+			"   -p                Logs a month of payments (--from required)\n"
+			"   -q                Plots payment totals (--from and --to, or will print all data)\n"
+			"   -s                Plots payment percentages (--from and --to, or will print all data)\n"
+			"   -u                Logs aircraft currently for sale\n"
+			"   -v                Plots percentage of payment categories per aircraft (--from and --to, or will print all data)\n"
+			"   -w                Plots prices for aircraft specified in file\n"
+			"   -y, --timeforsale Plots prices for a certain aircraft over time (type required)\n"
+			"   -z                Temporary function: add comments to logs\n"
+			" Parameters:\n"
+			"   -f, --from        From date\n"
+			"   -t, --to          To date\n"
+			"   -i, --high        Highest price\n"
+			"   -l, --low         Lowest price\n")
 	try: #_b___________no__r_____x__
-		opts, args = getopt.getopt(argv,"a:c:d:e:f:g:hi:jkl:m:pqst:uvwy:z",["duration=","map=","average=","cheapest=","from=","to=","low=","high=","total=","commodity=","timeforsale="])
+		opts, args = getopt.getopt(argv,"a:c:d:e:f:g:h:i:jkl:m:pqst:uvwy:z",["duration=","map=","average=","cheapest=","from=","to=","low=","high=","total=","help=","commodity=","timeforsale="])
 	except getopt.GetoptError:
 		print(syntaxstring)
 		sys.exit(2)
+	#Initialize all options as false
 	tot, avg, low, dur, pay, ppay, spay, stot, com, lowprice, fuel, domap, sale, tots, pout, tfs=(False,)*16
 	getdbcon.has_been_called=False #To know when it's the first cursor initialized
 	getpaydbcon.has_been_called=False
 	getconfigdbcon.has_been_called=False
+	#Defaults
 	highprice=99999999
+	#TODO: Make default date range from first data to last data instead of hardcoded range
 	fromdate="2014-01-01"
 	todate="2020-12-31"
 	for opt, arg in opts:
@@ -644,14 +807,15 @@ def main(argv): #This is where the magic happens
 			fromdate=arg
 		elif opt in ("-g", "--total"): #Plots total aircraft of this type for sale
 			tottype,tot=fseutils.gettype(arg)
-		elif opt=='-h': #plshelp
+		elif opt in ("-h", "--help"): #plshelp
 			print(syntaxstring)
-			sys.exit()
+			sys.exit() #kthxbye
 		elif opt in ("-i", "--high"): #Highest price to be considered in other functions
 			highprice=arg
 		elif opt=="-j": #Plots fuel prices, averaged for each day
 			fuel=True
 		elif opt=="-k": #Updates the configuration database
+			#The only function that needs this db up front, get connection
 			cconn=sqlite3.connect('/mnt/data/XPLANE/XSDK/configs.db')
 			logconfigs(cconn)
 			cconn.close()
@@ -672,12 +836,15 @@ def main(argv): #This is where the magic happens
 		elif opt=="-v": #Plots the percentages of payment categories per aircraft
 			stot=True
 		elif opt=="-w": #Saves plots for aircraft specified in a file
+			#TODO: input the file name to use
 			pout=True
 		elif opt in ("-y", "--timeforsale"): #Plots sale prices per aircraft over time
 			timetype,tfs=fseutils.gettype(arg)
 		elif opt=="-z": #Temporary - Adds comments to a month of payment logs
 			com=True
 	print("Running option...")
+	
+	#Functions using the payments db
 	if True in (pay, ppay, spay, stot, com, fuel):
 		conn=sqlite3.connect('/mnt/data/XPLANE/XSDK/payments.db')
 		if pay:
@@ -695,6 +862,7 @@ def main(argv): #This is where the magic happens
 			fseutils.plotdates([prices],"Average fuel price","Price",['o-'],None,0)
 		conn.close()
 
+	#Functions using the aircraft sale db
 	if True in (tot, avg, low, dur, domap, sale, tots, pout, tfs):
 		conn=sqlite3.connect('/mnt/data/XPLANE/XSDK/forsale.db')
 		if domap:
@@ -704,6 +872,7 @@ def main(argv): #This is where the magic happens
 		if tfs:
 			times=gettimeforsale(conn,timetype)
 			bprice=getbaseprice(timetype)
+			#Add a range to plot the base price
 			times.append([[fseutils.getdtime("2014-01-01 00:01"),bprice],[fseutils.getdtime("2100-12-31 23:59"),bprice]])
 			fseutils.plotdates(times,"Prices of "+timetype,"Price",['o-','--'],[None,'r'],0)
 		if tot:
@@ -712,16 +881,20 @@ def main(argv): #This is where the magic happens
 		if avg:
 			averages=getaverages(conn,avgtype,fromdate,todate)
 			bprice=getbaseprice(avgtype)
-			baseprice=[[fseutils.getdtime("2014-01-01 00:01"),bprice],[fseutils.getdtime("2100-12-31 23:59"),bprice]] #Ensure it covers the whole range
+			#Add a range to plot the base price
+			baseprice=[[fseutils.getdtime("2014-01-01 00:01"),bprice],[fseutils.getdtime("2100-12-31 23:59"),bprice]]
 			fseutils.plotdates([averages,baseprice],"Average price for "+avgtype,"Price",['o-','--'],['b','r'],0)
 		if low:
 			lows=getlows(conn,lowtype,fromdate,todate)
 			bprice=getbaseprice(lowtype)
+			#Add a range to plot the base price
 			baseprice=[[fseutils.getdtime("2014-01-01 00:01"),bprice],[fseutils.getdtime("2100-12-31 23:59"),bprice]]
 			fseutils.plotdates([lows,baseprice],"Lowest price for "+lowtype,"Price",['o-','--'],['b','r'],0)
 		if dur:
+			#Get a list of listing duration for type and price range
 			listings=getlistings(conn,durtype,lowprice,highprice)
 			durations=[]
+			#Compute durations for each listing
 			for listing in listings:
 				duration=listings[4]-listings[3]
 				durations.append((listings[2],duration))
@@ -729,15 +902,18 @@ def main(argv): #This is where the magic happens
 			fseutils.plotdates([durations],"Time to sell for "+durtype,"Days",['o-'],None,0)
 		if pout:
 			actypes=[]
+			#Open the file specifying what types to plot
 			with open('/mnt/data/XPLANE/XSDK/dailytypes.txt', 'r') as f:
 				for actype in f:
-					actype=actype.strip()
-					print("Saving figure for "+actype)
+					actype=actype.strip() #strip newline
 					ptype,ret=fseutils.gettype(actype)
-					if ret:
+					if ret: #Test if aircraft type was recognized
+						#Get low price for each type
 						lows=getlows(conn,ptype,fromdate,todate)
 						bprice=getbaseprice(ptype)
+						#Add range to plot base price
 						baseprice=[[fseutils.getdtime("2014-01-01 00:01"),bprice],[fseutils.getdtime("2100-12-31 23:59"),bprice]]
+						print("Saving figure for "+actype)
 						fseutils.plotdates([lows,baseprice],"Lowest price for "+ptype,"Price",['o-','--'],['b','r'],1)
 		conn.close()
 	print("Finished!")
