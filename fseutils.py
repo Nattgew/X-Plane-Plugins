@@ -39,7 +39,7 @@ def sendemail(subj,msg): #Sends email
 		#print(e)
 
 def fserequest(ra,rqst,tagname,fmt): #Requests data in format, returns list of requested tag
-	if ra==1:
+	if ra==1: #Some queries seem to need this, others don't
 		rakey="&readaccesskey="+getkey()
 	else:
 		rakey=""
@@ -56,7 +56,7 @@ def fserequest(ra,rqst,tagname,fmt): #Requests data in format, returns list of r
 	return tags
 
 def readxml(data,tagname): #Parses XML, returns list of requested tagname
-	ns = {'sfn': 'http://server.fseconomy.net'} #namespace for XML stuff
+	ns = {'sfn': 'http://server.fseconomy.net'} #namespace for XML stuff, required for etree
 	#print("Parsing XML data for "+tagname+"...")
 	tree = etree.parse(data)
 	root = tree.getroot()
@@ -90,11 +90,11 @@ def getbtns(field,tags): #Shorter way to get list of tags
 	vals=[]
 	for tag in tags: #Converts value based on second field
 		val=gebtn(field,tag[0])
-		if tag[1]==1:
+		if tag[1]==1: #Convert to int
 			val=int(val)
-		elif tag[1]==2:
+		elif tag[1]==2: #Convert to float
 			val=float(val)
-		elif tag[1]==3:
+		elif tag[1]==3: #Round float to int
 			val=int(float(val))
 		vals.append(val)
 	return vals
@@ -161,7 +161,7 @@ def chgdir(hdg,delt): #Add delta to heading and fix if passing 0 or 360
 
 def dcoord(coord,delta,dirn): # Change coordinate by delta without exceeding a max
 	if dirn=='lon':
-		lmax=179.9 #I'll fix this later
+		lmax=179.9 #TODO: I'll fix this later
 	else:
 		lmax=89.9
 	new=coord+delta
@@ -219,12 +219,13 @@ def mapper(what, points, mincoords, maxcoords, title): # Put the points on a map
 			width=100
 			height=100
 		#print("Width: "+str(width)+"  Height: "+str(height))
-		llclo=dcoord(mincoords[1],-0.25*width,'lon')
-		llcla=dcoord(mincoords[0],-0.25*height,'lat')
-		urclo=dcoord(maxcoords[1],0.25*width,'lon')
-		urcla=dcoord(maxcoords[0],0.25*height,'lat')
+		llclo=dcoord(mincoords[1],-0.25*width,'lon') #Lower left corner long
+		llcla=dcoord(mincoords[0],-0.25*height,'lat') #Lower left corner lat
+		urclo=dcoord(maxcoords[1],0.25*width,'lon') #Upper right corner long
+		urcla=dcoord(maxcoords[0],0.25*height,'lat') #Upper right corner lat
 		#print("ll="+str(llclo)+","+str(llcla)+"  ur="+str(urclo)+","+str(urcla))
 		m = Basemap(projection='cyl', resolution=None, llcrnrlon=llclo, llcrnrlat=llcla, urcrnrlon=urclo, urcrnrlat=urcla)
+	#More options based on what we are plotting
 	if what=="ac":
 		if len(points) < 30: #Use awesome airplane symbol
 			verts = list(zip([0.,1.,1.,10.,10.,9.,6.,1.,1.,4.,1.,0.,-1.,-4.,-1.,-1.,-5.,-9.,-10.,-10.,-1.,-1.,0.],[9.,8.,3.,-1.,-2.,-2.,0.,0.,-5.,-8.,-8.,-9.,-8.,-8.,-5.,0.,0.,-2.,-2.,-1.,3.,8.,9.])) #Supposed to be an airplane
@@ -259,25 +260,25 @@ def mapper(what, points, mincoords, maxcoords, title): # Put the points on a map
 						#print(pts[i][j])
 						x, y = m([k[1] for k in pts[i][j]], [k[0] for k in pts[i][j]]) #Populate points
 						if j==0: #Set color
-							c='#cc9900'
-						elif j==1:
+							c='#cc9900' #A fuel like color
+						elif j==1: #Materials
 							c='b'
 						else:
 							c='k'
 						#print(sz)
 						m.scatter(x,y,s=sz,marker='o',c=c) #Plot the points with these properties
 						for l in range(len(x)):
-							gals=int(round(i/2.65))
+							gals=int(round(i/2.65)) #Convert kg to gal
 							plt.text(x[l]-math.sqrt(sz/100),y[l],"~"+str(gals)+" gal",fontsize=7)
 						m.shadedrelief(scale=0.2)
 	plt.title(title,fontsize=12)
 	plt.show()
 
 def plotdates(dlist,title,ylbl,sym,clr,save): #Plot a list of data vs. dates
-	print("sym: ")
-	print(sym)
-	print("clr:")
-	print(clr)
+	#print("sym: ")
+	#print(sym)
+	#print("clr: ")
+	#print(clr)
 	if clr is None: #Allows for easy defaults I guess
 		clr=['']
 	if sym is None:
@@ -300,11 +301,11 @@ def plotdates(dlist,title,ylbl,sym,clr,save): #Plot a list of data vs. dates
 #		print("Iter i "+str(i)+" by "+str(ii)+"  j "+str(j)+" by "+str(jj))
 		if clr[j] is None:
 			clr[j]=''
-		if len(data[0])==2:
-			print("Plotting data with symbol "+sym[i]+" and color "+clr[j])
+		if len(data[0])==2: #If only 2 fields then just plot them
+			#print("Plotting data with symbol "+sym[i]+" and color "+clr[j])
 			ax.plot([date2num(x[0]) for x in data], [x[1] for x in data], clr[j]+sym[i], ms=4)
-		else:
-			print("Plotting data with symbol "+sym[i]+" and color "+clr[j])
+		else: #Extra field is error bar
+			#print("Plotting data with symbol "+sym[i]+" and color "+clr[j])
 			if clr[j]=='':
 				ax.errorbar([date2num(x[0]) for x in data], [x[1] for x in data], yerr=[x[2] for x in data], fmt=sym[i])
 			else:
@@ -324,8 +325,10 @@ def plotdates(dlist,title,ylbl,sym,clr,save): #Plot a list of data vs. dates
 				j=1
 	if dlist[-1][1][0]==getdtime("2100-12-31 23:59"): #Don't consider base price in range finding
 		del dlist[-1]
+	#Get range of dates for plot
 	daterange=[min(min(date2num(i[0]) for i in j) for j in dlist),max(max(date2num(i[0]) for i in j) for j in dlist)]
-	if isinstance(dlist[0][0][1], (list, tuple)):
+	#Get range of prices to use
+	if isinstance(dlist[0][0][1], (list, tuple)): #See how deep this rabbit hole goes
 		minprice=min(min(i[1][0] for i in j) for j in dlist)
 		maxprice=max(max(i[1][0] for i in j) for j in dlist)
 	else:
@@ -346,7 +349,7 @@ def plotdates(dlist,title,ylbl,sym,clr,save): #Plot a list of data vs. dates
 	else:
 		plt.savefig('/mnt/data/Dropbox/'+title.replace(' ','_').replace('/','_')+'.png')
 
-def pieplot(data, total, min, stitle): #Create a pie plot
+def pieplot(data, total, min, stitle): #Create a pie plot... mmm, pie
 	labels=[]
 	sizes=[]
 	other=0
@@ -361,7 +364,7 @@ def pieplot(data, total, min, stitle): #Create a pie plot
 			sizes.append(cat[0])
 		else:
 			other+=cat[0]
-	if other>0.1:
+	if other>0.1: #Include the rest if it's significant
 		sizes.append(other)
 		labels.append("Other")
 	# The slices will be ordered and plotted counter-clockwise.
@@ -374,10 +377,11 @@ def pieplot(data, total, min, stitle): #Create a pie plot
 	plt.show()
 
 def gettype(icao): #Return name of aircraft type or error if not found
+	#Dictionary of ICAO code to aircraft type name
 	icaodict=dicts.getactypedict()
-	actype="aircraft"
+	actype="aircraft" #default, if passed blank string
 	try:
-		if icao!="":
+		if icao!="": #try to look it up
 			actype=icaodict[icao]
 		success=True
 	except (KeyError,IndexError):
