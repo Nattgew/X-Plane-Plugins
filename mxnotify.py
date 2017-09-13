@@ -72,7 +72,7 @@ for plane in airplanes:
 					break
 		aog.append((row[0],row[1],row[2],mx,shops)) #Reg, Type, Loc, repair, options
 aog=isnew(aog)
-srvr,addrto,addr,passw=getemail()
+srvr,addrto,addr,passw=fseutils.getemail()
 msg="Airplanes in need of repair:"
 #print(msg)
 if len(aog)>0:
