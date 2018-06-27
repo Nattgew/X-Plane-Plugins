@@ -65,7 +65,7 @@ for plane in airplanes:
 		if len(shops)==0: #Start looking around
 			relatives=reldist(row[2]) #List of all airports sorted by closest to this one
 			for neighbor in relatives:
-				shops=getshops(neighbor[0]) #Got any gwapes?
+				shops.append(getshops(neighbor[0])) #Got any gwapes?
 				if len(shops)>1: #Get a couple of options
 					break
 		aog.append((row[0],row[1],row[2],mx,shops)) #Reg, Type, Loc, repair, options
