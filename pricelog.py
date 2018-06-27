@@ -60,43 +60,107 @@ def acforsale(conn): #Log aircraft currently for sale
 			fseutils.sendemail("FSE Aircraft Deals",msg)
 
 def salepickens(conn): #Convert log to compact format - in work
-	#Making a new db where each entry has a range of observations instead of one
+	#Making a new table where each entry has a range of observations instead of one
 	#This reduces the number of rows for aircraft that continue to show up for sale, at the cost of another column
-	#Right now it is set up to group listings by region or country
+	#Right now it is set up to optionally group listings by region or country
 	#This may not be necessary as there are many rows that are exact duplicates (aircraft does not get flown)
 	#See getlistings() for similar behavior
 	print("Processing data...")
-	c=getdbcon(conn)
-	d=getdbcon(conn)
-	#Got dictionary of which region each airport is in
-	rdict=dicts.getregiondict()
-	now=time.strftime("%Y-%m-%d %H:%M", time.gmtime())
+	region=0 #If 1 then combine entries in same region
+	#If 1 then make a separate table matching serial to type
+	#I highly doubt I'll do this, it decreases the entry size but not the number of entries
+	#It also seriously affects every function that needs to select based on aircraft type
+	sndb=0
+	c=getdbcon(conn) #For reading old table
+	d=getdbcon(conn) #For writing to new table
+	rdict=dicts.getregiondict() #Get dictionary of which region each airport is in
+	#now=time.strftime("%Y-%m-%d %H:%M", time.gmtime())
 	#Create a new table to hold the converted info
-	c.execute('''CREATE TABLE listings
-			 (serial real, type text, loc text, locname text, hours real, price real, firstiter real, lastiter real)''')
-	c.execute('''CREATE INDEX idx1 ON listings(firstiter)''')
-	c.execute('''CREATE INDEX idx2 ON listings(type)''')
-	c.execute('''CREATE INDEX idx3 ON listings(price)''')
-	c.execute('''CREATE INDEX idx4 ON listings(lastiter)''')
-	for i in range(getmaxiter(conn)):
+	if sndb==0:
+		print("Creating new table...")
+		c.execute('''CREATE TABLE listings
+				 (serial real, type text, loc text, hours real, price real, firstiter real, lastiter real)''')
+		c.execute('''CREATE INDEX idx1 ON listings(firstiter)''')
+		c.execute('''CREATE INDEX idx2 ON listings(type)''')
+		c.execute('''CREATE INDEX idx3 ON listings(price)''')
+		c.execute('''CREATE INDEX idx4 ON listings(lastiter)''')
+		#c.execute('''CREATE INDEX idx5 ON listings(hours)''')
+	else:
+		print("Creating new table...")
+		c.execute('''CREATE TABLE listings
+				 (serial real, loc text, hours real, price real, firstiter real, lastiter real)''')
+		c.execute('''CREATE INDEX idx1 ON listings(firstiter)''')
+		c.execute('''CREATE INDEX idx2 ON listings(serial)''')
+		c.execute('''CREATE INDEX idx3 ON listings(price)''')
+		c.execute('''CREATE INDEX idx4 ON listings(lastiter)''')
+		#c.execute('''CREATE INDEX idx5 ON listings(hours)''')
+		#Create table for serial numbers
+		c.execute('''CREATE TABLE serials (serial real, type text)''')
+		c.execute('''CREATE INDEX idx1 ON serials(serial)''')
+		c.execute('''CREATE INDEX idx2 ON serials(type)''')
+	maxiter=getmaxiter(conn)
+	for i in range(maxiter):
 		#Process each query time
-		for listing in c.execute('SELECT * FROM allac WHERE obsiter = ?',(i+1,)):
-			#All queries but the first
-			if i>0:
-				#Look for same airplane, same price, from previous iteration
-				d.execute('SELECT loc FROM listings WHERE serial = ? AND price = ? AND lastiter = ?',(listing[0], listing[5], i))
-				result=d.fetchone()
-				#Check if location is in same region as previous query
-				if rdict[result[0]]!=rdict[listing[2]]:
-					#Not same region, insert new row
-					d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,?,?)',([value for value in listing],i+1))
-				else:
-					#Same region, only last iter needs to be updated
-					d.execute('UPDATE listings SET lastiter = ? WHERE serial = ? AND price = ? AND lastiter = ?',(i+1,listing[0], listing[5], i))
+		print("Processing iter "+str(i+1)+" of "+str(maxiter), end='')
+		for listing in c.execute('SELECT * FROM allac WHERE obsiter = ?',(i+1)):
+			if sndb==0:
+				#All queries but the first
+				if i>0: #Look for same airplane, same price, from previous iteration
+					if region==0: #Disregard hours, airport must be same
+						d.execute('SELECT COUNT(*) FROM listings WHERE serial = ? AND price = ? AND (loc = ? OR loc = "Airborne") AND lastiter = ?',(listing[0], listing[4], listing[2], i))
+						result=d.fetchone()
+						if result[0]==0: #No exact match on previous iter, add new entry
+							d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,?)',([value for value in listing],i+1))
+						else: #Exact match, update iter and hours
+							d.execute('UPDATE listings SET lastiter = ? AND hours = ? WHERE serial = ? AND lastiter = ?',(i+1, listing[3], listing[2], listing[0], i))
+					else: #Disregard hours, region must be same
+						d.execute('SELECT loc FROM listings WHERE serial = ? AND price = ? AND loc = ? AND lastiter = ?',(listing[0], listing[4], i))
+						result=d.fetchone()
+						#Check if location is in same region as previous query
+						#TODO: Think about how to handle airborne aircraft here
+						if rdict[result[0]]!=rdict[listing[2]]: #Not same region, insert new row
+							d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,?)',([value for value in listing],i+1))
+						else: #Same region, only last iter needs to be updated
+							d.execute('UPDATE listings SET lastiter = ?, loc = ? WHERE serial = ? AND price = ? AND lastiter = ? AND hours = ?',(i+1, listing[2], listing[0], listing[4], i, listing[3]))
+				else: #This is the first iteration, just insert the data
+					d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,1.0)',([value for value in listing]))
 			else:
-				#No previous queries to look at, just insert the data
-				d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,?,1.0)',([value for value in listing]))
+				#All queries but the first
+				#TODO - remove type column when copying from old table
+				if i>0: #Look for same airplane, same price, from previous iteration
+					if region==0: #Disregard hours, airport must be same
+						d.execute('SELECT COUNT(*) FROM listings WHERE serial = ? AND price = ? AND (loc = ? OR loc = "Airborne") AND lastiter = ?',(listing[0], listing[4], listing[2], i))
+						result=d.fetchone()
+						if result[0]==0: #No exact match on previous iter, add new entry
+							d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,?)',([value for value in listing],i+1))
+						else: #Exact match, update iter and hours
+							d.execute('UPDATE listings SET lastiter = ? AND hours = ? WHERE serial = ? AND lastiter = ?',(i+1, listing[3], listing[2], listing[0], i))
+					else: #Disregard hours, region must be same
+						d.execute('SELECT loc FROM listings WHERE serial = ? AND price = ? AND loc = ? AND lastiter = ?',(listing[0], listing[4], i))
+						result=d.fetchone()
+						#Check if location is in same region as previous query
+						#TODO: Think about how to handle airborne aircraft here
+						if rdict[result[0]]!=rdict[listing[2]]: #Not same region, insert new row
+							d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,?)',([value for value in listing],i+1))
+						else: #Same region, only last iter needs to be updated
+							d.execute('UPDATE listings SET lastiter = ?, loc = ? WHERE serial = ? AND price = ? AND lastiter = ? AND hours = ?',(i+1, listing[2], listing[0], listing[4], i, listing[3]))
+				else: #This is the first iteration, just insert the data
+					d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,1.0)',([value for value in listing]))
 			conn.commit()
+			print('.', end='', flush=True)
+
+def sntotype(conn,sn): #Look up the type of a serial number
+	c=getdbcon(conn)
+	c.execute('SELECT type FROM serials WHERE serial = ?',(sn))
+	result=c.fetchone()
+	return result[0]
+
+def gettypesns(conn,type): #Look up serial numbers for an aircraft type
+	c=getdbcon(conn)
+	serials=[]
+	for row in c.execute('SELECT serial FROM serials WHERE type = ?',(type)):
+		serials.append(row[0])
+	return serials
 
 def logpaymonth(conn,fromdate): #Log a month of payments
 	year,month,*rest=fromdate.split('-', 2) #Get the year and month from the date
@@ -436,10 +500,10 @@ def getcommo(ctype): # Adds up locations and quantities of stuff to send to the 
 		#For list of the commodity we are looking for
 		stuff = []
 		for item in commo: #Parse commodity info
-			#Find they type of commodity
+			#Find the type of commodity
 			typ = fseutils.gebtn(item, "Type")
 			if typ==t1 or typ==t2:
-				#If it's they type we want, get location and amount
+				#If it's the type we want, get location and amount
 				loc = fseutils.gebtn(item, "Location")
 				amt = fseutils.gebtn(item, "Amount")
 				#Add to list of commodities
@@ -843,12 +907,12 @@ def main(argv): #This is where the magic happens
 			pout=True
 		elif opt in ("-y", "--timeforsale"): #Plots sale prices per aircraft over time
 			timetype,tfs=fseutils.gettype(arg)
-		elif opt=="-z": #Temporary - Adds comments to a month of payment logs
+		elif opt=="-z": #Temporary - Converts db to fancy new format
 			com=True
 	print("Running option...")
 	
 	#Functions using the payments db
-	if True in (pay, ppay, spay, stot, com, fuel):
+	if True in (pay, ppay, spay, stot, fuel):
 		conn=sqlite3.connect('/mnt/data/XPLANE/XSDK/payments.db')
 		if pay:
 			logpaymonth(conn,fromdate)
@@ -858,15 +922,15 @@ def main(argv): #This is where the magic happens
 			sumpayments(conn,fromdate,todate)
 		if stot:
 			sumacpayments(conn,fromdate,todate)
-		if com:
-			logpaymonthcom(conn,fromdate)
+		#if com:
+			#logpaymonthcom(conn,fromdate)
 		if fuel:
 			prices=getfuelprices(conn)
 			fseutils.plotdates([prices],"Average fuel price","Price",['o-'],None,0)
 		conn.close()
 
 	#Functions using the aircraft sale db
-	if True in (tot, avg, low, dur, domap, sale, tots, pout, tfs):
+	if True in (tot, avg, low, dur, domap, sale, tots, pout, tfs, com):
 		conn=sqlite3.connect('/mnt/data/XPLANE/XSDK/forsale.db')
 		if domap:
 			mapaclocations(conn,maptype)
@@ -918,6 +982,8 @@ def main(argv): #This is where the magic happens
 						baseprice=[[fseutils.getdtime("2014-01-01 00:01"),bprice],[fseutils.getdtime("2100-12-31 23:59"),bprice]]
 						print("Saving figure for "+actype)
 						fseutils.plotdates([lows,baseprice],"Lowest price for "+ptype,"Price",['o-','--'],['b','r'],1)
+		if com:
+			salepickens(conn)
 		conn.close()
 	print("Finished!")
 
