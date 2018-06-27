@@ -4,6 +4,7 @@ import xml.etree.ElementTree as etree
 import urllib.request, math, sys, getopt
 import dicts # My script for custom dictionaries
 import fseutils # My custom FSE functions
+from fsetemplates import html_email_template_basic
 import csv, sqlite3, time
 from datetime import timedelta, date, datetime
 from mpl_toolkits.basemap import Basemap
@@ -47,13 +48,15 @@ def acforsale(conn): #Log aircraft currently for sale
 			rows.append(tuple(row)) #Add row as tuple to list
 			for option in goodones: #Check if any sales meet criteria for notify
 				if row[1]==option[0] and row[4]<option[2] and row[3]<option[3]:
-					bargains.append(option[1]+" | $"+str(row[4])+" | "+str(row[3])+" hrs | "+row[2])
+					pricedelta=option[2]-row[4]
+					bargains.append(option[1]+" | $"+str(row[4])+" <span class='discount'>(-"+str(pricedelta)+")</span> | "+str(row[3])+" hrs | "+row[2])
 		c.executemany('INSERT INTO allac VALUES (?,?,?,?,?,?)',rows) #Add all of the aircraft to the log
 		if bargains!=[]: #Found some bargains to send by email
-			msg="Good aircraft deals: \n"
+			barglist=""
 			for bargain in bargains:
-				msg+="\n"+bargain
-			fseutils.sendemail("Aircraft Deals",msg)
+				barglist+=bargain+"<br/>"
+			msg=html_email_template_basic.format(aclist=barglist)
+			fseutils.sendemail("FSE Aircraft Deals",msg)
 		conn.commit()
 
 def salepickens(conn): #Convert log to compact format - in work
