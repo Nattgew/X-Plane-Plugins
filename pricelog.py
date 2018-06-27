@@ -51,13 +51,13 @@ def acforsale(conn): #Log aircraft currently for sale
 					pricedelta=option[2]-row[4]
 					bargains.append(option[1]+" | $"+str(row[4])+" <span class='discount'>(-"+str(pricedelta)+")</span> | "+str(row[3])+" hrs | "+row[2])
 		c.executemany('INSERT INTO allac VALUES (?,?,?,?,?,?)',rows) #Add all of the aircraft to the log
+		conn.commit()
 		if bargains!=[]: #Found some bargains to send by email
 			barglist=""
 			for bargain in bargains:
 				barglist+=bargain+"<br/>"
 			msg=html_email_template_basic.format(aclist=barglist)
 			fseutils.sendemail("FSE Aircraft Deals",msg)
-		conn.commit()
 
 def salepickens(conn): #Convert log to compact format - in work
 	#Making a new db where each entry has a range of observations instead of one
