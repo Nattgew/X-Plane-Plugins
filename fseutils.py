@@ -66,7 +66,7 @@ def grouprequest(ra,rqst,tagname,fmt): #Requests data in format, returns list of
 		rakey="&readaccesskey="+getgroupkey()
 	else:
 		rakey=""
-	rq = "http://server.fseconomy.net/data?userkey="+getgroupkey()+rakey+'&format='+fmt+'&'+rqst
+	rq = "http://server.fseconomy.net/data?userkey="+getkey()+rakey+'&format='+fmt+'&'+rqst
 	#print("Will make request: "+rq)
 	data = urllib.request.urlopen(rq)
 	if fmt=='xml':
