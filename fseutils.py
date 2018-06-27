@@ -14,6 +14,12 @@ def getkey(): #Returns API key stored in file
 		mykey=mykey.strip()
 		return mykey
 
+def getgroupkey(): #Returns API key stored in file
+	with open('/mnt/data/XPLANE/XSDK/mygroupkey.txt', 'r') as f:
+		mykey = f.readline()
+		mykey=mykey.strip()
+		return mykey
+
 def getemail(): #Gets email info stored in file
 	with open('/mnt/data/XPLANE/XSDK/creds.txt', 'r') as f:
 		srvr=f.readline().strip()
@@ -44,6 +50,23 @@ def fserequest(ra,rqst,tagname,fmt): #Requests data in format, returns list of r
 	else:
 		rakey=""
 	rq = "http://server.fseconomy.net/data?userkey="+getkey()+rakey+'&format='+fmt+'&'+rqst
+	#print("Will make request: "+rq)
+	data = urllib.request.urlopen(rq)
+	if fmt=='xml':
+		tags=readxml(data,tagname)
+	elif fmt=='csv':
+		tags=readcsv(data)
+	else:
+		print("Format "+fmt+" not recognized!")
+		tags=[]
+	return tags
+
+def grouprequest(ra,rqst,tagname,fmt): #Requests data in format, returns list of requested tag
+	if ra==1: #Some queries seem to need this, others don't
+		rakey="&readaccesskey="+getgroupkey()
+	else:
+		rakey=""
+	rq = "http://server.fseconomy.net/data?userkey="+getgroupkey()+rakey+'&format='+fmt+'&'+rqst
 	#print("Will make request: "+rq)
 	data = urllib.request.urlopen(rq)
 	if fmt=='xml':
