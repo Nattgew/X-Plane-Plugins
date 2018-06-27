@@ -5,14 +5,11 @@ import fseutils # My custom FSE functions
 # import os, re, fileinput, csv, sqlite3
 # import locale, time
 # from datetime import timedelta, date, datetime
-# from mpl_toolkits.basemap import Basemap
-# from matplotlib.dates import DateFormatter, date2num
-# import matplotlib.pyplot as plt
 
-def reldist(icao,rad): #Find distances of other airports from given airport
+def reldist(icao): #Find distances of other airports from given airport
 	#print("Looking for airports near "+icao)
 	loc_dict=fseutils.build_csv("latlon")
-	clat,clon=loc_dict[icao]
+	clat,clon=loc_dict[icao] #Get coordinates of current airport
 	dists=[]
 	for apt,coords in loc_dict.items():
 		if apt!=icao:
@@ -32,18 +29,19 @@ def getshops(icao):
 	return options
 
 def isnew(needfixes):
-	oldnews=[]
-	fixed=[]
+	#This function prevents repeat notifications for the same aircraft
+	#A list of aircraft needing repair is stored in a text file
+	oldnews=[] #List of aircraft needing fixes already notified
 	with open('aog.txt', 'r+') as f:
-		for aog in f:
-			for current in needfixes:
-				if current[0]==aog:
+		for aog in f: #Loop over all aircraft in the file
+			for current in needfixes: #Loop over all aircraft currently in need of repair
+				if current[0]==aog: #Aircraft was already listed in the file
 					oldnews.append(current[0])
 					break
-	with open('aog.txt', 'w') as f:
+	with open('aog.txt', 'w') as f: #Overwrite the file with the new list of aircraft
 		for current in needfixes:
-			f.write(current[0])
-	for oldie in oldnews:
+			f.write(current[0]+"\n")
+	for oldie in oldnews: #Remove aircraft already notified from the list
 		needfixes.remove(oldie)
 	return needfixes
 
@@ -68,22 +66,25 @@ for plane in airplanes:
 			relatives=reldist(row[2]) #List of all airports sorted by closest to this one
 			for neighbor in relatives:
 				shops=getshops(neighbor[0]) #Got any gwapes?
-				if len(shops)>0:
+				if len(shops)>1: #Get a couple of options
 					break
 		aog.append((row[0],row[1],row[2],mx,shops)) #Reg, Type, Loc, repair, options
-aog=isnew(aog)
+aog=isnew(aog) #Remove aircraft already notified
 srvr,addrto,addr,passw=fseutils.getemail()
 msg="Airplanes in need of repair:"
 #print(msg)
 if len(aog)>0:
 	for plane in aog:
+		#Type of repair needed
 		if plane[3]==1:
 			repair="repair"
 		else:
 			repair="100-hour"
+		#Add airplane and location to message
 		out=plane[0]+"  "+plane[1]+" at "+plane[2]
 		msg+="\n"+out
 		#print(out)
+		#Add type of repair and shop options to message
 		out="Needs "+repair+", options are:"
 		msg+="\n"+out
 		#print(out)
