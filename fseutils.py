@@ -69,6 +69,7 @@ def grouprequest(ra,rqst,tagname,fmt): #Requests data in format, returns list of
 	rq = "http://server.fseconomy.net/data?userkey="+getkey()+rakey+'&format='+fmt+'&'+rqst
 	print("Will make request: "+rq)
 	data = urllib.request.urlopen(rq)
+	print("Received data:")
 	print(data)
 	print("Reading tag: "+tagname)
 	if fmt=='xml':
@@ -86,12 +87,17 @@ def readxml(data,tagname): #Parses XML, returns list of requested tagname
 	ns = {'sfn': 'http://server.fseconomy.net'} #namespace for XML stuff, required for etree
 	#print("Parsing XML data for "+tagname+"...")
 	tree = etree.parse(data)
+	print("Tree:")
+	print(tree)
 	root = tree.getroot()
+	print("Root:")
+	print(root)
 	error = root.findall('sfn:Error',ns)
 	if error!=[]:
 		print("Received error: "+error[0].text)
 		tags=[]
 	else:
+		print("Finding tag: "+tagname)
 		tags = root.findall('sfn:'+tagname,ns)
 	return tags
 
