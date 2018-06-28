@@ -9,8 +9,9 @@ def isnew(newdearth,type):
 		file="lowjeta.txt"
 	if type=="100ll":
 		file="low100ll.txt"
-	if type=="supp"
+	if type=="supp":
 		file="lowsupp.txt"
+	print("Checking for low "+file)
 	oldnews=[] #List of shortages already notified
 	with open(file, 'r+') as f:
 		for olddearth in f: #Loop over all shortages in the file
@@ -28,27 +29,33 @@ def isnew(newdearth,type):
 warndays = 14 #Days of supplies to first send warning
 warnjeta = 1000 #Gallons of Jet A to first send warning
 warn100ll = 1000 #Gallons of 100LL to first send warning
-#print("Sending request for commodities list...")
-commo = fseutils.grouprequest(1,'query=commodities&search=key','Commodity','xml')
-#print(commo)
+print("Sending request for FBO list...")
+commo = fseutils.grouprequest(1,'query=fbos&search=key','FBO','xml')
+print(commo)
 lowjeta = []
 low100ll = []
 lowsupp = []
 for fbo in commo: #Parse commodity info
-	icao = fseutils.gebtn(item, "Icao")
-	f100 = fseutils.gebtn(item, "Fuel100LL")
-	fja = fseutils.gebtn(item, "FuelJetA")
-	days = fseutils.gebtn(item, "SuppliedDays")
-	if fja/2.65 < warnjeta+1:
+	#print(fbo)
+	icao = fseutils.gebtn(fbo, "Icao")
+	print("ICAO="+icao)
+	f100 = fseutils.gebtn(fbo, "Fuel100LL")
+	print("f100="+f100)
+	fja = fseutils.gebtn(fbo, "FuelJetA")
+	print("fja="+fja)
+	days = fseutils.gebtn(fbo, "SuppliedDays")
+	print("days="+days)
+	if int(fja)/2.65 < warnjeta+1:
 		lowjeta.append((icao,round(fja/2.65)))
-	if f100 < warn100ll+1:
+	if int(f100) < warn100ll+1:
 		low100ll.append((icao,round(f100/2.65)))
-	if days < warndays+1:
+	if int(days) < warndays+1:
 		lowsupp.append((icao,days))
 #print(msg)
 lowjeta=isnew(lowjeta,"jeta")
 low100ll=isnew(low100ll,"100ll")
 lowsupp=isnew(lowsupp,"supp")
+print("Building message...")
 msg=""
 if len(lowsupp)>0:
 	msg+="Airports with low supplies:\n"
@@ -65,6 +72,6 @@ if len(low100ll)>0:
 	for airport in low100ll: #Add airport and qty to message
 		msg+=airport[0]+" - "+airport[1]+" gals\n"
 	msg+="\n"
-#print(msg)
-if msg!="":
-	fseutils.sendemail("FSE FBO Shortages",msg)
+print(msg)
+#if msg!="":
+	#fseutils.sendemail("FSE FBO Shortages",msg)
