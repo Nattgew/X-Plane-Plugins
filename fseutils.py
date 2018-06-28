@@ -9,24 +9,36 @@ import matplotlib.pyplot as plt
 import smtplib, sys
 
 def getkey(): #Returns API key stored in file
-	with open('/mnt/data/XPLANE/XSDK/mykey.txt', 'r') as f:
-		mykey = f.readline()
-		mykey=mykey.strip()
-		return mykey
+	try:
+		with open('/mnt/data/XPLANE/XSDK/mykey.txt', 'r') as f:
+			mykey = f.readline()
+			mykey=mykey.strip()
+	except IOError:
+		print("Could not open user key file")
+		mykey=""
+	return mykey
 
 def getgroupkey(): #Returns API key stored in file
-	with open('/mnt/data/XPLANE/XSDK/mygroupkey.txt', 'r') as f:
-		mykey = f.readline()
-		mykey=mykey.strip()
-		return mykey
+	try:
+		with open('/mnt/data/XPLANE/XSDK/mygroupkey.txt', 'r') as f:
+			mykey = f.readline()
+			mykey=mykey.strip()
+	except IOError:
+		print("Could not open group key file")
+		mykey=""
+	return mykey
 
 def getemail(): #Gets email info stored in file
-	with open('/mnt/data/XPLANE/XSDK/creds.txt', 'r') as f:
-		srvr=f.readline().strip()
-		addr=f.readline().strip()
-		passw=f.readline().strip()
-		addrto=f.readline().strip()
-		return srvr,addrto,addr,passw
+	try:
+		with open('/mnt/data/XPLANE/XSDK/creds.txt', 'r') as f:
+			srvr=f.readline().strip()
+			addr=f.readline().strip()
+			passw=f.readline().strip()
+			addrto=f.readline().strip()
+	except IOError:
+		print("Could not open email credentials file")
+		srv, addr, passw, addrto=("",)*4
+	return srvr,addrto,addr,passw
 
 def sendemail(subj,msg): #Sends email
 	srvr,addrto,addr,passw=getemail()
@@ -82,32 +94,77 @@ def grouprequest(ra,rqst,tagname,fmt): #Requests data in format, returns list of
 	print("Returning tags:")
 	print(tags)
 	return tags
+	
+def fserequest_new(qry,srch,more,tagname,fmt,ra): #Requests data in format, returns list of requested tag
+	if ra==1: #User RA key
+		rakey="&readaccesskey="+getkey()
+	elif ra==2: #Group RA key
+		rakey="&readaccesskey="+getgroupkey()
+	else: #Not needed
+		rakey=""
+	rq = "http://server.fseconomy.net/data?userkey="+getkey()+'&format='+fmt+'&query='+qry+'&search='+srch+more+rakey
+	#print("Will make request: "+rq)
+	try:
+		data = urllib.request.urlopen(rq)
+		if fmt=='xml':
+			tags=readxml(data,tagname)
+		elif fmt=='csv':
+			tags=readcsv(data)
+		else:
+			print("Format "+fmt+" not recognized!")
+			tags=[]
+	except:
+		e = sys.exc_info()[0]
+		print("Failed to send request with error:")
+		print(e)
+		tags=[]
+	return tags
 
 def readxml(data,tagname): #Parses XML, returns list of requested tagname
 	ns = {'sfn': 'http://server.fseconomy.net'} #namespace for XML stuff, required for etree
 	#print("Parsing XML data for "+tagname+"...")
-	tree = etree.parse(data)
-	print("Tree:")
-	print(tree)
-	root = tree.getroot()
-	print("Root:")
-	print(root)
-	error = root.findall('sfn:Error',ns)
-	if error!=[]:
-		print("Received error: "+error[0].text)
+	try:
+		tree = etree.parse(data)
+		print("Tree:")
+		print(tree)
+		try:
+			root = tree.getroot()
+			print("Root:")
+			print(root)
+			try:
+				error = root.findall('sfn:Error',ns)
+				if error!=[]:
+					print("Received error: "+error[0].text)
+					tags=[]
+				else:
+					print("Finding tag: "+tagname)
+					try:
+						tags = root.findall('sfn:'+tagname,ns)
+					except:
+						print("Failed to search for requested tag name")
+						tags=[]
+			except:
+				print("Failed to search for error returned")
+				tags=[]
+		except:
+			print("Failed to get root of XML tree")
+			tags=[]
+	except:
+		print("Failed to parse XML")
 		tags=[]
-	else:
-		print("Finding tag: "+tagname)
-		tags = root.findall('sfn:'+tagname,ns)
 	return tags
 
 def readcsv(data): #Eats Gary's lunch
 	#print("Parsing CSV data...")
-	has_header = csv.Sniffer().has_header(data.read(1024))
-	data.seek(0) # rewind
-	reader = csv.reader(data)
-	if has_header:
-		next(reader) # skip header row
+	try:
+		has_header = csv.Sniffer().has_header(data.read(1024))
+		data.seek(0) # rewind
+		reader = csv.reader(data)
+		if has_header:
+			next(reader) # skip header row
+	except:
+		print("Failed to read csv")
+		reader = ""
 	return reader
 
 def gebtn(field,tag): #Shorter way to get tags
@@ -176,13 +233,16 @@ def getdtime(strin): #Return datetime for the Y-M-D H:M input
 
 def build_csv(info): #Return a dictionary of info using FSE csv file
 	loc_dict = {}
-	with open('/mnt/data/XPLANE/XSDK/icaodata.csv', 'r') as f:
-		out=readcsv(f)
-		for row in out:
-			if info=="latlon": #airport coordinates
-				loc_dict[row[0]]=(float(row[1]),float(row[2])) #Code = lat, lon
-			elif info=="country": #airport countries
-				loc_dict[row[0]]=row[8] #Code = Country
+	try:
+		with open('/mnt/data/XPLANE/XSDK/icaodata.csv', 'r') as f:
+			out=readcsv(f)
+			for row in out:
+				if info=="latlon": #airport coordinates
+					loc_dict[row[0]]=(float(row[1]),float(row[2])) #Code = lat, lon
+				elif info=="country": #airport countries
+					loc_dict[row[0]]=row[8] #Code = Country
+	except IOError:
+		print("Could not open ICAO data csv")
 	return loc_dict
 
 def chgdir(hdg,delt): #Add delta to heading and fix if passing 0 or 360
@@ -219,7 +279,7 @@ def getcoords(data): #Get coordinates for a list of airports
 			lat,lon=loc_dict[row]
 		except KeyError: #Probably "Airborne"
 			print("Key error on: "+str(row))
-			continue
+			continue #What could possibly go wrong
 		locations.append([lat,lon])
 		#lat_tot+=lat
 		#lon_tot+=lon
