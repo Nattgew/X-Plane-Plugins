@@ -67,8 +67,10 @@ def grouprequest(ra,rqst,tagname,fmt): #Requests data in format, returns list of
 	else:
 		rakey=""
 	rq = "http://server.fseconomy.net/data?userkey="+getkey()+rakey+'&format='+fmt+'&'+rqst
-	#print("Will make request: "+rq)
+	print("Will make request: "+rq)
 	data = urllib.request.urlopen(rq)
+	print(data)
+	print("Reading tag: "+tagname)
 	if fmt=='xml':
 		tags=readxml(data,tagname)
 	elif fmt=='csv':
@@ -76,6 +78,8 @@ def grouprequest(ra,rqst,tagname,fmt): #Requests data in format, returns list of
 	else:
 		print("Format "+fmt+" not recognized!")
 		tags=[]
+	print("Returning tags:")
+	print(tags)
 	return tags
 
 def readxml(data,tagname): #Parses XML, returns list of requested tagname
@@ -105,6 +109,7 @@ def gebtn(field,tag): #Shorter way to get tags
 	try:
 		tags=field.find('sfn:'+tag,ns).text  #field.getElementsByTagName(tag)[0].firstChild.nodeValue
 	except: #Borked XML, more common than you may think
+		print("Bad XML")
 		tags=""
 	return tags
 
