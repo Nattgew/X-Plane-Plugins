@@ -40,9 +40,9 @@ def sendemail(subj,msg): #Sends email
 		server.close()
 		#print("Successfully sent the mail:")
 	except:
-		#e = sys.exc_info()[0]
+		e = sys.exc_info()[0]
 		print("Failed to send the mail with error:")
-		#print(e)
+		print(e)
 
 def fserequest(ra,rqst,tagname,fmt): #Requests data in format, returns list of requested tag
 	if ra==1: #Some queries seem to need this, others don't
