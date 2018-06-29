@@ -28,7 +28,7 @@ warndays = 14 #Days of supplies to first send warning
 warnjeta = 1000 #Gallons of Jet A to first send warning
 warn100ll = 1000 #Gallons of 100LL to first send warning
 print("Sending request for FBO list...")
-commo = fseutils.fserequest_new('fbos','key','FBO','xml',2)
+commo = fseutils.fserequest_new('fbos','key','FBO','xml',2,0)
 print(commo)
 lowjeta = []
 low100ll = []

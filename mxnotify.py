@@ -1,10 +1,6 @@
 #!/usr/bin/python
-import smtplib, sys
+import sys
 import fseutils # My custom FSE functions
-#import dicts # My script for custom dictionaries
-# import os, re, fileinput, csv, sqlite3
-# import locale, time
-# from datetime import timedelta, date, datetime
 
 def reldist(icao): #Find distances of other airports from given airport
 	#print("Looking for airports near "+icao)
@@ -48,12 +44,12 @@ def isnew(needfixes):
 ns = {'sfn': 'http://server.fseconomy.net'} #namespace for XML stuff
 aog=[] #List of planes and FBO options
 print("Sending request for aircraft list...")
-airplanes = fseutils.fserequest_new('aircraft','key','Aircraft','xml',1)
+airplanes = fseutils.fserequest_new('aircraft','key','Aircraft','xml',1,1)
 print("Received airplane list:")
 print(airplanes)
 for plane in airplanes:
-	nr=int(plane.find('NeedsRepair').text) #Indications repair is needed
-	since100=int(plane.find('TimeLast100hr').text.split(":")[0])
+	nr=int(plane.find('sfn:NeedsRepair',ns).text) #Indications repair is needed
+	since100=int(plane.find('sfn:TimeLast100hr',ns).text.split(":")[0])
 	mx=0
 	print("Repair: "+str(nr)+"  100hr: "+str(since100))
 	if nr>0:

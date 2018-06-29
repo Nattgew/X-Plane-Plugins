@@ -62,37 +62,15 @@ def fserequest(ra,rqst,tagname,fmt): #Requests data in format, returns list of r
 	#print("Will make request: "+rq)
 	data = urllib.request.urlopen(rq)
 	if fmt=='xml':
-		tags=readxml(data,tagname)
+		tags=readxml(data,tagname,1)
 	elif fmt=='csv':
 		tags=readcsv(data)
 	else:
 		print("Format "+fmt+" not recognized!")
 		tags=[]
-	return tags
-
-def grouprequest(ra,rqst,tagname,fmt): #Requests data in format, returns list of requested tag
-	if ra==1: #Some queries seem to need this, others don't
-		rakey="&readaccesskey="+getgroupkey()
-	else:
-		rakey=""
-	rq = "http://server.fseconomy.net/data?userkey="+getkey()+rakey+'&format='+fmt+'&'+rqst
-	print("Will make request: "+rq)
-	data = urllib.request.urlopen(rq)
-	print("Received data:")
-	print(data)
-	print("Reading tag: "+tagname)
-	if fmt=='xml':
-		tags=readxml(data,tagname)
-	elif fmt=='csv':
-		tags=readcsv(data)
-	else:
-		print("Format "+fmt+" not recognized!")
-		tags=[]
-	print("Returning tags:")
-	print(tags)
 	return tags
 	
-def fserequest_new(qry,srch,tagname,fmt,ra,more=""): #Requests data in format, returns list of requested tag
+def fserequest_new(qry,srch,tagname,fmt,ra,nsb,more=""): #Requests data in format, returns list of requested tag
 	if ra==1: #User RA key
 		rakey="&readaccesskey="+getkey()
 	elif ra==2: #Group RA key
@@ -104,7 +82,7 @@ def fserequest_new(qry,srch,tagname,fmt,ra,more=""): #Requests data in format, r
 	try:
 		data = urllib.request.urlopen(rq)
 		if fmt=='xml':
-			tags=readxml(data,tagname)
+			tags=readxml(data,tagname,nsb)
 		elif fmt=='csv':
 			tags=readcsv(data)
 		else:
@@ -117,7 +95,7 @@ def fserequest_new(qry,srch,tagname,fmt,ra,more=""): #Requests data in format, r
 		tags=[]
 	return tags
 
-def readxml(data,tagname): #Parses XML, returns list of requested tagname
+def readxml(data,tagname,nsb): #Parses XML, returns list of requested tagname
 	ns = {'sfn': 'http://server.fseconomy.net'} #namespace for XML stuff, required for etree
 	print("Parsing XML data for "+tagname+"...")
 	try:
@@ -129,14 +107,20 @@ def readxml(data,tagname): #Parses XML, returns list of requested tagname
 			print("Root:")
 			print(root)
 			try:
-				error = root.findall('Error')
+				if nsb==1:
+					error = root.findall('sfn:Error',ns)
+				else:
+					error = root.findall('Error')
 				if error!=[]:
 					print("Received error: "+error[0].text)
 					tags=[]
 				else:
 					print("Finding tag: "+tagname)
 					try:
-						tags = root.findall(tagname)
+						if nsb==1:
+							tags = root.findall('sfn:'+tagname,ns)
+						else:
+							tags = root.findall(tagname)
 					except:
 						print("Failed to search for requested tag name")
 						tags=[]
