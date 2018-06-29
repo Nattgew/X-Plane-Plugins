@@ -2,25 +2,30 @@
 import smtplib, sys
 import fseutils # My custom FSE functions
 from pathlib import Path
+from appdirs import AppDirs
 
-def isnew(newdearth,file):
+def isnew(newdearth,file): #TODO: Add this to fseutils
 	#This function prevents repeat notifications for the same shortage
 	#A list of airports with shortages is stored in a text file
-	filename=Path(file+'.txt')
-	filename.touch(exist_ok=True) #Create file if it doesn't exist
-	print("Checking for low "+file)
-	oldnews=[] #List of shortages already notified
-	with open(filename, 'r+') as f:
-		for olddearth in f: #Loop over all shortages in the file
-			for current in newdearth: #Loop over all current shortanges
-				if current[0]==olddearth: #Shortage was already listed in the file
-					oldnews.append(current)
-					break
-	with open(filename, 'w') as f: #Overwrite the file with the new list of shortages
-		for current in newdearth:
-			f.write(current[0]+"\n")
-	for oldie in oldnews: #Remove shortages already notified from the list
-		newdearth.remove(oldie)
+	dirs=AppDirs("nattgew-xpp","Nattgew")
+	filename=Path(dirs.user_data_dir).joinpath(file+'.txt')
+	try:
+		filename.touch(exist_ok=True) #Create file if it doesn't exist
+		print("Checking for low "+file)
+		oldnews=[] #List of shortages already notified
+		with open(filename, 'r+') as f:
+			for olddearth in f: #Loop over all shortages in the file
+				for current in newdearth: #Loop over all current shortanges
+					if current[0]==olddearth: #Shortage was already listed in the file
+						oldnews.append(current)
+						break
+		with open(filename, 'w') as f: #Overwrite the file with the new list of shortages
+			for current in newdearth:
+				f.write(current[0]+"\n")
+		for oldie in oldnews: #Remove shortages already notified from the list
+			newdearth.remove(oldie)
+	except IOError:
+		print("Could not open file: "+file)
 	return newdearth
 
 cautdays = 14 #Days of supplies to first send first notification

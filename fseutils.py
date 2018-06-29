@@ -4,12 +4,15 @@ import urllib.request, math, csv, time
 import dicts # My script for custom dictionaries
 from datetime import datetime
 import smtplib, sys
+from appdirs import AppDirs
+from pathlib import Path
 
 def getkey(grp): #Returns API key stored in file
+	dirs=AppDirs("nattgew-xpp","Nattgew")
 	if grp==0: #User key
-		filename='/mnt/data/XPLANE/XSDK/mykey.txt'
+		filename=Path(dirs.user_data_dir).joinpath('mykey.txt')
 	else: #Group key
-		filename='/mnt/data/XPLANE/XSDK/mygroupkey.txt'
+		filename=Path(dirs.user_data_dir).joinpath('mygroupkey.txt')
 	try:
 		with open(filename, 'r') as f:
 			mykey = f.readline()
@@ -20,8 +23,10 @@ def getkey(grp): #Returns API key stored in file
 	return mykey
 
 def getemail(): #Gets email info stored in file
+	dirs=AppDirs("nattgew-xpp","Nattgew")
+	filename=Path(dirs.user_data_dir).joinpath('creds.txt')
 	try:
-		with open('/mnt/data/XPLANE/XSDK/creds.txt', 'r') as f:
+		with open(filename, 'r') as f:
 			srvr=f.readline().strip()
 			addr=f.readline().strip()
 			passw=f.readline().strip()
@@ -211,8 +216,10 @@ def getdtime(strin): #Return datetime for the Y-M-D H:M input
 
 def build_csv(info): #Return a dictionary of info using FSE csv file
 	loc_dict = {}
+	dirs=AppDirs("nattgew-xpp","Nattgew")
+	filename=Path(dirs.user_data_dir).joinpath('icaodata.csv')
 	try:
-		with open('/mnt/data/XPLANE/XSDK/icaodata.csv', 'r') as f:
+		with open(filename, 'r') as f:
 			out=readcsv(f)
 			for row in out:
 				if info=="latlon": #airport coordinates
@@ -275,6 +282,19 @@ def getcoords(data): #Get coordinates for a list of airports
 	#else:
 		#center=(lat_tot/pts,lon_tot/pts) # Not currently used, also needs the totals above
 	return locations,(latmin,lonmin),(latmax,lonmax)
+
+def gettype(icao): #Return name of aircraft type or error if not found
+	#Dictionary of ICAO code to aircraft type name
+	icaodict=dicts.getactypedict()
+	actype="aircraft" #default, if passed blank string
+	try:
+		if icao!="": #try to look it up
+			actype=icaodict[icao]
+		success=True
+	except (KeyError,IndexError):
+		print("Name for code "+icao+" not found!")
+		success=False
+	return actype, success
 
 def mapper(what, points, mincoords, maxcoords, title): # Put the points on a map
 	from mpl_toolkits.basemap import Basemap
@@ -456,16 +476,3 @@ def pieplot(data, total, min, stitle): #Create a pie plot... mmm, pie
 	plt.axis('equal') # Set aspect ratio to be equal so that pie is drawn as a circle.
 	plt.title(stitle)
 	plt.show()
-
-def gettype(icao): #Return name of aircraft type or error if not found
-	#Dictionary of ICAO code to aircraft type name
-	icaodict=dicts.getactypedict()
-	actype="aircraft" #default, if passed blank string
-	try:
-		if icao!="": #try to look it up
-			actype=icaodict[icao]
-		success=True
-	except (KeyError,IndexError):
-		print("Name for code "+icao+" not found!")
-		success=False
-	return actype, success

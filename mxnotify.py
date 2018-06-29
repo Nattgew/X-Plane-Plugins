@@ -1,6 +1,8 @@
 #!/usr/bin/python
 import sys
 import fseutils # My custom FSE functions
+from appdirs import AppDirs
+from pathlib import Path
 
 def reldist(icao): #Find distances of other airports from given airport
 	#print("Looking for airports near "+icao)
@@ -27,18 +29,24 @@ def getshops(icao):
 def isnew(needfixes):
 	#This function prevents repeat notifications for the same aircraft
 	#A list of aircraft needing repair is stored in a text file
-	oldnews=[] #List of aircraft needing fixes already notified
-	with open('aog.txt', 'r+') as f:
-		for aog in f: #Loop over all aircraft in the file
-			for current in needfixes: #Loop over all aircraft currently in need of repair
-				if current[0]==aog: #Aircraft was already listed in the file
-					oldnews.append(current[0])
-					break
-	with open('aog.txt', 'w') as f: #Overwrite the file with the new list of aircraft
-		for current in needfixes:
-			f.write(current[0]+"\n")
-	for oldie in oldnews: #Remove aircraft already notified from the list
-		needfixes.remove(oldie)
+	dirs=AppDirs("nattgew-xpp","Nattgew")
+	filename=Path(dirs.user_data_dir).joinpath('aog.txt')
+	try:
+		filename.touch(exist_ok=True) #Create file if it doesn't exist
+		oldnews=[] #List of aircraft needing fixes already notified
+		with open(filename, 'r+') as f:
+			for aog in f: #Loop over all aircraft in the file
+				for current in needfixes: #Loop over all aircraft currently in need of repair
+					if current[0]==aog: #Aircraft was already listed in the file
+						oldnews.append(current[0])
+						break
+		with open(filename, 'w') as f: #Overwrite the file with the new list of aircraft
+			for current in needfixes:
+				f.write(current[0]+"\n")
+		for oldie in oldnews: #Remove aircraft already notified from the list
+			needfixes.remove(oldie)
+	except: IOError:
+		print("Could not open file: "+file)
 	return needfixes
 
 ns = {'sfn': 'http://server.fseconomy.net'} #namespace for XML stuff
