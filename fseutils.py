@@ -139,7 +139,7 @@ def readxml(data,tagname): #Parses XML, returns list of requested tagname
 				else:
 					print("Finding tag: "+tagname)
 					try:
-						tags = root.findall('sfn:'+tagname,ns)
+						tags = root.findall(tagname)
 					except:
 						print("Failed to search for requested tag name")
 						tags=[]
@@ -170,7 +170,7 @@ def readcsv(data): #Eats Gary's lunch
 def gebtn(field,tag): #Shorter way to get tags
 	ns = {'sfn': 'http://server.fseconomy.net'} #namespace for XML stuff
 	try:
-		tags=field.find('sfn:'+tag,ns).text  #field.getElementsByTagName(tag)[0].firstChild.nodeValue
+		tags=field.find(tag).text  #field.getElementsByTagName(tag)[0].firstChild.nodeValue
 	except: #Borked XML, more common than you may think
 		print("Bad XML")
 		tags=""

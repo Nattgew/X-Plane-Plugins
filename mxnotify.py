@@ -98,4 +98,4 @@ if len(aog)>0:
 else:
 	msg+="\nNone"
 #print()
-#print(msg)
+print(msg)

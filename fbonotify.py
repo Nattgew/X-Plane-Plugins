@@ -39,17 +39,17 @@ for fbo in commo: #Parse commodity info
 	#print(fbo)
 	icao = fseutils.gebtn(fbo, "Icao")
 	print("ICAO="+icao)
-	f100 = fseutils.gebtn(fbo, "Fuel100LL")
-	print("f100="+f100)
-	fja = fseutils.gebtn(fbo, "FuelJetA")
-	print("fja="+fja)
-	days = fseutils.gebtn(fbo, "SuppliedDays")
-	print("days="+days)
-	if int(fja)/2.65 < warnjeta+1:
+	f100 = int(fseutils.gebtn(fbo, "Fuel100LL"))
+	print("f100="+str(f100))
+	fja = int(fseutils.gebtn(fbo, "FuelJetA"))
+	print("fja="+str(fja))
+	days = int(fseutils.gebtn(fbo, "SuppliedDays"))
+	print("days="+str(days))
+	if fja/2.65 < warnjeta+1:
 		lowjeta.append((icao,round(fja/2.65)))
-	if int(f100) < warn100ll+1:
+	if f100 < warn100ll+1:
 		low100ll.append((icao,round(f100/2.65)))
-	if int(days) < warndays+1:
+	if days < warndays+1:
 		lowsupp.append((icao,days))
 #print(msg)
 lowjeta=isnew(lowjeta,"jeta")
@@ -60,17 +60,17 @@ msg=""
 if len(lowsupp)>0:
 	msg+="Airports with low supplies:\n"
 	for airport in lowsupp: #Add airport and qty to message
-		msg+=airport[0]+" - "+airport[1]+" days\n"
+		msg+=airport[0]+" - "+str(airport[1])+" days\n"
 	msg+="\n"
 if len(lowjeta)>0:
 	msg+="Airports with low Jet A:\n"
 	for airport in lowjeta: #Add airport and qty to message
-		msg+=airport[0]+" - "+airport[1]+" gals\n"
+		msg+=airport[0]+" - "+str(airport[1])+" gals\n"
 	msg+="\n"
 if len(low100ll)>0:
 	msg+="Airports with low 100LL:\n"
 	for airport in low100ll: #Add airport and qty to message
-		msg+=airport[0]+" - "+airport[1]+" gals\n"
+		msg+=airport[0]+" - "+str(airport[1])+" gals\n"
 	msg+="\n"
 print(msg)
 #if msg!="":
