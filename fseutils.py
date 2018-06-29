@@ -92,7 +92,7 @@ def grouprequest(ra,rqst,tagname,fmt): #Requests data in format, returns list of
 	print(tags)
 	return tags
 	
-def fserequest_new(qry,srch,tagname,fmt,ra,more=None): #Requests data in format, returns list of requested tag
+def fserequest_new(qry,srch,tagname,fmt,ra,more=""): #Requests data in format, returns list of requested tag
 	if ra==1: #User RA key
 		rakey="&readaccesskey="+getkey()
 	elif ra==2: #Group RA key
@@ -100,7 +100,7 @@ def fserequest_new(qry,srch,tagname,fmt,ra,more=None): #Requests data in format,
 	else: #Not needed
 		rakey=""
 	rq = "http://server.fseconomy.net/data?userkey="+getkey()+'&format='+fmt+'&query='+qry+'&search='+srch+more+rakey
-	#print("Will make request: "+rq)
+	print("Will make request: "+rq)
 	try:
 		data = urllib.request.urlopen(rq)
 		if fmt=='xml':
@@ -119,7 +119,7 @@ def fserequest_new(qry,srch,tagname,fmt,ra,more=None): #Requests data in format,
 
 def readxml(data,tagname): #Parses XML, returns list of requested tagname
 	ns = {'sfn': 'http://server.fseconomy.net'} #namespace for XML stuff, required for etree
-	#print("Parsing XML data for "+tagname+"...")
+	print("Parsing XML data for "+tagname+"...")
 	try:
 		tree = etree.parse(data)
 		print("Tree:")
@@ -129,7 +129,7 @@ def readxml(data,tagname): #Parses XML, returns list of requested tagname
 			print("Root:")
 			print(root)
 			try:
-				error = root.findall('sfn:Error',ns)
+				error = root.findall('Error')
 				if error!=[]:
 					print("Received error: "+error[0].text)
 					tags=[]

@@ -47,14 +47,15 @@ def isnew(needfixes):
 
 ns = {'sfn': 'http://server.fseconomy.net'} #namespace for XML stuff
 aog=[] #List of planes and FBO options
-#print("Sending request for aircraft list...")
-airplanes = fseutils.fserequest(1,'query=aircraft&search=key','Aircraft','xml')
-#print(airplanes)
+print("Sending request for aircraft list...")
+airplanes = fseutils.fserequest_new('aircraft','key','Aircraft','xml',1)
+print("Received airplane list:")
+print(airplanes)
 for plane in airplanes:
-	nr=int(plane.find('sfn:NeedsRepair', ns).text) #Indications repair is needed
-	since100=int(plane.find('sfn:TimeLast100hr', ns).text.split(":")[0])
+	nr=int(plane.find('NeedsRepair').text) #Indications repair is needed
+	since100=int(plane.find('TimeLast100hr').text.split(":")[0])
 	mx=0
-	#print(str(nr)+" "+str(since100))
+	print("Repair: "+str(nr)+"  100hr: "+str(since100))
 	if nr>0:
 		mx=1
 	if since100>99: #100 hr past due
