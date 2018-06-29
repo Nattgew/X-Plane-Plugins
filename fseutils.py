@@ -5,23 +5,17 @@ import dicts # My script for custom dictionaries
 from datetime import datetime
 import smtplib, sys
 
-def getkey(): #Returns API key stored in file
+def getkey(grp): #Returns API key stored in file
+	if grp==0: #User key
+		filename='/mnt/data/XPLANE/XSDK/mykey.txt'
+	else: #Group key
+		filename='/mnt/data/XPLANE/XSDK/mygroupkey.txt'
 	try:
-		with open('/mnt/data/XPLANE/XSDK/mykey.txt', 'r') as f:
+		with open(filename, 'r') as f:
 			mykey = f.readline()
 			mykey=mykey.strip()
 	except IOError:
-		print("Could not open user key file")
-		mykey=""
-	return mykey
-
-def getgroupkey(): #Returns API key stored in file
-	try:
-		with open('/mnt/data/XPLANE/XSDK/mygroupkey.txt', 'r') as f:
-			mykey = f.readline()
-			mykey=mykey.strip()
-	except IOError:
-		print("Could not open group key file")
+		print("Could not open key file")
 		mykey=""
 	return mykey
 
@@ -55,10 +49,10 @@ def sendemail(subj,msg): #Sends email
 
 def fserequest(ra,rqst,tagname,fmt): #Requests data in format, returns list of requested tag
 	if ra==1: #Some queries seem to need this, others don't
-		rakey="&readaccesskey="+getkey()
+		rakey="&readaccesskey="+getkey(0)
 	else:
 		rakey=""
-	rq = "http://server.fseconomy.net/data?userkey="+getkey()+rakey+'&format='+fmt+'&'+rqst
+	rq = "http://server.fseconomy.net/data?userkey="+getkey(0)+rakey+'&format='+fmt+'&'+rqst
 	#print("Will make request: "+rq)
 	data = urllib.request.urlopen(rq)
 	if fmt=='xml':
@@ -72,12 +66,12 @@ def fserequest(ra,rqst,tagname,fmt): #Requests data in format, returns list of r
 	
 def fserequest_new(qry,srch,tagname,fmt,ra,nsb,more=""): #Requests data in format, returns list of requested tag
 	if ra==1: #User RA key
-		rakey="&readaccesskey="+getkey()
+		rakey="&readaccesskey="+getkey(0)
 	elif ra==2: #Group RA key
-		rakey="&readaccesskey="+getgroupkey()
+		rakey="&readaccesskey="+getkey(1)
 	else: #Not needed
 		rakey=""
-	rq = "http://server.fseconomy.net/data?userkey="+getkey()+'&format='+fmt+'&query='+qry+'&search='+srch+more+rakey
+	rq = "http://server.fseconomy.net/data?userkey="+getkey(0)+'&format='+fmt+'&query='+qry+'&search='+srch+more+rakey
 	print("Will make request: "+rq)
 	try:
 		data = urllib.request.urlopen(rq)
