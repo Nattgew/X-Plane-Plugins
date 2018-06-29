@@ -3,9 +3,6 @@ import xml.etree.ElementTree as etree
 import urllib.request, math, csv, time
 import dicts # My script for custom dictionaries
 from datetime import datetime
-from mpl_toolkits.basemap import Basemap
-from matplotlib.dates import DateFormatter, date2num
-import matplotlib.pyplot as plt
 import smtplib, sys
 
 def getkey(): #Returns API key stored in file
@@ -95,7 +92,7 @@ def grouprequest(ra,rqst,tagname,fmt): #Requests data in format, returns list of
 	print(tags)
 	return tags
 	
-def fserequest_new(qry,srch,more,tagname,fmt,ra): #Requests data in format, returns list of requested tag
+def fserequest_new(qry,srch,tagname,fmt,ra,more=None): #Requests data in format, returns list of requested tag
 	if ra==1: #User RA key
 		rakey="&readaccesskey="+getkey()
 	elif ra==2: #Group RA key
@@ -299,6 +296,9 @@ def getcoords(data): #Get coordinates for a list of airports
 	return locations,(latmin,lonmin),(latmax,lonmax)
 
 def mapper(what, points, mincoords, maxcoords, title): # Put the points on a map
+	from mpl_toolkits.basemap import Basemap
+	from matplotlib.dates import DateFormatter, date2num
+	import matplotlib.pyplot as plt
 	print("Mapping "+str(len(points))+" points...") #points is list of lists containing lat,lon, then possibly addtional data
 	print("min: "+str(mincoords[0])+","+str(mincoords[1])+"  max: "+str(maxcoords[0])+","+str(maxcoords[1]))
 	if maxcoords[1]-mincoords[1]>180 or maxcoords[0]-mincoords[0]>60: # Big spread, world with center aligned
@@ -369,6 +369,9 @@ def mapper(what, points, mincoords, maxcoords, title): # Put the points on a map
 	plt.show()
 
 def plotdates(dlist,title,ylbl,sym,clr,save): #Plot a list of data vs. dates
+	from mpl_toolkits.basemap import Basemap
+	from matplotlib.dates import DateFormatter, date2num
+	import matplotlib.pyplot as plt
 	#print("sym: ")
 	#print(sym)
 	#print("clr: ")
@@ -444,6 +447,9 @@ def plotdates(dlist,title,ylbl,sym,clr,save): #Plot a list of data vs. dates
 		plt.savefig('/mnt/data/Dropbox/'+title.replace(' ','_').replace('/','_')+'.png')
 
 def pieplot(data, total, min, stitle): #Create a pie plot... mmm, pie
+	from mpl_toolkits.basemap import Basemap
+	from matplotlib.dates import DateFormatter, date2num
+	import matplotlib.pyplot as plt
 	labels=[]
 	sizes=[]
 	other=0

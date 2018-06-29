@@ -1,36 +1,33 @@
 #!/usr/bin/python
 import smtplib, sys
 import fseutils # My custom FSE functions
+from pathlib import Path
 
-def isnew(newdearth,type):
+def isnew(newdearth,file):
 	#This function prevents repeat notifications for the same shortage
 	#A list of airports with shortages is stored in a text file
-	if type=="jeta":
-		file="lowjeta.txt"
-	if type=="100ll":
-		file="low100ll.txt"
-	if type=="supp":
-		file="lowsupp.txt"
+	filename=Path(file+'.txt')
+	if not filename.is_file():
+		filename.touch()
 	print("Checking for low "+file)
 	oldnews=[] #List of shortages already notified
-	with open(file, 'r+') as f:
+	with open(filename, 'r+') as f:
 		for olddearth in f: #Loop over all shortages in the file
 			for current in newdearth: #Loop over all current shortanges
 				if current[0]==olddearth: #Shortage was already listed in the file
 					oldnews.append(current)
 					break
-	with open(file, 'w') as f: #Overwrite the file with the new list of shortages
+	with open(filename, 'w') as f: #Overwrite the file with the new list of shortages
 		for current in newdearth:
 			f.write(current[0]+"\n")
 	for oldie in oldnews: #Remove shortages already notified from the list
 		newdearth.remove(oldie)
 	return newdearth
-
 warndays = 14 #Days of supplies to first send warning
 warnjeta = 1000 #Gallons of Jet A to first send warning
 warn100ll = 1000 #Gallons of 100LL to first send warning
 print("Sending request for FBO list...")
-commo = fseutils.grouprequest(1,'query=fbos&search=key','FBO','xml')
+commo = fseutils.fserequest_new('fbos','key','FBO','xml',2)
 print(commo)
 lowjeta = []
 low100ll = []
@@ -52,9 +49,9 @@ for fbo in commo: #Parse commodity info
 	if days < warndays+1:
 		lowsupp.append((icao,days))
 #print(msg)
-lowjeta=isnew(lowjeta,"jeta")
-low100ll=isnew(low100ll,"100ll")
-lowsupp=isnew(lowsupp,"supp")
+lowjeta=isnew(lowjeta,"lowjeta")
+low100ll=isnew(low100ll,"low100ll")
+lowsupp=isnew(lowsupp,"lowsupp")
 print("Building message...")
 msg=""
 if len(lowsupp)>0:
