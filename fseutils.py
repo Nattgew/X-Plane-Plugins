@@ -148,10 +148,13 @@ def readcsv(data): #Eats Gary's lunch
 		reader = ""
 	return reader
 
-def gebtn(field,tag): #Shorter way to get tags
+def gebtn(field,tag,nsb=1): #Shorter way to get tags
 	ns = {'sfn': 'http://server.fseconomy.net'} #namespace for XML stuff
 	try:
-		tags=field.find(tag).text  #field.getElementsByTagName(tag)[0].firstChild.nodeValue
+		if nsb==1:
+			tags=field.find('sfn:'+tag,ns).text  #field.getElementsByTagName(tag)[0].firstChild.nodeValue
+		else:
+			tags=field.find(tag).text  #field.getElementsByTagName(tag)[0].firstChild.nodeValue
 	except: #Borked XML, more common than you may think
 		print("Bad XML")
 		tags=""

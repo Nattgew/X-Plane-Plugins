@@ -35,13 +35,13 @@ low100ll = []
 lowsupp = []
 for fbo in commo: #Parse commodity info
 	#print(fbo)
-	icao = fseutils.gebtn(fbo, "Icao")
+	icao = fseutils.gebtn(fbo,"Icao",0)
 	print("ICAO="+icao)
-	f100 = int(fseutils.gebtn(fbo, "Fuel100LL"))
+	f100 = int(fseutils.gebtn(fbo,"Fuel100LL",0))
 	print("f100="+str(f100))
-	fja = int(fseutils.gebtn(fbo, "FuelJetA"))
+	fja = int(fseutils.gebtn(fbo,"FuelJetA",0))
 	print("fja="+str(fja))
-	days = int(fseutils.gebtn(fbo, "SuppliedDays"))
+	days = int(fseutils.gebtn(fbo,"SuppliedDays",0))
 	print("days="+str(days))
 	if fja/2.65 < warnjeta+1:
 		lowjeta.append((icao,round(fja/2.65)))
