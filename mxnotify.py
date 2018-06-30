@@ -34,13 +34,13 @@ def isnew(needfixes):
 	try:
 		filename.touch(exist_ok=True) #Create file if it doesn't exist
 		oldnews=[] #List of aircraft needing fixes already notified
-		with open(filename, 'r+') as f:
+		with filename.open() as f:
 			for aog in f: #Loop over all aircraft in the file
 				for current in needfixes: #Loop over all aircraft currently in need of repair
 					if current[0]==aog: #Aircraft was already listed in the file
 						oldnews.append(current[0])
 						break
-		with open(filename, 'w') as f: #Overwrite the file with the new list of aircraft
+		with filename.open('w') as f: #Overwrite the file with the new list of aircraft
 			for current in needfixes:
 				f.write(current[0]+"\n")
 		for oldie in oldnews: #Remove aircraft already notified from the list

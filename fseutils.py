@@ -14,7 +14,7 @@ def getkey(grp): #Returns API key stored in file
 	else: #Group key
 		filename=Path(dirs.user_data_dir).joinpath('mygroupkey.txt')
 	try:
-		with open(filename, 'r') as f:
+		with filename.open() as f:
 			mykey = f.readline()
 			mykey=mykey.strip()
 	except IOError:
@@ -26,7 +26,7 @@ def getemail(): #Gets email info stored in file
 	dirs=AppDirs("nattgew-xpp","Nattgew")
 	filename=Path(dirs.user_data_dir).joinpath('creds.txt')
 	try:
-		with open(filename, 'r') as f:
+		with filename.open() as f:
 			srvr=f.readline().strip()
 			addr=f.readline().strip()
 			passw=f.readline().strip()
@@ -68,7 +68,7 @@ def fserequest(ra,rqst,tagname,fmt): #Requests data in format, returns list of r
 		print("Format "+fmt+" not recognized!")
 		tags=[]
 	return tags
-	
+
 def fserequest_new(qry,srch,tagname,fmt,ra,nsb,more=""): #Requests data in format, returns list of requested tag
 	if ra==1: #User RA key
 		rakey="&readaccesskey="+getkey(0)
@@ -219,7 +219,7 @@ def build_csv(info): #Return a dictionary of info using FSE csv file
 	dirs=AppDirs("nattgew-xpp","Nattgew")
 	filename=Path(dirs.user_data_dir).joinpath('icaodata.csv')
 	try:
-		with open(filename, 'r') as f:
+		with filename.open() as f:
 			out=readcsv(f)
 			for row in out:
 				if info=="latlon": #airport coordinates

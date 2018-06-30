@@ -13,13 +13,13 @@ def isnew(newdearth,file): #TODO: Add this to fseutils
 		filename.touch(exist_ok=True) #Create file if it doesn't exist
 		print("Checking for low "+file)
 		oldnews=[] #List of shortages already notified
-		with open(filename, 'r+') as f:
+		with filename.open() as f:
 			for olddearth in f: #Loop over all shortages in the file
 				for current in newdearth: #Loop over all current shortanges
 					if current[0]==olddearth: #Shortage was already listed in the file
 						oldnews.append(current)
 						break
-		with open(filename, 'w') as f: #Overwrite the file with the new list of shortages
+		with filename.open('w') as f: #Overwrite the file with the new list of shortages
 			for current in newdearth:
 				f.write(current[0]+"\n")
 		for oldie in oldnews: #Remove shortages already notified from the list
@@ -107,4 +107,7 @@ if len(low100ll)>0:
 	msg+="\n"
 #print(msg)
 if msg!="":
+	print("Sending FBO shortage report")
 	fseutils.sendemail("FSE FBO Shortages",msg)
+else:
+	print("No new shortages to report")
