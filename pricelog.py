@@ -104,7 +104,7 @@ def salepickens(conn): #Convert log to compact format - in work
 	for i in range(maxiter):
 		#Process each query time
 		print("Processing iter "+str(i+1)+" of "+str(maxiter), end='')
-		for listing in c.execute('SELECT * FROM allac WHERE obsiter = ?',(i+1)):
+		for listing in c.execute('SELECT * FROM allac WHERE obsiter = ?',(i+1,)):
 			if sndb==0:
 				#All queries but the first
 				if i>0: #Look for same airplane, same price, from previous iteration
@@ -114,9 +114,9 @@ def salepickens(conn): #Convert log to compact format - in work
 						if result[0]==0: #No exact match on previous iter, add new entry
 							d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,?)',([value for value in listing],i+1))
 						else: #Exact match, update iter and hours
-							d.execute('UPDATE listings SET lastiter = ? AND hours = ? WHERE serial = ? AND lastiter = ?',(i+1, listing[3], listing[2], listing[0], i))
+							d.execute('UPDATE listings SET lastiter = ? AND hours = ? WHERE serial = ? AND lastiter = ?',(i+1, listing[3], listing[0], i))
 					else: #Disregard hours, region must be same
-						d.execute('SELECT loc FROM listings WHERE serial = ? AND price = ? AND loc = ? AND lastiter = ?',(listing[0], listing[4], i))
+						d.execute('SELECT loc FROM listings WHERE serial = ? AND price = ? AND loc = ? AND lastiter = ?',(listing[0], listing[4], listing[2], i))
 						result=d.fetchone()
 						#Check if location is in same region as previous query
 						#TODO: Think about how to handle airborne aircraft here
@@ -136,7 +136,7 @@ def salepickens(conn): #Convert log to compact format - in work
 						if result[0]==0: #No exact match on previous iter, add new entry
 							d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,?)',([value for value in listing],i+1))
 						else: #Exact match, update iter and hours
-							d.execute('UPDATE listings SET lastiter = ? AND hours = ? WHERE serial = ? AND lastiter = ?',(i+1, listing[3], listing[2], listing[0], i))
+							d.execute('UPDATE listings SET lastiter = ? AND hours = ? WHERE serial = ? AND lastiter = ?',(i+1, listing[3], listing[0], i))
 					else: #Disregard hours, region must be same
 						d.execute('SELECT loc FROM listings WHERE serial = ? AND price = ? AND loc = ? AND lastiter = ?',(listing[0], listing[4], i))
 						result=d.fetchone()
@@ -153,14 +153,14 @@ def salepickens(conn): #Convert log to compact format - in work
 
 def sntotype(conn,sn): #Look up the type of a serial number
 	c=getdbcon(conn)
-	c.execute('SELECT type FROM serials WHERE serial = ?',(sn))
+	c.execute('SELECT type FROM serials WHERE serial = ?',(sn,))
 	result=c.fetchone()
 	return result[0]
 
 def gettypesns(conn,type): #Look up serial numbers for an aircraft type
 	c=getdbcon(conn)
 	serials=[]
-	for row in c.execute('SELECT serial FROM serials WHERE type = ?',(type)):
+	for row in c.execute('SELECT serial FROM serials WHERE type = ?',(type,)):
 		serials.append(row[0])
 	return serials
 
