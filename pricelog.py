@@ -1,15 +1,9 @@
 #!/usr/bin/env python3
-from xml.dom import minidom
-import xml.etree.ElementTree as etree
-import urllib.request, math, sys, getopt
 import dicts # My script for custom dictionaries
 import fseutils # My custom FSE functions
 from fsetemplates import html_email_template_basic
-import csv, sqlite3, time
+import csv, sqlite3, time, math, sys, getopt
 from datetime import timedelta, date, datetime
-from mpl_toolkits.basemap import Basemap
-from matplotlib.dates import DateFormatter, date2num
-import matplotlib.pyplot as plt
 
 def getname(): #Returns username stored in file
 	with open('/mnt/data/XPLANE/XSDK/mykey.txt', 'r') as f:

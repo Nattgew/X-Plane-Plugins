@@ -298,7 +298,6 @@ def gettype(icao): #Return name of aircraft type or error if not found
 
 def mapper(what, points, mincoords, maxcoords, title): # Put the points on a map
 	from mpl_toolkits.basemap import Basemap
-	from matplotlib.dates import DateFormatter, date2num
 	import matplotlib.pyplot as plt
 	print("Mapping "+str(len(points))+" points...") #points is list of lists containing lat,lon, then possibly addtional data
 	print("min: "+str(mincoords[0])+","+str(mincoords[1])+"  max: "+str(maxcoords[0])+","+str(maxcoords[1]))
@@ -370,7 +369,6 @@ def mapper(what, points, mincoords, maxcoords, title): # Put the points on a map
 	plt.show()
 
 def plotdates(dlist,title,ylbl,sym,clr,save): #Plot a list of data vs. dates
-	from mpl_toolkits.basemap import Basemap
 	from matplotlib.dates import DateFormatter, date2num
 	import matplotlib.pyplot as plt
 	#print("sym: ")
@@ -448,8 +446,6 @@ def plotdates(dlist,title,ylbl,sym,clr,save): #Plot a list of data vs. dates
 		plt.savefig('/mnt/data/Dropbox/'+title.replace(' ','_').replace('/','_')+'.png')
 
 def pieplot(data, total, min, stitle): #Create a pie plot... mmm, pie
-	from mpl_toolkits.basemap import Basemap
-	from matplotlib.dates import DateFormatter, date2num
 	import matplotlib.pyplot as plt
 	labels=[]
 	sizes=[]
