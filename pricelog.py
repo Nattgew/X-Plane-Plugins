@@ -4,13 +4,20 @@ import fseutils # My custom FSE functions
 from fsetemplates import html_email_template_basic
 import csv, sqlite3, time, math, sys, getopt
 from datetime import timedelta, date, datetime
+from appdirs import AppDirs
+from pathlib import Path
 
 def getname(): #Returns username stored in file
-	with open('/mnt/data/XPLANE/XSDK/mykey.txt', 'r') as f:
-		nothing = f.readline() #skip the key
-		myname = f.readline()
-		myname=myname.strip() #remove newline
-		return myname
+	dirs=AppDirs("nattgew-xpp","Nattgew")
+	filename=Path(dirs.user_data_dir).joinpath('mykey.txt')
+	try:
+		with filename.open() as f:
+			nothing = f.readline() #skip the key
+			myname = f.readline()
+			myname=myname.strip() #remove newline
+			return myname
+	except IOError:
+		print("Failed to open user key file")
 
 def acforsale(conn): #Log aircraft currently for sale
 	print("Sending request for sales listing...")
@@ -23,8 +30,9 @@ def acforsale(conn): #Log aircraft currently for sale
 		row=(count, now) #Record time and index of this iteration
 		c.execute('INSERT INTO queries VALUES (?,?)',row) #Record date/time of this query
 		goodones=[] #List of aircraft criteria will be read from file
-		file='/mnt/data/XPLANE/XSDK/pricewatch.csv'
-		with open(file, 'r') as f:
+		dirs=AppDirs("nattgew-xpp","Nattgew")
+		filename=Path(dirs.user_data_dir).joinpath('pricewatch.csv')
+		with filename.open() as f:
 			has_header = csv.Sniffer().has_header(f.read(1024)) #could not determine delimiter
 			f.seek(0)  # rewind
 			reader = csv.reader(f)
@@ -392,7 +400,9 @@ def getaverages(conn,actype,fr,to): #Return list of average prices for aircraft 
 
 def getbaseprice(actype): #Return the base price for this actype
 	#Open the db where this information lives
-	conn=sqlite3.connect('/mnt/data/XPLANE/XSDK/configs.db')
+	dirs=AppDirs("nattgew-xpp","Nattgew")
+	filename=str(Path(dirs.user_data_dir).joinpath('configs.db'))
+	conn=sqlite3.connect(filename)
 	c=getconfigdbcon(conn)
 	for i in range(2):
 		c.execute('SELECT price FROM aircraft WHERE ac = ?',(actype,))
@@ -854,6 +864,7 @@ def main(argv): #This is where the magic happens
 	#TODO: Make default date range from first data to last data instead of hardcoded range
 	fromdate="2014-01-01"
 	todate="2020-12-31"
+	dirs=AppDirs("nattgew-xpp","Nattgew")
 	for opt, arg in opts:
 		if opt in ("-a", "--average"): #Plots average prices for type
 			avgtype,avg=fseutils.gettype(arg)
@@ -877,7 +888,8 @@ def main(argv): #This is where the magic happens
 			fuel=True
 		elif opt=="-k": #Updates the configuration database
 			#The only function that needs this db up front, get connection
-			cconn=sqlite3.connect('/mnt/data/XPLANE/XSDK/configs.db')
+			filename=str(Path(dirs.user_data_dir).joinpath('configs.db'))
+			cconn=sqlite3.connect(filename)
 			logconfigs(cconn)
 			cconn.close()
 		elif opt in ("-l", "--low"): #Lowest price to be considered in other functions
@@ -907,7 +919,8 @@ def main(argv): #This is where the magic happens
 	
 	#Functions using the payments db
 	if True in (pay, ppay, spay, stot, fuel):
-		conn=sqlite3.connect('/mnt/data/XPLANE/XSDK/payments.db')
+		filename=str(Path(dirs.user_data_dir).joinpath('payments.db'))
+		conn=sqlite3.connect(filename)
 		if pay:
 			logpaymonth(conn,fromdate)
 		if ppay:
@@ -925,7 +938,8 @@ def main(argv): #This is where the magic happens
 
 	#Functions using the aircraft sale db
 	if True in (tot, avg, low, dur, domap, sale, tots, pout, tfs, com):
-		conn=sqlite3.connect('/mnt/data/XPLANE/XSDK/forsale.db')
+		filename=str(Path(dirs.user_data_dir).joinpath('forsale.db'))
+		conn=sqlite3.connect(filename)
 		if domap:
 			mapaclocations(conn,maptype)
 		if sale:
@@ -964,7 +978,9 @@ def main(argv): #This is where the magic happens
 		if pout:
 			actypes=[]
 			#Open the file specifying what types to plot
-			with open('/mnt/data/XPLANE/XSDK/dailytypes.txt', 'r') as f:
+			dirs=AppDirs("nattgew-xpp","Nattgew")
+			filename=Path(dirs.user_data_dir).joinpath('dailytypes.txt')
+			with filename.open() as f:
 				for actype in f:
 					actype=actype.strip() #strip newline
 					ptype,ret=fseutils.gettype(actype)
