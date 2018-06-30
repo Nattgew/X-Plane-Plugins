@@ -38,13 +38,17 @@ def getemail(): #Gets email info stored in file
 
 def sendemail(subj,msg): #Sends email
 	srvr,addrto,addr,passw=getemail()
-	message="""\From: %s\nTo: %s\nSubject: %s\n\n%s""" % (addr, addr, subj, msg)
+	#message="""\From: %s\nTo: %s\nSubject: %s\n\n%s""" % (addr, addrto, subj, msg)
+	message = MIMEText(msg.encode('utf-8'), _charset='utf-8')
+	message['From'] = addr
+	message['To'] = addrto
+	message['Subject'] = subj
 	try:
 		#print("Sending mail from "+addr+" to "+addrto)
 		server=smtplib.SMTP_SSL(srvr, 465)
 		server.ehlo()
 		server.login(addr,passw)
-		server.sendmail(addr,addrto,message)
+		server.sendmail(addr,addrto,message.as_string())
 		server.close()
 		#print("Successfully sent the mail:")
 	except:
