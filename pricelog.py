@@ -82,24 +82,24 @@ def salepickens(conn): #Convert log to compact format - in work
 		print("Creating new table...")
 		c.execute('''CREATE TABLE listings
 				 (serial real, type text, loc text, hours real, price real, firstiter real, lastiter real)''')
-		c.execute('''CREATE INDEX idx1 ON listings(firstiter)''')
-		c.execute('''CREATE INDEX idx2 ON listings(type)''')
-		c.execute('''CREATE INDEX idx3 ON listings(price)''')
-		c.execute('''CREATE INDEX idx4 ON listings(lastiter)''')
+		c.execute('''CREATE INDEX idx_firstiter ON listings(firstiter)''')
+		c.execute('''CREATE INDEX idx_type_list ON listings(type)''')
+		c.execute('''CREATE INDEX idx_price_list ON listings(price)''')
+		c.execute('''CREATE INDEX idx_lastiter ON listings(lastiter)''')
 		#c.execute('''CREATE INDEX idx5 ON listings(hours)''')
 	else:
 		print("Creating new table...")
 		c.execute('''CREATE TABLE listings
 				 (serial real, loc text, hours real, price real, firstiter real, lastiter real)''')
-		c.execute('''CREATE INDEX idx1 ON listings(firstiter)''')
-		c.execute('''CREATE INDEX idx2 ON listings(serial)''')
-		c.execute('''CREATE INDEX idx3 ON listings(price)''')
-		c.execute('''CREATE INDEX idx4 ON listings(lastiter)''')
+		c.execute('''CREATE INDEX idx_firstiter ON listings(firstiter)''')
+		c.execute('''CREATE INDEX idx_type_list ON listings(serial)''')
+		c.execute('''CREATE INDEX idx_price_list ON listings(price)''')
+		c.execute('''CREATE INDEX idx_lastiter ON listings(lastiter)''')
 		#c.execute('''CREATE INDEX idx5 ON listings(hours)''')
 		#Create table for serial numbers
 		c.execute('''CREATE TABLE serials (serial real, type text)''')
-		c.execute('''CREATE INDEX idx1 ON serials(serial)''')
-		c.execute('''CREATE INDEX idx2 ON serials(type)''')
+		c.execute('''CREATE INDEX idx_serial_serials ON serials(serial)''')
+		c.execute('''CREATE INDEX idx_type_serials ON serials(type)''')
 	maxiter=getmaxiter(conn)
 	for i in range(maxiter):
 		#Process each query time
@@ -250,12 +250,12 @@ def getdbcon(conn): #Get cursor for aircraft sale database
 				 (serial real, type text, loc text, hours real, price real, obsiter real)''')
 			c.execute('''CREATE TABLE queries
 				 (obsiter real, qtime text)''')
-			c.execute('''CREATE INDEX idx1 ON allac(obsiter)''')
-			c.execute('''CREATE INDEX idx2 ON allac(type)''')
-			c.execute('''CREATE INDEX idx3 ON allac(price)''')
-			c.execute('''CREATE INDEX idx4 ON queries(qtime)''')
-			c.execute('''CREATE INDEX idx5 ON allac(loc)''')
-			c.execute('''CREATE INDEX idx6 ON allac(hours)''')
+			c.execute('''CREATE INDEX idx_iter ON allac(obsiter)''')
+			c.execute('''CREATE INDEX idx_type ON allac(type)''')
+			c.execute('''CREATE INDEX idx_price ON allac(price)''')
+			c.execute('''CREATE INDEX idx_qtime ON queries(qtime)''')
+			c.execute('''CREATE INDEX idx_loc ON allac(loc)''')
+			c.execute('''CREATE INDEX idx_hours ON allac(hours)''')
 		else:
 			#Tables already exist, just check on last query time
 			c.execute('SELECT qtime FROM queries ORDER BY iter DESC')
@@ -276,7 +276,7 @@ def getpaydbcon(conn): #Get cursor for payment database
 			print("Creating payment tables...")
 			c.execute('''CREATE TABLE payments
 				 (date text, payto text, payfrom text, amount real, reason text, location text, aircraft text, pid real, comment text)''')
-			c.execute('''CREATE INDEX idx1 ON payments(date)''')
+			c.execute('''CREATE INDEX idx_pay_date ON payments(date)''')
 		else:
 			c.execute('SELECT date FROM payments ORDER BY date DESC')
 			dtime=c.fetchone()
@@ -294,11 +294,11 @@ def getconfigdbcon(conn): #Get cursor for config database
 			print("Creating config tables...")
 			c.execute('''CREATE TABLE aircraft
 				 (ac text, crew real, seats real, cruise real, gph real, fuel real, mtow real, ew real, price real, ext1 real, ltip real, laux real, lmain real, c1 real, c2 real, c3 real, rmain real, raux real, rtip real, ext2 real, fcap real, eng real, engprice real)''')
-			c.execute('''CREATE INDEX idx1 ON aircraft(ac)''')
-			c.execute('''CREATE INDEX idx2 ON aircraft(price)''')
-			c.execute('''CREATE INDEX idx3 ON aircraft(mtow)''')
-			c.execute('''CREATE INDEX idx4 ON aircraft(ew)''')
-			c.execute('''CREATE INDEX idx5 ON aircraft(fcap)''')
+			c.execute('''CREATE INDEX idx_conf_ac ON aircraft(ac)''')
+			c.execute('''CREATE INDEX idx_conf_price ON aircraft(price)''')
+			c.execute('''CREATE INDEX idx_conf_mtow ON aircraft(mtow)''')
+			c.execute('''CREATE INDEX idx_conf_ew ON aircraft(ew)''')
+			c.execute('''CREATE INDEX idx_conf_fcap ON aircraft(fcap)''')
 		getconfigdbcon.has_been_called=True
 	return c
 
