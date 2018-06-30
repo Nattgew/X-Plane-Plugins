@@ -36,16 +36,26 @@ def isnew(needfixes):
 		oldnews=[] #List of aircraft needing fixes already notified
 		with filename.open() as f:
 			for aog in f: #Loop over all aircraft in the file
+				aog=aog.strip()
+				print("Checking for previously AOG: "+aog)
 				for current in needfixes: #Loop over all aircraft currently in need of repair
+					print("Testing current AOG: "+current[0])
 					if current[0]==aog: #Aircraft was already listed in the file
-						oldnews.append(current[0])
+						print("Matched, adding to list")
+						oldnews.append(current)
 						break
+		print("Came up with oldnews:")
+		print(oldnews)
 		with filename.open('w') as f: #Overwrite the file with the new list of aircraft
 			for current in needfixes:
+				print("Writing "+current[0]+" to file")
 				f.write(current[0]+"\n")
+		print("Will remove oldnews from needfixes list:")
+		print(needfixes)
 		for oldie in oldnews: #Remove aircraft already notified from the list
+			print("Removing "+oldie[0]+" from notify list")
 			needfixes.remove(oldie)
-	except: IOError:
+	except IOError:
 		print("Could not open file: "+file)
 	return needfixes
 
