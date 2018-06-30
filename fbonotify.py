@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 import smtplib, sys
 import fseutils # My custom FSE functions
 from pathlib import Path

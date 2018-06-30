@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 import xml.etree.ElementTree as etree
 import urllib.request, math, csv, time
 import dicts # My script for custom dictionaries

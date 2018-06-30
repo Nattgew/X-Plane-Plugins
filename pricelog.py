@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 from xml.dom import minidom
 import xml.etree.ElementTree as etree
 import urllib.request, math, sys, getopt

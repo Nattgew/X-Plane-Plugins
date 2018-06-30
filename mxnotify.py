@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 import sys
 import fseutils # My custom FSE functions
 from appdirs import AppDirs
