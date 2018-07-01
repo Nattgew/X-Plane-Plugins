@@ -40,10 +40,12 @@ def getemail(): #Gets email info stored in file
 def sendemail(subj,msg): #Sends email
 	srvr,addrto,addr,passw=getemail()
 	#message="""\From: %s\nTo: %s\nSubject: %s\n\n%s""" % (addr, addrto, subj, msg)
-	message = MIMEText(msg.encode('utf-8'), _charset='utf-8')
+	message = MIMEMultipart('alternative')
+	body = MIMEText(msg.encode('utf-8'), 'html', _charset='utf-8')
 	message['From'] = addr
 	message['To'] = addrto
 	message['Subject'] = subj
+	message.attach(body)
 	try:
 		#print("Sending mail from "+addr+" to "+addrto)
 		server=smtplib.SMTP_SSL(srvr, 465)
