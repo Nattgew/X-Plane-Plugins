@@ -4,6 +4,7 @@ import urllib.request, math, csv, time
 import dicts # My script for custom dictionaries
 from datetime import datetime
 import smtplib, sys
+from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from appdirs import AppDirs
 from pathlib import Path
