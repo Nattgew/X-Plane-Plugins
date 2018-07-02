@@ -112,16 +112,22 @@ def salepickens(conn): #Convert log to compact format - in work
 						d.execute('SELECT COUNT(*) FROM listings WHERE serial = ? AND price = ? AND (loc = ? OR loc = "Airborne") AND lastiter = ?',(listing[0], listing[4], listing[2], i))
 						result=d.fetchone()
 						if result[0]==0: #No exact match on previous iter, add new entry
-							d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,?)',([value for value in listing],i+1))
+							newlisting=list(listing)
+							newlisting.append(i+1)
+							d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,?)',([value for value in newlisting]))
+							print('+', end='', flush=True)
 						else: #Exact match, update iter and hours
 							d.execute('UPDATE listings SET lastiter = ? AND hours = ? WHERE serial = ? AND lastiter = ?',(i+1, listing[3], listing[0], i))
+							print('-', end='', flush=True)
 					else: #Disregard hours, region must be same
 						d.execute('SELECT loc FROM listings WHERE serial = ? AND price = ? AND loc = ? AND lastiter = ?',(listing[0], listing[4], listing[2], i))
 						result=d.fetchone()
 						#Check if location is in same region as previous query
 						#TODO: Think about how to handle airborne aircraft here
 						if rdict[result[0]]!=rdict[listing[2]]: #Not same region, insert new row
-							d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,?)',([value for value in listing],i+1))
+							newlisting=list(listing)
+							newlisting.append(i+1)
+							d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,?)',([value for value in newlisting]))
 						else: #Same region, only last iter needs to be updated
 							d.execute('UPDATE listings SET lastiter = ?, loc = ? WHERE serial = ? AND price = ? AND lastiter = ? AND hours = ?',(i+1, listing[2], listing[0], listing[4], i, listing[3]))
 				else: #This is the first iteration, just insert the data
@@ -134,7 +140,9 @@ def salepickens(conn): #Convert log to compact format - in work
 						d.execute('SELECT COUNT(*) FROM listings WHERE serial = ? AND price = ? AND (loc = ? OR loc = "Airborne") AND lastiter = ?',(listing[0], listing[4], listing[2], i))
 						result=d.fetchone()
 						if result[0]==0: #No exact match on previous iter, add new entry
-							d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,?)',([value for value in listing],i+1))
+							newlisting=list(listing)
+							newlisting.append(i+1)
+							d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,?)',([value for value in newlisting]))
 						else: #Exact match, update iter and hours
 							d.execute('UPDATE listings SET lastiter = ? AND hours = ? WHERE serial = ? AND lastiter = ?',(i+1, listing[3], listing[0], i))
 					else: #Disregard hours, region must be same
@@ -143,13 +151,15 @@ def salepickens(conn): #Convert log to compact format - in work
 						#Check if location is in same region as previous query
 						#TODO: Think about how to handle airborne aircraft here
 						if rdict[result[0]]!=rdict[listing[2]]: #Not same region, insert new row
-							d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,?)',([value for value in listing],i+1))
+							newlisting=list(listing)
+							newlisting.append(i+1)
+							d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,?)',([value for value in newlisting]))
 						else: #Same region, only last iter needs to be updated
 							d.execute('UPDATE listings SET lastiter = ?, loc = ? WHERE serial = ? AND price = ? AND lastiter = ? AND hours = ?',(i+1, listing[2], listing[0], listing[4], i, listing[3]))
 				else: #This is the first iteration, just insert the data
 					d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,1.0)',([value for value in listing]))
 			conn.commit()
-			print('.', end='', flush=True)
+		print('')
 
 def sntotype(conn,sn): #Look up the type of a serial number
 	c=getdbcon(conn)
