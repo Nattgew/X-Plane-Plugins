@@ -25,6 +25,7 @@ def acforsale(conn): #Log aircraft currently for sale
 	if airplanes!=[]:
 		print("Recording data...")
 		c=getdbcon(conn)
+		d=getdbcon(conn)
 		count=getmaxiter(conn)+1 #Index for this new iteration
 		now=time.strftime("%Y-%m-%d %H:%M", time.gmtime())
 		row=(count, now) #Record time and index of this iteration
@@ -52,7 +53,17 @@ def acforsale(conn): #Log aircraft currently for sale
 				if row[1]==option[0] and row[4]<option[2] and row[3]<option[3]:
 					pricedelta=option[2]-row[4]
 					bargains.append(option[1]+" | $"+str(row[4])+" <span class='discount'>(-"+str(pricedelta)+")</span> | "+str(row[3])+" hrs | "+row[2])
-		c.executemany('INSERT INTO allac VALUES (?,?,?,?,?,?)',rows) #Add all of the aircraft to the log
+		#c.executemany('INSERT INTO allac VALUES (?,?,?,?,?,?)',rows) #Add all of the aircraft to the log
+		
+		d.execute('SELECT COUNT(*) FROM listings WHERE serial = ? AND price = ? AND (loc = ? OR loc = "Airborne") AND lastiter = ?',(listing[0], listing[4], listing[2], count-1))
+		result=d.fetchone()
+		if result[0]==0: #No exact match on previous iter, add new entry
+			newlisting=list(listing)
+			newlisting.append(count)
+			d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,?)',([value for value in newlisting]))
+		else: #Exact match, update iter and hours
+			d.execute('UPDATE listings SET lastiter = ? AND hours = ? WHERE serial = ? AND lastiter = ?',(count, listing[3], listing[0], count-1))
+		
 		conn.commit()
 		if bargains!=[]: #Found some bargains to send by email
 			barglist=""
