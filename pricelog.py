@@ -24,6 +24,7 @@ def acforsale(conn): #Log aircraft currently for sale
 	airplanes = fseutils.fserequest(0,'query=aircraft&search=forsale','Aircraft','xml')
 	if airplanes!=[]:
 		print("Recording data...")
+		new=0
 		c=getdbcon(conn)
 		d=getdbcon(conn)
 		count=getmaxiter(conn)+1 #Index for this new iteration
@@ -53,23 +54,26 @@ def acforsale(conn): #Log aircraft currently for sale
 				if row[1]==option[0] and row[4]<option[2] and row[3]<option[3]:
 					pricedelta=option[2]-row[4]
 					bargains.append(option[1]+" | $"+str(row[4])+" <span class='discount'>(-"+str(pricedelta)+")</span> | "+str(row[3])+" hrs | "+row[2])
-		#c.executemany('INSERT INTO allac VALUES (?,?,?,?,?,?)',rows) #Add all of the aircraft to the log
+		c.executemany('INSERT INTO allac VALUES (?,?,?,?,?,?)',rows) #Add all of the aircraft to the log
 		
-		updated=0
-		added=0
-		for listing in rows:
-			d.execute('SELECT COUNT(*) FROM listings WHERE serial = ? AND price = ? AND (loc = ? OR loc = "Airborne") AND lastiter = ?',(listing[0], listing[4], listing[2], count-1))
-			result=d.fetchone()
-			if result[0]==0: #No exact match on previous iter, add new entry
-				newlisting=list(listing)
-				newlisting.append(count)
-				d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,?)',([value for value in newlisting]))
-				added+=1
-			else: #Exact match, update iter and hours
-				d.execute('UPDATE listings SET lastiter = ? AND hours = ? WHERE serial = ? AND lastiter = ?',(count, listing[3], listing[0], count-1))
-				updated+=1
+		if new==1:
+			updated=0
+			added=0
+			for listing in rows:
+				d.execute('SELECT COUNT(*) FROM listings WHERE serial = ? AND price = ? AND (loc = ? OR loc = "Airborne") AND lastiter = ?',(listing[0], listing[4], listing[2], count-1))
+				result=d.fetchone()
+				if result[0]==0: #No exact match on previous iter, add new entry
+					print("New: "+str(listing[0])+" "+str(listing[4])+" "+listing[2])
+					newlisting=list(listing)
+					newlisting.append(count)
+					d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,?)',([value for value in newlisting]))
+					added+=1
+				else: #Exact match, update iter and hours
+					d.execute('UPDATE listings SET lastiter = ? AND hours = ? WHERE serial = ? AND lastiter = ?',(count, listing[3], listing[0], count-1))
+					updated+=1
+			print("Updated "+str(updated)+" and added "+str(added)+" entries for iter "+str(count))
 		conn.commit()
-		print("Updated "+str(updated)+" and added "+str(added)+" entries for iter "+str(count))
+		
 		if bargains!=[]: #Found some bargains to send by email
 			barglist=""
 			for bargain in bargains:
