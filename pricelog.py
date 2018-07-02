@@ -60,16 +60,18 @@ def acforsale(conn): #Log aircraft currently for sale
 			updated=0
 			added=0
 			for listing in rows:
+				print("Looking for serial="+str(listing[0])+"  price="+str(listing[4])+"  loc="+listing[2]+"  iter="+str(count-1))
 				d.execute('SELECT COUNT(*) FROM listings WHERE serial = ? AND price = ? AND (loc = ? OR loc = "Airborne") AND lastiter = ?',(listing[0], listing[4], listing[2], count-1))
 				result=d.fetchone()
 				if result[0]==0: #No exact match on previous iter, add new entry
 					print("New: "+str(listing[0])+" "+str(listing[4])+" "+listing[2])
 					newlisting=list(listing)
 					newlisting.append(count)
-					d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,?)',([value for value in newlisting]))
+					c.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,?)',([value for value in newlisting]))
 					added+=1
 				else: #Exact match, update iter and hours
-					d.execute('UPDATE listings SET lastiter = ? AND hours = ? WHERE serial = ? AND lastiter = ?',(count, listing[3], listing[0], count-1))
+					print("Updating: hours->"+str(listing[3])+"  lastiter->"+str(count))
+					c.execute('UPDATE listings SET lastiter = ? AND hours = ? WHERE serial = ? AND lastiter = ?',(count, listing[3], listing[0], count-1))
 					updated+=1
 			print("Updated "+str(updated)+" and added "+str(added)+" entries for iter "+str(count))
 		conn.commit()
@@ -440,7 +442,7 @@ def getbaseprice(actype): #Return the base price for this actype
 		if price is not None:
 			baseprice=price[0]+73333 #Add equipment price, assume fully loaded
 			break
-		elif i==1:
+		elif i==1: #Updated configs and still no match, give up and return 0
 			baseprice=0
 			break
 		logconfigs(conn) #No match, try updating the configs?
