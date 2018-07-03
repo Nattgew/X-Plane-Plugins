@@ -85,7 +85,7 @@ def fserequest_new(qry,srch,tagname,fmt,ra,nsb,more=""): #Requests data in forma
 	else: #Not needed
 		rakey=""
 	rq = "http://server.fseconomy.net/data?userkey="+getkey(0)+'&format='+fmt+'&query='+qry+'&search='+srch+more+rakey
-	print("Will make request: "+rq)
+	#print("Will make request: "+rq)
 	try:
 		data = urllib.request.urlopen(rq)
 		if fmt=='xml':
@@ -104,17 +104,17 @@ def fserequest_new(qry,srch,tagname,fmt,ra,nsb,more=""): #Requests data in forma
 
 def readxml(data,tagname,nsb): #Parses XML, returns list of requested tagname
 	ns = {'sfn': 'http://server.fseconomy.net'} #namespace for XML stuff, required for etree
-	print("Parsing XML data for "+tagname+"...")
+	#print("Parsing XML data for "+tagname+"...")
 	try:
 		tree = etree.parse(data)
-		print("Tree:")
-		print(tree)
+		#print("Tree:")
+		#print(tree)
 		try:
 			root = tree.getroot()
-			print("Root:")
-			print(root)
+			#print("Root:")
+			#print(root)
 			try:
-				if nsb==1:
+				if nsb==1: #Most queries need the namespace defined, but not all
 					error = root.findall('sfn:Error',ns)
 				else:
 					error = root.findall('Error')
@@ -122,7 +122,7 @@ def readxml(data,tagname,nsb): #Parses XML, returns list of requested tagname
 					print("Received error: "+error[0].text)
 					tags=[]
 				else:
-					print("Finding tag: "+tagname)
+					#print("Finding tag: "+tagname)
 					try:
 						if nsb==1:
 							tags = root.findall('sfn:'+tagname,ns)
