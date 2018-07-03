@@ -21,7 +21,7 @@ def getname(): #Returns username stored in file
 
 def acforsale(conn): #Log aircraft currently for sale
 	print("Sending request for sales listing...")
-	airplanes = fseutils.fserequest(0,'query=aircraft&search=forsale','Aircraft','xml')
+	airplanes = fseutils.fserequest_new('aircraft','forsale','Aircraft','xml',0,1)
 	if airplanes!=[]:
 		print("Recording data...")
 		new=0
@@ -60,18 +60,18 @@ def acforsale(conn): #Log aircraft currently for sale
 			updated=0
 			added=0
 			for listing in rows:
-				print("Looking for serial="+str(listing[0])+"  price="+str(listing[4])+"  loc="+listing[2]+"  iter="+str(count-1))
+				#print("Looking for serial="+str(listing[0])+"  price="+str(listing[4])+"  loc="+listing[2]+"  iter="+str(count-1))
 				d.execute('SELECT COUNT(*) FROM listings WHERE serial = ? AND price = ? AND (loc = ? OR loc = "Airborne") AND lastiter = ?',(listing[0], listing[4], listing[2], count-1))
 				result=d.fetchone()
 				if result[0]==0: #No exact match on previous iter, add new entry
-					print("New: "+str(listing[0])+" "+str(listing[4])+" "+listing[2])
+					#print("New: "+str(listing[0])+" "+str(listing[4])+" "+listing[2])
 					newlisting=list(listing)
 					newlisting.append(count)
 					c.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,?)',([value for value in newlisting]))
 					added+=1
 				else: #Exact match, update iter and hours
-					print("Updating: hours->"+str(listing[3])+"  lastiter->"+str(count))
-					c.execute('UPDATE listings SET lastiter = ? AND hours = ? WHERE serial = ? AND lastiter = ?',(count, listing[3], listing[0], count-1))
+					#print("Updating: hours->"+str(listing[3])+"  lastiter->"+str(count))
+					c.execute('UPDATE listings SET lastiter = ?, hours = ? WHERE serial = ? AND lastiter = ?',(count, listing[3], listing[0], count-1))
 					updated+=1
 			print("Updated "+str(updated)+" and added "+str(added)+" entries for iter "+str(count))
 		conn.commit()
@@ -100,26 +100,25 @@ def salepickens(conn): #Convert log to compact format - in work
 	rdict=dicts.getregiondict() #Get dictionary of which region each airport is in
 	#now=time.strftime("%Y-%m-%d %H:%M", time.gmtime())
 	#Create a new table to hold the converted info
+	print("Creating new table...")
 	if sndb==0:
-		print("Creating new table...")
 		c.execute('''CREATE TABLE listings
-				 (serial real, type text, loc text, hours real, price real, firstiter real, lastiter real)''')
+				 (serial int, type text, loc text, hours real, price real, firstiter int, lastiter int)''')
 		c.execute('''CREATE INDEX idx_firstiter ON listings(firstiter)''')
 		c.execute('''CREATE INDEX idx_type_list ON listings(type)''')
 		c.execute('''CREATE INDEX idx_price_list ON listings(price)''')
 		c.execute('''CREATE INDEX idx_lastiter ON listings(lastiter)''')
 		#c.execute('''CREATE INDEX idx5 ON listings(hours)''')
 	else:
-		print("Creating new table...")
 		c.execute('''CREATE TABLE listings
-				 (serial real, loc text, hours real, price real, firstiter real, lastiter real)''')
+				 (serial int, loc text, hours real, price real, firstiter int, lastiter int)''')
 		c.execute('''CREATE INDEX idx_firstiter ON listings(firstiter)''')
 		c.execute('''CREATE INDEX idx_type_list ON listings(serial)''')
 		c.execute('''CREATE INDEX idx_price_list ON listings(price)''')
 		c.execute('''CREATE INDEX idx_lastiter ON listings(lastiter)''')
 		#c.execute('''CREATE INDEX idx5 ON listings(hours)''')
 		#Create table for serial numbers
-		c.execute('''CREATE TABLE serials (serial real, type text)''')
+		c.execute('''CREATE TABLE serials (serial int, type text)''')
 		c.execute('''CREATE INDEX idx_serial_serials ON serials(serial)''')
 		c.execute('''CREATE INDEX idx_type_serials ON serials(type)''')
 	maxiter=getmaxiter(conn)
@@ -139,7 +138,7 @@ def salepickens(conn): #Convert log to compact format - in work
 							d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,?)',([value for value in newlisting]))
 							print('+', end='', flush=True)
 						else: #Exact match, update iter and hours
-							d.execute('UPDATE listings SET lastiter = ? AND hours = ? WHERE serial = ? AND lastiter = ?',(i+1, listing[3], listing[0], i))
+							d.execute('UPDATE listings SET lastiter = ?, hours = ? WHERE serial = ? AND lastiter = ?',(i+1, listing[3], listing[0], i))
 							print('-', end='', flush=True)
 					else: #Disregard hours, region must be same
 						d.execute('SELECT loc FROM listings WHERE serial = ? AND price = ? AND loc = ? AND lastiter = ?',(listing[0], listing[4], listing[2], i))
@@ -166,7 +165,7 @@ def salepickens(conn): #Convert log to compact format - in work
 							newlisting.append(i+1)
 							d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,?)',([value for value in newlisting]))
 						else: #Exact match, update iter and hours
-							d.execute('UPDATE listings SET lastiter = ? AND hours = ? WHERE serial = ? AND lastiter = ?',(i+1, listing[3], listing[0], i))
+							d.execute('UPDATE listings SET lastiter = ?, hours = ? WHERE serial = ? AND lastiter = ?',(i+1, listing[3], listing[0], i))
 					else: #Disregard hours, region must be same
 						d.execute('SELECT loc FROM listings WHERE serial = ? AND price = ? AND loc = ? AND lastiter = ?',(listing[0], listing[4], i))
 						result=d.fetchone()
@@ -181,7 +180,7 @@ def salepickens(conn): #Convert log to compact format - in work
 				else: #This is the first iteration, just insert the data
 					d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,1.0)',([value for value in listing]))
 			conn.commit()
-		print('')
+		print('') #Newline
 
 def sntotype(conn,sn): #Look up the type of a serial number
 	c=getdbcon(conn)
@@ -199,16 +198,14 @@ def gettypesns(conn,type): #Look up serial numbers for an aircraft type
 def logpaymonth(conn,fromdate): #Log a month of payments
 	year,month,*rest=fromdate.split('-', 2) #Get the year and month from the date
 	print("Sending request for payment listing for "+fromdate+"...")
-	payments = fseutils.fserequest(1,'query=payments&search=monthyear&month='+month+'&year='+year,'Payment','xml')
-	#Check if we received any data
-	if payments!=[]:
+	payments = fseutils.fserequest_new('payments','monthyear','Payment','xml',1,1,'&month='+month+'&year='+year)
+	if payments!=[]: #Check if we received any data
 		c=getpaydbcon(conn)
 		rows=[] #To hold processed rows
 		#Fields to log
 		fields=(("Date", 0), ("To", 0), ("From", 0), ("Amount", 2), ("Reason", 0), ("Location", 0), ("Id", 1), ("Aircraft", 0), ("Comment", 0))
 		print("Processing data...")
-		#Process the results
-		for payment in payments:
+		for payment in payments: #Process the results
 			#Get all of the fields we want to log
 			row=fseutils.getbtns(payment,fields)
 			#Set null comments to blank
@@ -227,7 +224,7 @@ def logpaymonth(conn,fromdate): #Log a month of payments
 
 def logconfigs(conn): #Update database of aircraft configs
 	print("Sending request for configs...")
-	configs = fseutils.fserequest(1,'query=aircraft&search=configs','AircraftConfig','xml')
+	configs = fseutils.fserequest_new('aircraft','configs','AircraftConfig','xml',1,1)
 	if configs!=[]:
 		#For reading current db info
 		c=getconfigdbcon(conn)
@@ -277,7 +274,7 @@ def getdbcon(conn): #Get cursor for aircraft sale database
 		exist=c.fetchone()
 		#print("Found " + str(exist[0]) + " tables...")
 		if exist[0]==0: #Tables do not exist, create tables
-			print("Creating tables...")
+			print("No existing table found! Creating tables...")
 			c.execute('''CREATE TABLE allac
 				 (serial real, type text, loc text, hours real, price real, obsiter real)''')
 			c.execute('''CREATE TABLE queries
@@ -288,6 +285,12 @@ def getdbcon(conn): #Get cursor for aircraft sale database
 			c.execute('''CREATE INDEX idx_qtime ON queries(qtime)''')
 			c.execute('''CREATE INDEX idx_loc ON allac(loc)''')
 			c.execute('''CREATE INDEX idx_hours ON allac(hours)''')
+			c.execute('''CREATE TABLE listings
+				 (serial int, type text, loc text, hours real, price real, firstiter int, lastiter int)''')
+			c.execute('''CREATE INDEX idx_firstiter ON listings(firstiter)''')
+			c.execute('''CREATE INDEX idx_type_list ON listings(type)''')
+			c.execute('''CREATE INDEX idx_price_list ON listings(price)''')
+			c.execute('''CREATE INDEX idx_lastiter ON listings(lastiter)''')
 		else:
 			#Tables already exist, just check on last query time
 			c.execute('SELECT qtime FROM queries ORDER BY iter DESC')
@@ -305,7 +308,7 @@ def getpaydbcon(conn): #Get cursor for payment database
 		c.execute("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table'")
 		exist=c.fetchone()
 		if exist[0]==0: #Table does not exist, create table
-			print("Creating payment tables...")
+			print("No payments table found! Creating payment tables...")
 			c.execute('''CREATE TABLE payments
 				 (date text, payto text, payfrom text, amount real, reason text, location text, aircraft text, pid real, comment text)''')
 			c.execute('''CREATE INDEX idx_pay_date ON payments(date)''')
@@ -323,7 +326,7 @@ def getconfigdbcon(conn): #Get cursor for config database
 		c.execute("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table'")
 		exist=c.fetchone()
 		if exist[0]==0: #Table does not exist, create table
-			print("Creating config tables...")
+			print("No config table found! Creating config tables...")
 			c.execute('''CREATE TABLE aircraft
 				 (ac text, crew real, seats real, cruise real, gph real, fuel real, mtow real, ew real, price real, ext1 real, ltip real, laux real, lmain real, c1 real, c2 real, c3 real, rmain real, raux real, rtip real, ext2 real, fcap real, eng real, engprice real)''')
 			c.execute('''CREATE INDEX idx_conf_ac ON aircraft(ac)''')
@@ -357,15 +360,18 @@ def gettimeforsale(conn,timetype): # Get data for all ac of timetype for sale
 	listings=[]
 	i=0
 	#(serial real, type text, loc text, locname text, hours real, price real, obsiter real)
-	for dac in c.execute('SELECT DISTINCT serial FROM allac WHERE type = ?',(timetype,)):
+	#for dac in c.execute('SELECT DISTINCT serial FROM allac WHERE type = ?',(timetype,)):
+	for dac in c.execute('SELECT DISTINCT serial FROM listings WHERE type = ?',(timetype,)):
 		#Add a list to the list
 		listings.append([])
-		for qp in d.execute('SELECT price, obsiter FROM allac WHERE serial = ?',(dac[0],)):
-			qtime=e.execute('SELECT qtime FROM queries WHERE iter = ?',(qp[1],))
-			date=fseutils.getdtime(e.fetchone()[0])
-			#print("AC: "+str(dac[0])+"  "+str(date)+": "+str(qp[0]))
-			#Add this listing to the list for this aircraft
-			listings[i].append([date,int(float(qp[0]))])
+		#for qp in d.execute('SELECT price, obsiter FROM allac WHERE serial = ?',(dac[0],)):
+		for qp in d.execute('SELECT price, firstiter, lastiter FROM listings WHERE serial = ?',(dac[0],)):
+			for j in range(qp[1],qp[2]): #Add each iter in the range to the list
+				qtime=e.execute('SELECT qtime FROM queries WHERE iter = ?',(j,)) #Get date/time of this iter
+				date=fseutils.getdtime(e.fetchone()[0])
+				#print("AC: "+str(dac[0])+"  "+str(date)+": "+str(qp[0]))
+				#Add this listing to the list for this aircraft
+				listings[i].append([date,int(float(qp[0]))])
 		i+=1 #Move on to new serial
 	return listings
 
@@ -381,10 +387,12 @@ def gettotals(conn,actype,fr,to): #Return list of total aircraft for sale at eac
 		#print("Reading query "+str(query[0])+" from "+query[1])
 		if actype=="aircraft":
 			#Count all aircraft
-			d.execute('SELECT COUNT(*) FROM allac WHERE obsiter = ?', (query[0],))
+			#d.execute('SELECT COUNT(*) FROM allac WHERE obsiter = ?', (query[0],))
+			d.execute('SELECT COUNT(*) FROM listings WHERE ? BETWEEN firstiter AND lastiter', (query[0],))
 		else:
 			#Count a specific aircraft type
-			d.execute('SELECT COUNT(*) FROM allac WHERE obsiter = ? AND type = ?', (query[0],actype))
+			#d.execute('SELECT COUNT(*) FROM allac WHERE obsiter = ? AND type = ?', (query[0],actype))
+			d.execute('SELECT COUNT(*) FROM listings WHERE (? BETWEEN firstiter AND lastiter) AND type = ?', (query[0],actype))
 		total=int(d.fetchone()[0])
 		#Add datetime and total to the list
 		totals.append((fseutils.getdtime(query[1]),total))
@@ -409,7 +417,8 @@ def getaverages(conn,actype,fr,to): #Return list of average prices for aircraft 
 		#List of prices for calculating stdev
 		prices=[]
 		#Get prices for this query and aircraft type
-		for sale in d.execute('SELECT price FROM allac WHERE obsiter = ? AND type = ?', (query[0],actype)):
+		#for sale in d.execute('SELECT price FROM allac WHERE obsiter = ? AND type = ?', (query[0],actype)):
+		for sale in d.execute('SELECT price FROM listings WHERE (? BETWEEN firstiter AND lastiter) AND type = ?', (query[0],actype)):
 			#Add to total price
 			totalprice+=int(sale[0])
 			#Add price to list
@@ -459,7 +468,8 @@ def getlows(conn,actype,fr,to): #Return list of lowest price for aircraft in eac
 	print("Finding low low prices for: "+actype+"...")
 	for query in c.execute('SELECT * FROM queries WHERE qtime BETWEEN ? AND ?', (fr,to)):
 		#Order by price for this type and get the lowest one
-		d.execute('SELECT price FROM allac WHERE obsiter = ? AND type = ? ORDER BY price', (query[0],actype))
+		#d.execute('SELECT price FROM allac WHERE obsiter = ? AND type = ? ORDER BY price', (query[0],actype))
+		d.execute('SELECT price FROM listings WHERE (? BETWEEN firstiter AND lastiter) AND type = ? ORDER BY price', (query[0],actype))
 		price=d.fetchone()
 		if price is not None:
 			#If we got a valid price add to list
@@ -531,7 +541,7 @@ def getcommo(ctype): # Adds up locations and quantities of stuff to send to the 
 		print("Commodity type "+ctype+" not recognized!")
 	if t1 is not None:
 		print("Sending request for commodities...")
-		commo = fseutils.fserequest(1,'query=commodities&search=key','Commodity','xml')
+		commo = fseutils.fserequest_new('commodities','key','Commodity','xml',1,1)
 		print("Sorting results...")
 		#For list of the commodity we are looking for
 		stuff = []
@@ -597,7 +607,8 @@ def getlistings(conn,actype,lo,hi): #Return list of time for aircraft to sell
 	print("Finding sell times for: "+actype+", "+str(lo)+" to "+str(hi)+"...")
 	for query in c.execute('SELECT obsiter FROM queries'):
 	#serial real, type text, loc text, locname text, hours real, price real, obsiter real
-		for sale in d.execute('SELECT serial, loc, price FROM allac WHERE obsiter = ? AND type = ? AND price BETWEEN ? AND ?', (query[0],actype,lo,hi)):
+		#for sale in d.execute('SELECT serial, loc, price FROM allac WHERE obsiter = ? AND type = ? AND price BETWEEN ? AND ?', (query[0],actype,lo,hi)):
+		for sale in d.execute('SELECT serial, loc, price FROM listings WHERE (? BETWEEN firstiter AND lastiter) AND type = ? AND price BETWEEN ? AND ?', (query[0],actype,lo,hi)):
 			#Look up the country
 			country=cdict[sale[1]]
 			#Look up the region of the country
@@ -622,7 +633,8 @@ def mapaclocations(conn, actype): #Map locations of aircraft type for sale
 	c=getdbcon(conn)
 	#Get most recent iteration
 	iters=getmaxiter(conn)
-	q1="SELECT loc FROM allac WHERE obsiter = "+str(iters) #To allow adding to query
+	#q1="SELECT loc FROM allac WHERE obsiter = "+str(iters) #To allow adding to query
+	q1="SELECT loc FROM listings WHERE "+str(iters)+" BETWEEN firstiter AND lastiter" #To allow adding to query
 	#Check if we were passed an aircraft type
 	if actype=="":
 		#Title for the map
