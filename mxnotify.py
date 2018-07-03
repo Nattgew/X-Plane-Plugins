@@ -17,7 +17,7 @@ def reldist(icao): #Find distances of other airports from given airport
 	return sorted(dists, key=lambda dist: dist[1])
 
 def getshops(icao):
-	services=fseutils.fserequest(1,'query=icao&search=fbo&icao='+icao,'FBO','xml')
+	services=fseutils.fserequest_new('icao','fbo','FBO','xml',1,1,'&icao='+icao)
 	options=[]
 	if len(services)>0:
 		for opt in services:
