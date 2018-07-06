@@ -24,7 +24,7 @@ def acforsale(conn): #Log aircraft currently for sale
 	airplanes = fseutils.fserequest_new('aircraft','forsale','Aircraft','xml',0,1)
 	if airplanes!=[]:
 		print("Recording data...")
-		new=0
+		new=0 #Whether to add to new table
 		c=getdbcon(conn)
 		d=getdbcon(conn)
 		count=getmaxiter(conn)+1 #Index for this new iteration
@@ -52,26 +52,35 @@ def acforsale(conn): #Log aircraft currently for sale
 					pricedelta=option[2]-row[4]
 					#bargains.append((option[1],option[1]+" | $"+str(row[4])+" <span class='discount'>(-"+str(pricedelta)+")</span> | "+str(row[3])+" hrs | "+row[2]))
 					bargains.append((option[1],row[4],pricedelta,row[3],row[2]))
+		#Keep adding to old table until new one is stable
 		c.executemany('INSERT INTO allac VALUES (?,?,?,?,?,?)',rows) #Add all of the aircraft to the log
 		conn.commit()
 
-		if new==1:
+		if new==1: #Add to new table
 			added=0
 			updated=0
 			c.execute('BEGIN TRANSACTION')
 			for listing in rows:
-				#print("Looking for serial="+str(listing[0])+"  price="+str(listing[4])+"  loc="+listing[2]+"  iter="+str(count-1))
-				d.execute('SELECT COUNT(*) FROM listings WHERE serial = ? AND price = ? AND (loc = ? OR loc = "In Flight") AND lastiter = ?',(listing[0], listing[4], listing[2], count-1))
+				if listing[2]=="In Flight":
+					#Don't select based on location of previous log
+					d.execute('SELECT COUNT(*) FROM listings WHERE serial = ? AND price = ? AND lastiter = ?',(listing[0], listing[4], count-1))
+				else:
+					d.execute('SELECT COUNT(*) FROM listings WHERE serial = ? AND price = ? AND (loc = ? OR loc = "In Flight") AND lastiter = ?',(listing[0], listing[4], listing[2], count-1))
 				result=d.fetchone()
 				if result[0]==0: #No exact match on previous iter, add new entry
-					#print("New: "+str(listing[0])+" "+str(listing[4])+" "+listing[2])
 					newlisting=list(listing)
 					newlisting.append(count)
-					c.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,?)',([value for value in newlisting]))
+					d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,?)',([value for value in newlisting]))
 					added+=1
-				else: #Exact match, update iter and hours
-					#print("Updating: hours->"+str(listing[3])+"  lastiter->"+str(count))
-					c.execute('UPDATE listings SET lastiter = ?, hours = ? WHERE serial = ? AND lastiter = ?',(count, listing[3], listing[0], count-1))
+				else: #Exact match, update iter and hours, maybe location too
+					if result[2]=="In Flight":
+						#If previous log was "in flight" then update the location too
+						#It may still be "in flight" but whatever
+						d.execute('UPDATE listings SET lastiter = ?, hours = ?, loc = ? WHERE serial = ? AND lastiter = ?',(count, listing[3], listing[0], count-1))
+					else:
+						#If last log wasn't "in flight" then it must have matched location, or listing is "in flight", don't need to update
+						d.execute('UPDATE listings SET lastiter = ?, hours = ? WHERE serial = ? AND lastiter = ?',(count, listing[3], listing[0], count-1))
+					#print('-', end='', flush=True)
 					updated+=1
 			conn.commit()
 			print("Updated "+str(updated)+" and added "+str(added)+" entries for iter "+str(count))
@@ -81,7 +90,7 @@ def acforsale(conn): #Log aircraft currently for sale
 			barglist=""
 			for bargain in bargains:
 				barglist+=bargain[0]+" | $"+str(bargain[1])+" <span class='discount'>(-"+str(bargain[2])+")</span> | "+str(bargain[3])+" hrs | "+bargain[4]+"<br/>"
-			if new==1:
+			if new==1: #Add info about added vs. updated entries in new table
 				barglist+="<br/>Updated "+str(updated)+" and added "+str(added)+" entries for iter "+str(count)
 			msg=html_email_template_basic.format(aclist=barglist)
 			fseutils.sendemail("FSE Aircraft Deals",msg)
