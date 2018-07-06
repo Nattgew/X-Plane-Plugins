@@ -38,15 +38,19 @@ def getemail(): #Gets email info stored in file
 		srv, addr, passw, addrto=("",)*4
 	return srvr,addrto,addr,passw
 
-def sendemail(subj,msg): #Sends email
+def sendemail(subj,msg,html=0): #Sends email
 	srvr,addrto,addr,passw=getemail()
 	#message="""\From: %s\nTo: %s\nSubject: %s\n\n%s""" % (addr, addrto, subj, msg)
-	message = MIMEMultipart('alternative')
-	body = MIMEText(msg.encode('utf-8'), 'html', _charset='utf-8')
+	if html==1:
+		message = MIMEMultipart('alternative')
+		body = MIMEText(msg.encode('utf-8'), 'html', _charset='utf-8')
+		message.attach(body)
+	else:
+		message = MIMEText(msg.encode('utf-8'), _charset='utf-8')
 	message['From'] = addr
 	message['To'] = addrto
 	message['Subject'] = subj
-	message.attach(body)
+	
 	try:
 		#print("Sending mail from "+addr+" to "+addrto)
 		server=smtplib.SMTP_SSL(srvr, 465)
