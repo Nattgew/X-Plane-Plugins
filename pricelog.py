@@ -65,7 +65,7 @@ def acforsale(conn): #Log aircraft currently for sale
 			c.execute('BEGIN TRANSACTION')
 			for listing in rows:
 				#print("Looking for serial="+str(listing[0])+"  price="+str(listing[4])+"  loc="+listing[2]+"  iter="+str(count-1))
-				d.execute('SELECT COUNT(*) FROM listings WHERE serial = ? AND price = ? AND (loc = ? OR loc = "Airborne") AND lastiter = ?',(listing[0], listing[4], listing[2], count-1))
+				d.execute('SELECT COUNT(*) FROM listings WHERE serial = ? AND price = ? AND (loc = ? OR loc = "In Flight") AND lastiter = ?',(listing[0], listing[4], listing[2], count-1))
 				result=d.fetchone()
 				if result[0]==0: #No exact match on previous iter, add new entry
 					#print("New: "+str(listing[0])+" "+str(listing[4])+" "+listing[2])
@@ -145,7 +145,11 @@ def salepickens(conn): #Convert log to compact format - in work
 				#All queries but the first
 				if i>0: #Look for same airplane, same price, from previous iteration
 					if region==0: #Disregard hours, airport must be same
-						d.execute('SELECT COUNT(*) FROM listings WHERE serial = ? AND price = ? AND (loc = ? OR loc = "Airborne") AND lastiter = ?',(listing[0], listing[4], listing[2], i))
+						if listing[2]=="In Flight":
+							#Don't select based on location of previous log
+							d.execute('SELECT COUNT(*) FROM listings WHERE serial = ? AND price = ? AND lastiter = ?',(listing[0], listing[4], i))
+						else:
+							d.execute('SELECT COUNT(*) FROM listings WHERE serial = ? AND price = ? AND (loc = ? OR loc = "In Flight") AND lastiter = ?',(listing[0], listing[4], listing[2], i))
 						result=d.fetchone()
 						if result[0]==0: #No exact match on previous iter, add new entry
 							newlisting=list(listing)
@@ -153,8 +157,14 @@ def salepickens(conn): #Convert log to compact format - in work
 							d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,?)',([value for value in newlisting]))
 							#print('+', end='', flush=True)
 							added+=1
-						else: #Exact match, update iter and hours
-							d.execute('UPDATE listings SET lastiter = ?, hours = ? WHERE serial = ? AND lastiter = ?',(i+1, listing[3], listing[0], i))
+						else: #Exact match, update iter and hours, maybe location too
+							if result[2]=="In Flight":
+								#If previous log was "in flight" then update the location too
+								#It may still be "in flight" but whatever
+								d.execute('UPDATE listings SET lastiter = ?, hours = ?, loc = ? WHERE serial = ? AND lastiter = ?',(i+1, listing[3], listing[0], i))
+							else:
+								#If last log wasn't "in flight" then it must have matched location, or listing is "in flight", don't need to update
+								d.execute('UPDATE listings SET lastiter = ?, hours = ? WHERE serial = ? AND lastiter = ?',(i+1, listing[3], listing[0], i))
 							#print('-', end='', flush=True)
 							updated+=1
 					else: #Disregard hours, region must be same
@@ -175,7 +185,7 @@ def salepickens(conn): #Convert log to compact format - in work
 				#TODO - remove type column when copying from old table
 				if i>0: #Look for same airplane, same price, from previous iteration
 					if region==0: #Disregard hours, airport must be same
-						d.execute('SELECT COUNT(*) FROM listings WHERE serial = ? AND price = ? AND (loc = ? OR loc = "Airborne") AND lastiter = ?',(listing[0], listing[4], listing[2], i))
+						d.execute('SELECT COUNT(*) FROM listings WHERE serial = ? AND price = ? AND (loc = ? OR loc = "In Flight") AND lastiter = ?',(listing[0], listing[4], listing[2], i))
 						result=d.fetchone()
 						if result[0]==0: #No exact match on previous iter, add new entry
 							newlisting=list(listing)
@@ -196,7 +206,6 @@ def salepickens(conn): #Convert log to compact format - in work
 							d.execute('UPDATE listings SET lastiter = ?, loc = ? WHERE serial = ? AND price = ? AND lastiter = ? AND hours = ?',(i+1, listing[2], listing[0], listing[4], i, listing[3]))
 				else: #This is the first iteration, just insert the data
 					d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,1.0)',([value for value in listing]))
-			#conn.commit()
 		#print('') #Newline
 		print("Updated "+str(updated)+" and added "+str(added)+" entries.")
 	conn.commit()
