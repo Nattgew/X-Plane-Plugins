@@ -93,7 +93,7 @@ def acforsale(conn): #Log aircraft currently for sale
 			if new==1: #Add info about added vs. updated entries in new table
 				barglist+="<br/>Updated "+str(updated)+" and added "+str(added)+" entries for iter "+str(count)
 			msg=html_email_template_basic.format(aclist=barglist)
-			fseutils.sendemail("FSE Aircraft Deals",msg)
+			fseutils.sendemail("FSE Aircraft Deals",msg,1)
 
 def salepickens(conn): #Convert log to compact format - in work
 	#Making a new table where each entry has a range of observations instead of one
