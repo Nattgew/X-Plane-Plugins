@@ -24,7 +24,7 @@ def acforsale(conn): #Log aircraft currently for sale
 	airplanes = fseutils.fserequest_new('aircraft','forsale','Aircraft','xml',0,1)
 	if airplanes!=[]:
 		print("Recording data...")
-		new=1
+		new=0
 		c=getdbcon(conn)
 		d=getdbcon(conn)
 		count=getmaxiter(conn)+1 #Index for this new iteration
@@ -55,11 +55,14 @@ def acforsale(conn): #Log aircraft currently for sale
 					pricedelta=option[2]-row[4]
 					#bargains.append((option[1],option[1]+" | $"+str(row[4])+" <span class='discount'>(-"+str(pricedelta)+")</span> | "+str(row[3])+" hrs | "+row[2]))
 					bargains.append((option[1],row[4],pricedelta,row[3],row[2]))
+		c.execute('BEGIN TRANSACTION')
 		c.executemany('INSERT INTO allac VALUES (?,?,?,?,?,?)',rows) #Add all of the aircraft to the log
-		
+		conn.commit()
+
 		if new==1:
 			updated=0
 			added=0
+			c.execute('BEGIN TRANSACTION')
 			for listing in rows:
 				#print("Looking for serial="+str(listing[0])+"  price="+str(listing[4])+"  loc="+listing[2]+"  iter="+str(count-1))
 				d.execute('SELECT COUNT(*) FROM listings WHERE serial = ? AND price = ? AND (loc = ? OR loc = "Airborne") AND lastiter = ?',(listing[0], listing[4], listing[2], count-1))
@@ -75,8 +78,8 @@ def acforsale(conn): #Log aircraft currently for sale
 					c.execute('UPDATE listings SET lastiter = ?, hours = ? WHERE serial = ? AND lastiter = ?',(count, listing[3], listing[0], count-1))
 					updated+=1
 			print("Updated "+str(updated)+" and added "+str(added)+" entries for iter "+str(count))
-		conn.commit()
-		
+			conn.commit()
+
 		if bargains!=[]: #Found some bargains to send by email
 			bargains=fseutils.isnew(bargains,"bargains")
 			barglist=""
@@ -104,6 +107,7 @@ def salepickens(conn): #Convert log to compact format - in work
 	#now=time.strftime("%Y-%m-%d %H:%M", time.gmtime())
 	#Create a new table to hold the converted info
 	print("Creating new table...")
+	c.execute('BEGIN TRANSACTION')
 	if sndb==0:
 		c.execute('''CREATE TABLE listings
 				 (serial int, type text, loc text, hours real, price real, firstiter int, lastiter int)''')
@@ -126,6 +130,7 @@ def salepickens(conn): #Convert log to compact format - in work
 		c.execute('''CREATE TABLE serials (serial int, type text)''')
 		c.execute('''CREATE INDEX idx_serial_serials ON serials(serial)''')
 		c.execute('''CREATE INDEX idx_type_serials ON serials(type)''')
+	conn.commit()
 	maxiter=getmaxiter(conn)
 	d.execute('BEGIN TRANSACTION')
 	for i in range(maxiter):
