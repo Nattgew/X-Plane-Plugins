@@ -78,7 +78,7 @@ def acforsale(conn): #Log aircraft currently for sale
 		conn.commit()
 		
 		if bargains!=[]: #Found some bargains to send by email
-			bargains=fseutils.isnew(bargains)
+			bargains=fseutils.isnew(bargains,"bargains")
 			barglist=""
 			for bargain in bargains:
 				barglist+=bargain[0]+" | $"+str(bargain[1])+" <span class='discount'>(-"+str(bargain[2])+")</span> | "+str(bargain[3])+" hrs | "+bargain[4]+"<br/>"
