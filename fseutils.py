@@ -66,7 +66,7 @@ def isnew(currents,filename):
 	file=Path(dirs.user_data_dir).joinpath(filename+'.txt')
 	try:
 		file.touch(exist_ok=True) #Create file if it doesn't exist
-		print("Checking for low "+file)
+		print("Checking for low "+str(file))
 		repeats=[] #List of items already notified
 		with file.open() as f:
 			for oldnews in f: #Loop over all shortages in the file

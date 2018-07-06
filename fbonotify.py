@@ -11,7 +11,7 @@ def isnew(newdearth,file): #TODO: Add this to fseutils
 	filename=Path(dirs.user_data_dir).joinpath(file+'.txt')
 	try:
 		filename.touch(exist_ok=True) #Create file if it doesn't exist
-		print("Checking for low "+file)
+		print("Checking for low "+str(file))
 		oldnews=[] #List of shortages already notified
 		with filename.open() as f:
 			for olddearth in f: #Loop over all shortages in the file
