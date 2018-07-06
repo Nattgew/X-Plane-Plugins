@@ -60,6 +60,29 @@ def sendemail(subj,msg): #Sends email
 		print("Failed to send the mail with error:")
 		print(e)
 
+def isnew(currents,filename):
+	#This function prevents repeat notifications for the same situation
+	dirs=AppDirs("nattgew-xpp","Nattgew")
+	file=Path(dirs.user_data_dir).joinpath(filename+'.txt')
+	try:
+		file.touch(exist_ok=True) #Create file if it doesn't exist
+		print("Checking for low "+file)
+		repeats=[] #List of items already notified
+		with file.open() as f:
+			for oldnews in f: #Loop over all shortages in the file
+				for current in currents: #Loop over all current shortanges
+					if current[0]==oldnews: #Shortage was already listed in the file
+						repeats.append(current) #Full list item to be logged and removed from notification list
+						break
+		with file.open('w') as f: #Overwrite the file with the new list of shortages
+			for current in currents:
+				f.write(current[0]+"\n")
+		for oldie in repeats: #Remove shortages already notified from the list
+			currents.remove(oldie)
+	except IOError:
+		print("Could not open file: "+str(file))
+	return currents
+
 def fserequest(ra,rqst,tagname,fmt): #Requests data in format, returns list of requested tag
 	if ra==1: #Some queries seem to need this, others don't
 		rakey="&readaccesskey="+getkey(0)
