@@ -129,6 +129,8 @@ def salepickens(conn): #Convert log to compact format - in work
 		#Process each query time
 		print("Processing iter "+str(i+1)+" of "+str(maxiter), end='')
 		for listing in c.execute('SELECT * FROM allac WHERE obsiter = ?',(i+1,)):
+			added=0
+			updated=0
 			if sndb==0:
 				#All queries but the first
 				if i>0: #Look for same airplane, same price, from previous iteration
@@ -139,10 +141,12 @@ def salepickens(conn): #Convert log to compact format - in work
 							newlisting=list(listing)
 							newlisting.append(i+1)
 							d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,?)',([value for value in newlisting]))
-							print('+', end='', flush=True)
+							#print('+', end='', flush=True)
+							added+=1
 						else: #Exact match, update iter and hours
 							d.execute('UPDATE listings SET lastiter = ?, hours = ? WHERE serial = ? AND lastiter = ?',(i+1, listing[3], listing[0], i))
-							print('-', end='', flush=True)
+							#print('-', end='', flush=True)
+							updated+=1
 					else: #Disregard hours, region must be same
 						d.execute('SELECT loc FROM listings WHERE serial = ? AND price = ? AND loc = ? AND lastiter = ?',(listing[0], listing[4], listing[2], i))
 						result=d.fetchone()
@@ -183,7 +187,8 @@ def salepickens(conn): #Convert log to compact format - in work
 				else: #This is the first iteration, just insert the data
 					d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,1.0)',([value for value in listing]))
 			conn.commit()
-		print('') #Newline
+		#print('') #Newline
+		print("Updated "+str(updated)+" and added "+str(added)+" entries"
 
 def sntotype(conn,sn): #Look up the type of a serial number
 	c=getdbcon(conn)
