@@ -55,7 +55,7 @@ def acforsale(conn): #Log aircraft currently for sale
 				else:
 					d.execute('SELECT loc FROM listings WHERE serial = ? AND price = ? AND (loc = ? OR loc = "In Flight") AND lastiter = ?',(listing[0], listing[4], listing[2], count-1))
 				result=d.fetchone()
-				if result==[]: #No exact match on previous iter, add new entry
+				if result is None: #No exact match on previous iter, add new entry
 					newlisting=list(listing)
 					newlisting.append(count)
 					d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,?)',([value for value in newlisting]))
@@ -64,7 +64,7 @@ def acforsale(conn): #Log aircraft currently for sale
 					if result[0]=="In Flight":
 						#If previous log was "in flight" then update the location too
 						#It may still be "in flight" but whatever
-						d.execute('UPDATE listings SET lastiter = ?, hours = ?, loc = ? WHERE serial = ? AND lastiter = ?',(count, listing[3], listing[0], count-1))
+						d.execute('UPDATE listings SET lastiter = ?, hours = ?, loc = ? WHERE serial = ? AND lastiter = ?',(count, listing[3], listing[2], listing[0], count-1))
 					else:
 						#If last log wasn't "in flight" then it must have matched location, or listing is "in flight", don't need to update
 						d.execute('UPDATE listings SET lastiter = ?, hours = ? WHERE serial = ? AND lastiter = ?',(count, listing[3], listing[0], count-1))
@@ -144,18 +144,17 @@ def salepickens(conn): #Convert log to compact format - in work
 						else:
 							d.execute('SELECT loc FROM listings WHERE serial = ? AND price = ? AND (loc = ? OR loc = "In Flight") AND lastiter = ?',(listing[0], listing[4], listing[2], i))
 						result=d.fetchone()
-						if result==[]: #No exact match on previous iter, add new entry
+						if result is None: #No exact match on previous iter, add new entry
 							newlisting=list(listing)
 							newlisting.append(i+1)
 							d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,?)',([value for value in newlisting]))
 							#print('+', end='', flush=True)
 							added+=1
 						else: #Exact match, update iter and hours, maybe location too
-							print(result)
 							if result[0]=="In Flight":
 								#If previous log was "in flight" then update the location too
 								#It may still be "in flight" but whatever
-								d.execute('UPDATE listings SET lastiter = ?, hours = ?, loc = ? WHERE serial = ? AND lastiter = ?',(i+1, listing[3], listing[0], i))
+								d.execute('UPDATE listings SET lastiter = ?, hours = ?, loc = ? WHERE serial = ? AND lastiter = ?',(i+1, listing[3], listing[2], listing[0], i))
 							else:
 								#If last log wasn't "in flight" then it must have matched location, or listing is "in flight", don't need to update
 								d.execute('UPDATE listings SET lastiter = ?, hours = ? WHERE serial = ? AND lastiter = ?',(i+1, listing[3], listing[0], i))
