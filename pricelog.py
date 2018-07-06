@@ -82,6 +82,7 @@ def acforsale(conn): #Log aircraft currently for sale
 			barglist=""
 			for bargain in bargains:
 				barglist+=bargain[0]+" | $"+str(bargain[1])+" <span class='discount'>(-"+str(bargain[2])+")</span> | "+str(bargain[3])+" hrs | "+bargain[4]+"<br/>"
+			barglist+="<br/>Updated "+str(updated)+" and added "+str(added)+" entries for iter "+str(count)
 			msg=html_email_template_basic.format(aclist=barglist)
 			fseutils.sendemail("FSE Aircraft Deals",msg)
 
