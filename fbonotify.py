@@ -66,12 +66,12 @@ for fbo in commo: #Parse commodity info
 	elif days < warndays+1:
 		lowsupp.append((icao,days))
 #print(msg)
-lowjeta=isnew(lowjeta,"lowjeta")
-low100ll=isnew(low100ll,"low100ll")
-lowsupp=isnew(lowsupp,"lowsupp")
-nojeta=isnew(lowjeta,"nojeta")
-no100ll=isnew(low100ll,"no100ll")
-nosupp=isnew(lowsupp,"nosupp")
+lowjeta=fseutils.isnew(lowjeta,"lowjeta")
+low100ll=fseutils.isnew(low100ll,"low100ll")
+lowsupp=fseutils.isnew(lowsupp,"lowsupp")
+nojeta=fseutils.isnew(lowjeta,"nojeta")
+no100ll=fseutils.isnew(low100ll,"no100ll")
+nosupp=fseutils.isnew(lowsupp,"nosupp")
 print("Building message...")
 msg=""
 #TODO: functions for these?
