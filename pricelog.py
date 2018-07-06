@@ -129,10 +129,10 @@ def salepickens(conn): #Convert log to compact format - in work
 	maxiter=getmaxiter(conn)
 	for i in range(maxiter):
 		#Process each query time
-		print("Processing iter "+str(i+1)+" of "+str(maxiter), end='')
+		print("Processing iter "+str(i+1)+" of "+str(maxiter)+"... ", end='')
+		added=0
+		updated=0
 		for listing in c.execute('SELECT * FROM allac WHERE obsiter = ?',(i+1,)):
-			added=0
-			updated=0
 			if sndb==0:
 				#All queries but the first
 				if i>0: #Look for same airplane, same price, from previous iteration
@@ -190,7 +190,7 @@ def salepickens(conn): #Convert log to compact format - in work
 					d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,1.0)',([value for value in listing]))
 			conn.commit()
 		#print('') #Newline
-		print("Updated "+str(updated)+" and added "+str(added)+" entries"
+		print("Updated "+str(updated)+" and added "+str(added)+" entries.")
 
 def sntotype(conn,sn): #Look up the type of a serial number
 	c=getdbcon(conn)
