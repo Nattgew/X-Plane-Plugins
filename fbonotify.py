@@ -25,7 +25,7 @@ def isnew(newdearth,file): #TODO: Add this to fseutils
 		for oldie in oldnews: #Remove shortages already notified from the list
 			newdearth.remove(oldie)
 	except IOError:
-		print("Could not open file: "+file)
+		print("Could not open file: "+str(file))
 	return newdearth
 
 cautdays = 14 #Days of supplies to first send first notification
