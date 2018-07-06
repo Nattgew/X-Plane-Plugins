@@ -125,9 +125,9 @@ def salepickens(conn): #Convert log to compact format - in work
 		c.execute('''CREATE TABLE serials (serial int, type text)''')
 		c.execute('''CREATE INDEX idx_serial_serials ON serials(serial)''')
 		c.execute('''CREATE INDEX idx_type_serials ON serials(type)''')
-	conn.commit()
+	#conn.commit()
 	maxiter=getmaxiter(conn)
-	d.execute('BEGIN TRANSACTION')
+	#d.execute('BEGIN TRANSACTION')
 	for i in range(maxiter):
 		#Process each query time
 		print("Processing iter "+str(i+1)+" of "+str(maxiter)+"... ", end='')
@@ -151,6 +151,7 @@ def salepickens(conn): #Convert log to compact format - in work
 							#print('+', end='', flush=True)
 							added+=1
 						else: #Exact match, update iter and hours, maybe location too
+							print(result)
 							if result[0]=="In Flight":
 								#If previous log was "in flight" then update the location too
 								#It may still be "in flight" but whatever
