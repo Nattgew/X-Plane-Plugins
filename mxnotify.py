@@ -84,7 +84,7 @@ for plane in airplanes:
 				if len(shops)>1: #Get a couple of options
 					break
 		aog.append((row[0],row[1],row[2],mx,shops)) #Reg, Type, Loc, repair, options
-aog=isnew(aog) #Remove aircraft already notified
+aog=fseutils.isnew(aog) #Remove aircraft already notified
 srvr,addrto,addr,passw=fseutils.getemail()
 msg="Airplanes in need of repair:"
 #print(msg)
