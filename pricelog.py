@@ -7,18 +7,6 @@ from datetime import timedelta, date, datetime
 from appdirs import AppDirs
 from pathlib import Path
 
-def getname(): #Returns username stored in file
-	dirs=AppDirs("nattgew-xpp","Nattgew")
-	filename=Path(dirs.user_data_dir).joinpath('mykey.txt')
-	try:
-		with filename.open() as f:
-			nothing = f.readline() #skip the key
-			myname = f.readline()
-			myname=myname.strip() #remove newline
-			return myname
-	except IOError:
-		print("Failed to open user key file")
-
 def acforsale(conn): #Log aircraft currently for sale
 	print("Sending request for sales listing...")
 	airplanes = fseutils.fserequest_new('aircraft','forsale','Aircraft','xml',0,1)
@@ -694,7 +682,7 @@ def plotpayments(conn,fromdate,todate): #Plot payment totals per category
 	#For getting the payment data
 	c=getpaydbcon(conn)
 	#Get user name
-	user=getname()
+	user=fseutils.getname()
 	#timedelta of one day
 	delta=timedelta(days=1)
 	#Fields for from date
@@ -807,7 +795,7 @@ def sumpayments(conn,fdate,tdate): #Plot portion of income/expense per category
 				("Pilot fee", pltfee, pltfee),
 				("Installation of equipment in aircraft", fboeqpinc, eqinstl),
 				("Ownership Fee", ownership, ownership)]
-	user=getname()
+	user=fseutils.getname()
 	fromdate=fdate+" 00:01"
 	todate=tdate+" 23:59"
 	print("Tallying payments from "+str(fdate[0])+"-"+str(fdate[1])+" to "+str(tdate[0])+"-"+str(tdate[1])+"...")
@@ -881,7 +869,7 @@ def sumacpayments(conn,fdate,tdate): #Plot revenue portion by aircraft
 				("Aircraft sale", acbuy, acbuy),
 				("Pilot fee", pltfee, pltfee),
 				("Installation of equipment in aircraft", z, eqinstl)]
-	user=getname()
+	user=fseutils.getname()
 	fromdate=fdate+" 00:01"
 	todate=tdate+" 23:59"
 	ac=[]
