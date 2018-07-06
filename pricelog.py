@@ -36,11 +36,7 @@ def acforsale(conn): #Log aircraft currently for sale
 		dirs=AppDirs("nattgew-xpp","Nattgew")
 		filename=Path(dirs.user_data_dir).joinpath('pricewatch.csv')
 		with filename.open() as f:
-			has_header = csv.Sniffer().has_header(f.read(1024)) #could not determine delimiter
-			f.seek(0)  # rewind
-			reader = csv.reader(f)
-			if has_header:
-				next(reader)  # skip header row
+			reader=fseutils.readcsv(f)
 			for row in reader:
 				goodones.append((row[0],row[1],int(row[2]),int(row[3]))) #actype, icao?, price, hours
 		fields=(("SerialNumber", 1), ("MakeModel", 0), ("Location", 0), ("AirframeTime", 0), ("SalePrice", 2))
