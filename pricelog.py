@@ -127,6 +127,7 @@ def salepickens(conn): #Convert log to compact format - in work
 		c.execute('''CREATE INDEX idx_serial_serials ON serials(serial)''')
 		c.execute('''CREATE INDEX idx_type_serials ON serials(type)''')
 	maxiter=getmaxiter(conn)
+	d.execute('BEGIN TRANSACTION')
 	for i in range(maxiter):
 		#Process each query time
 		print("Processing iter "+str(i+1)+" of "+str(maxiter)+"... ", end='')
@@ -188,9 +189,10 @@ def salepickens(conn): #Convert log to compact format - in work
 							d.execute('UPDATE listings SET lastiter = ?, loc = ? WHERE serial = ? AND price = ? AND lastiter = ? AND hours = ?',(i+1, listing[2], listing[0], listing[4], i, listing[3]))
 				else: #This is the first iteration, just insert the data
 					d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,1.0)',([value for value in listing]))
-			conn.commit()
+			#conn.commit()
 		#print('') #Newline
 		print("Updated "+str(updated)+" and added "+str(added)+" entries.")
+	conn.commit()
 
 def sntotype(conn,sn): #Look up the type of a serial number
 	c=getdbcon(conn)
