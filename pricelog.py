@@ -111,7 +111,9 @@ def salepickens(conn): #Convert log to compact format - in work
 		c.execute('''CREATE INDEX idx_type_list ON listings(type)''')
 		c.execute('''CREATE INDEX idx_price_list ON listings(price)''')
 		c.execute('''CREATE INDEX idx_lastiter ON listings(lastiter)''')
-		#c.execute('''CREATE INDEX idx5 ON listings(hours)''')
+		c.execute('''CREATE INDEX idx_serial_list ON listings(serial)''')
+		c.execute('''CREATE INDEX idx_loc_list ON listings(loc)''')
+		c.execute('''CREATE INDEX idx_hours_list ON listings(hours)''')
 	else:
 		c.execute('''CREATE TABLE listings
 				 (serial int, loc text, hours real, price real, firstiter int, lastiter int)''')
