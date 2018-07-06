@@ -6,13 +6,6 @@ import fseutils # My custom FSE functions
 import time #locale
 from datetime import timedelta, date, datetime
 
-def getname(): #Returns username stored in file
-	with open('/mnt/data/XPLANE10/XSDK/mykey.txt', 'r') as f:
-		nothing = f.readline()
-		myname = f.readline()
-	myname=myname.strip()
-	return myname
-
 def reldist(icao,rad): #Find distances of other airports from given airport
 	#print("Looking for airports near "+icao)
 	loc_dict=fseutils.build_csv("latlon")
@@ -51,13 +44,13 @@ for j in range(daysago):
 	if history.month!=listofmonths[k]:
 		listofmonths.append(history.month)
 		k+=1
-me=getname()
+me=fseutils.getname()
 ns = {'sfn': 'http://server.fseconomy.net'} #namespace for XML stuff
 plogs=[]
 firstrqtime=int(time.time())
 print("Sending request for aircraft list...")
 requests+=1
-airplanes = fseutils.fserequest(1,'query=aircraft&search=key','Aircraft','xml')
+airplanes = fseutils.fserequest_new('aircraft','key','Aircraft','xml',1,1)
 #print(airplanes)
 print("Processing list...")
 for plane in airplanes:
@@ -69,7 +62,7 @@ for plane in airplanes:
 			requests=0
 		print("Sending request for "+thisac[0]+" ("+thisac[2]+") logs for "+str(eachmonth)+"/"+str(year)+"...")
 		requests+=1
-		logs=fseutils.fserequest(0,'query=flightlogs&search=monthyear&serialnumber='+thisac[2]+'&month='+str(month)+'&year='+str(year),'FlightLog','xml')
+		logs=fseutils.fserequest_new('flightlogs','monthyear','FlightLog','xml',0,1,'&serialnumber='+thisac[2]+'&month='+str(month)+'&year='+str(year))
 		print("Processing "+str(len(logs))+" logs...")
 		for flt in logs:
 			fltime = flt.find('sfn:Time', ns).text
