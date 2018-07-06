@@ -63,17 +63,17 @@ def acforsale(conn): #Log aircraft currently for sale
 			for listing in rows:
 				if listing[2]=="In Flight":
 					#Don't select based on location of previous log
-					d.execute('SELECT COUNT(*) FROM listings WHERE serial = ? AND price = ? AND lastiter = ?',(listing[0], listing[4], count-1))
+					d.execute('SELECT loc FROM listings WHERE serial = ? AND price = ? AND lastiter = ?',(listing[0], listing[4], count-1))
 				else:
-					d.execute('SELECT COUNT(*) FROM listings WHERE serial = ? AND price = ? AND (loc = ? OR loc = "In Flight") AND lastiter = ?',(listing[0], listing[4], listing[2], count-1))
+					d.execute('SELECT loc FROM listings WHERE serial = ? AND price = ? AND (loc = ? OR loc = "In Flight") AND lastiter = ?',(listing[0], listing[4], listing[2], count-1))
 				result=d.fetchone()
-				if result[0]==0: #No exact match on previous iter, add new entry
+				if result==[]: #No exact match on previous iter, add new entry
 					newlisting=list(listing)
 					newlisting.append(count)
 					d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,?)',([value for value in newlisting]))
 					added+=1
 				else: #Exact match, update iter and hours, maybe location too
-					if result[2]=="In Flight":
+					if result[0]=="In Flight":
 						#If previous log was "in flight" then update the location too
 						#It may still be "in flight" but whatever
 						d.execute('UPDATE listings SET lastiter = ?, hours = ?, loc = ? WHERE serial = ? AND lastiter = ?',(count, listing[3], listing[0], count-1))
@@ -152,18 +152,18 @@ def salepickens(conn): #Convert log to compact format - in work
 					if region==0: #Disregard hours, airport must be same
 						if listing[2]=="In Flight":
 							#Don't select based on location of previous log
-							d.execute('SELECT COUNT(*) FROM listings WHERE serial = ? AND price = ? AND lastiter = ?',(listing[0], listing[4], i))
+							d.execute('SELECT loc FROM listings WHERE serial = ? AND price = ? AND lastiter = ?',(listing[0], listing[4], i))
 						else:
-							d.execute('SELECT COUNT(*) FROM listings WHERE serial = ? AND price = ? AND (loc = ? OR loc = "In Flight") AND lastiter = ?',(listing[0], listing[4], listing[2], i))
+							d.execute('SELECT loc FROM listings WHERE serial = ? AND price = ? AND (loc = ? OR loc = "In Flight") AND lastiter = ?',(listing[0], listing[4], listing[2], i))
 						result=d.fetchone()
-						if result[0]==0: #No exact match on previous iter, add new entry
+						if result==[]: #No exact match on previous iter, add new entry
 							newlisting=list(listing)
 							newlisting.append(i+1)
 							d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,?)',([value for value in newlisting]))
 							#print('+', end='', flush=True)
 							added+=1
 						else: #Exact match, update iter and hours, maybe location too
-							if result[2]=="In Flight":
+							if result[0]=="In Flight":
 								#If previous log was "in flight" then update the location too
 								#It may still be "in flight" but whatever
 								d.execute('UPDATE listings SET lastiter = ?, hours = ?, loc = ? WHERE serial = ? AND lastiter = ?',(i+1, listing[3], listing[0], i))
