@@ -1,13 +1,11 @@
-#!/usr/bin/python
-from xml.dom import minidom
-import urllib.request
-import math
-import os, re, fileinput, csv
-import locale, time
-import sys, getopt
+#!/usr/bin/python3
+import fileinput, time, sys, getopt
 import regions
+import fseutils # My custom FSE functions
+from appdirs import AppDirs
+from pathlib import Path
 
-def fserequest(rqst,tagname):
+def request_throttle(qry,srch,tagname,ra,more=""):
 	global requests
 	now=int(time.time())
 	total=len(requests)
@@ -19,60 +17,23 @@ def fserequest(rqst,tagname):
 			printsleep(towait)
 			print('Hopefully we have appeased the rate limiter gods, resuming requests now...')
 	requests.append(now)
-	data = urllib.request.urlopen('http://server.fseconomy.net/data?userkey='+mykey+'&format=xml&'+rqst)
-	print("Parsing data...")
-	xmldoc = minidom.parse(data)
-	error = xmldoc.getElementsByTagName('Error')
-	if error!=[]:
-		print("Received error: "+error[0].firstChild.nodeValue)
-		tags=[]
-	else:
-		tags = xmldoc.getElementsByTagName(tagname)
+	tags=fseutils.fserequest_new(qry,srch,tagname,'xml',ra,1,more)
 	return tags
 
 def printsleep(towait):
 	for i in range(towait,1):
 		print('Resuming in '+str(i)+' seconds...   ', end='\r')
 		time.sleep(1)
-	
-def acforsale():
-	# Aircraft name, ICAO code, max price, max hours
-	goodones=[]
-	file='/mnt/data/XPLANE10/XSDK/criteria.csv'
-	with open(file, 'r') as f:
-		has_header = csv.Sniffer().has_header(f.read(1024)) #could not determine delimiter
-		f.seek(0)  # rewind
-		reader = csv.reader(f)
-		if has_header:
-			next(reader)  # skip header row
-		for row in reader:
-			goodones.append((row[0],row[1],int(row[2]),int(row[3])))
-	#for option in goodones:
-	#	print(option[0]+" | "+option[1]+" | "+option[2]+" | "+option[3])
-	print("Sending request for sales listing...")
-	airplanes = fserequest('query=aircraft&search=forsale','Aircraft')
-	for airplane in airplanes:
-		actype = airplane.getElementsByTagName("MakeModel")[0].firstChild.nodeValue
-		aframetime = airplane.getElementsByTagName("AirframeTime")[0].firstChild.nodeValue
-		hours = int(aframetime.split(":")[0])
-		price = float(airplane.getElementsByTagName("SalePrice")[0].firstChild.nodeValue)
-		for option in goodones:
-			if actype==option[0] and hours<option[3] and price<option[2]:
-				loc = airplane.getElementsByTagName("Location")[0].firstChild.nodeValue
-				locname = airplane.getElementsByTagName("LocationName")[0].firstChild.nodeValue
-				dist=distbwt("SPJJ",loc)
-				print(option[1]+" | "+aframetime+" | $"+locale.format("%d", price, grouping=True)+" | "+loc+" | "+str(dist)+" | "+locname)
-				break
 
 def dudewheresmyairplane():
 	#planes={}
 	print("Sending request for aircraft list...")
-	airplanes = fserequest('query=aircraft&search=key&readaccesskey='+mykey,'Aircraft')
+	airplanes = request_throttle('aircraft','key','Aircraft',1)
 	for plane in airplanes:
-		loc = plane.getElementsByTagName("Location")[0].firstChild.nodeValue
-		reg = plane.getElementsByTagName("Registration")[0].firstChild.nodeValue
-		eng = plane.getElementsByTagName("EngineTime")[0].firstChild.nodeValue
-		chk = plane.getElementsByTagName("TimeLast100hr")[0].firstChild.nodeValue
+		loc = fseutils.gebtn(plane, "Location")
+		reg = fseutils.gebtn(plane, "Registration")
+		eng = fseutils.gebtn(plane, "EngineTime")
+		chk = fseutils.gebtn(plane, "TimeLast100hr")
 		#planes[reg]=(loc,eng,chk)
 		print(reg+" at "+loc+"  tot: "+eng+"  last: "+chk)
 
@@ -80,10 +41,10 @@ def jobsforairplanes(price):
 	models={}
 	jobs=[]
 	print("Sending request for aircraft list...")
-	airplanes = fserequest('query=aircraft&search=key&readaccesskey='+mykey,'Aircraft')
+	airplanes = request_throttle('aircraft','key','Aircraft',1)
 	for plane in airplanes:
-		loc = plane.getElementsByTagName("Location")[0].firstChild.nodeValue
-		mod = plane.getElementsByTagName("MakeModel")[0].firstChild.nodeValue
+		loc = fseutils.gebtn(plane, "Location")
+		mod = fseutils.gebtn(plane, "MakeModel")
 		if loc!="In Flight":
 			near=nearby(loc,75)
 			try:
@@ -97,7 +58,7 @@ def jobsforairplanes(price):
 		jobs=jobsfrom(apts,price,seats)
 		print(model+": "+str(seats)+" seats")
 		printjobs(jobs,0)
-	
+
 def getseats(model):
 	if model=="Pilatus PC-12":
 		seats=10
@@ -121,7 +82,7 @@ def jobsfrom(apts,price,pax):
 	#High paying jobs from airports
 	jobs=[]
 	print("Sending request for jobs from "+apts+"...")
-	assignments = fserequest('query=icao&search=jobsfrom&icaos='+apts,'Assignment')
+	assignments = request_throttle('icao','jobsfrom','Assignment',0,'&icaos='+apts)
 	for assignment in assignments:
 		jobs=jobstest(assignment,jobs,price,pax)
 		global totalfrom
@@ -132,7 +93,7 @@ def jobsto(apts,price,pax):
 	#High paying jobs to airports
 	jobs=[]
 	print("Sending request for jobs to "+apts+"...")
-	assignments = fserequest('query=icao&search=jobsto&icaos='+apts,'Assignment')
+	assignments = request_throttle('icao','jobsto','Assignment',0,'&icaos='+apts)
 	for assignment in assignments:
 		jobs=jobstest(assignment,jobs,price,pax)
 		global totalto
@@ -140,15 +101,15 @@ def jobsto(apts,price,pax):
 	return jobs
 
 def jobstest(assignment,jobs,price,pax):
-	pay = float(assignment.getElementsByTagName("Pay")[0].firstChild.nodeValue)
+	pay = float(fseutils.gebtn(assignment, "Pay"))
 	if pay>price:
-		amt = assignment.getElementsByTagName("Amount")[0].firstChild.nodeValue
-		typ = assignment.getElementsByTagName("UnitType")[0].firstChild.nodeValue
+		amt = fseutils.gebtn(assignment, "Amount")
+		typ = fseutils.gebtn(assignment, "UnitType")
 		if not(int(amt)>pax and typ=="passengers"):
-			#dep = assignment.getElementsByTagName("FromIcao")[0].firstChild.nodeValue
-			arr = assignment.getElementsByTagName("ToIcao")[0].firstChild.nodeValue
-			loc = assignment.getElementsByTagName("Location")[0].firstChild.nodeValue
-			exp = assignment.getElementsByTagName("Expires")[0].firstChild.nodeValue
+			#dep = fseutils.gebtn(assignment, "FromIcao")[0].firstChild.nodeValue
+			arr = fseutils.gebtn(assignment, "ToIcao")
+			loc = fseutils.gebtn(assignment, "Location")
+			exp = fseutils.gebtn(assignment, "Expires")
 			jobs.append((loc,arr,amt,typ,pay,exp))
 			#if dep==loc:
 			#	print (amt+" "+typ+" "+dep+"-"+arr+" $"+str(int(pay))+" "+exp)
@@ -159,14 +120,14 @@ def jobstest(assignment,jobs,price,pax):
 def paxto(apts,minpax,maxpax):
 	#Pax jobs to airports (incl green jobs)
 	print("Sending request incl pax jobs to "+apts+"...")
-	assignments = fserequest('query=icao&search=jobsto&icaos='+apts,'Assignment')
+	assignments = request_throttle('icao','jobsto','Assignment',0,'&icaos='+apts)
 	jobs=paxtest(assignments,minpax,maxpax,"to")
 	return jobs
 
 def paxfrom(apts,minpax,maxpax):
 	#Pax jobs from airports (incl green jobs)
 	print("Sending request incl pax jobs from "+apts+"...")
-	assignments = fserequest('query=icao&search=jobsfrom&icaos='+apts,'Assignment')
+	assignments = request_throttle('icao','jobsfrom','Assignment','&icaos='+apts)
 	jobs=paxtest(assignments,minpax,maxpax,"from")
 	return jobs
 
@@ -175,10 +136,10 @@ def paxtest(assignments,minpax,maxpax,tofrom):
 	apts={}
 	jobs=[]
 	for assignment in assignments:
-		loc = assignment.getElementsByTagName("Location")[0].firstChild.nodeValue
-		arr = assignment.getElementsByTagName("ToIcao")[0].firstChild.nodeValue
-		amt = assignment.getElementsByTagName("Amount")[0].firstChild.nodeValue
-		typ = assignment.getElementsByTagName("UnitType")[0].firstChild.nodeValue
+		loc = fseutils.gebtn(assignment, "Location")
+		arr = fseutils.gebtn(assignment, "ToIcao")
+		amt = fseutils.gebtn(assignment, "Amount")
+		typ = fseutils.gebtn(assignment, "UnitType")
 		if tofrom=="to":
 			global totalto
 			totalto+=1
@@ -189,9 +150,9 @@ def paxtest(assignments,minpax,maxpax,tofrom):
 			key=arr
 		if not(int(amt)>maxpax and typ=="passengers") and typ=="passengers":
 			amt=int(amt)
-			pay = float(assignment.getElementsByTagName("Pay")[0].firstChild.nodeValue)
-			#dep = assignment.getElementsByTagName("FromIcao")[0].firstChild.nodeValue
-			exp = assignment.getElementsByTagName("Expires")[0].firstChild.nodeValue
+			pay = float(fseutils.gebtn(assignment, "Pay"))
+			#dep = fseutils.gebtn(assignment, "FromIcao")
+			exp = fseutils.gebtn(assignment, "Expires")
 			candidates.append((loc,arr,amt,typ,pay,exp))
 			try:
 				tot=apts[key]
@@ -211,46 +172,13 @@ def printjobs(jobs,rev):
 	else:
 		list=reversed(jobs)
 	for job in jobs:
-		print(job[2]+" "+job[3]+" "+job[0]+"-"+job[1]+" $"+str(int(job[4]))+" "+str(distbwt(job[0],job[1]))+" "+job[5])
-
-def cosinedist(lat1,lon1,lat2,lon2):
-	phi1 = math.radians(lat1)
-	phi2 = math.radians(lat2)
-	dellamb = math.radians(lon2-lon1)
-	R = 3440.06479 # Nm
-	# gives d in metres
-	d = math.acos( math.sin(phi1)*math.sin(phi2) + math.cos(phi1)*math.cos(phi2) * math.cos(dellamb) ) * R
-	return int(round(d))
-
-def inithdg(lat1,lon1,lat2,lon2):
-	phi1 = math.radians(lat1)
-	phi2 = math.radians(lat2)
-	lamb1 = math.radians(lon1)
-	lamb2 = math.radians(lon2)
-	y = math.sin(lamb2-lamb1) * math.cos(phi2)
-	x = math.cos(phi1)*math.sin(phi2) - math.sin(phi1)*math.cos(phi2)*math.cos(lamb2-lamb1)
-	brng = math.degrees(math.atan2(y, x))
-	if brng<0:
-		brng+=360
-	return brng
-
-def dirbwt(icaofrom,icaoto):
-	lat1,lon1=loc_dict[icaofrom]
-	lat2,lon2=loc_dict[icaoto]
-	hdg=inithdg(lat1,lon1,lat2,lon2)
-	return hdg
-
-def distbwt(icaofrom,icaoto):
-	lat1,lon1=loc_dict[icaofrom]
-	lat2,lon2=loc_dict[icaoto]
-	dist=cosinedist(lat1,lon1,lat2,lon2)
-	return dist
+		print(job[2]+" "+job[3]+" "+job[0]+"-"+job[1]+" $"+str(int(job[4]))+" "+str(fseutils.distbwt(job[0],job[1]))+" "+job[5])
 
 def build_xplane_locations(): #keeping this in case FSE csv file fails
 	loc_dict = {}
 	in_ap=0
-	dir1='/mnt/data/XPLANE10/X-Plane10/Custom Scenery/zzzz_FSE_Airports/Earth nav data/apt.dat'
-	dir2='/mnt/data/XPLANE10/X-Plane10/Resources/default scenery/default apt dat/Earth nav data/apt.dat'
+	dir1='/mnt/data/XPLANE/X-Plane10/Custom Scenery/zzzz_FSE_Airports/Earth nav data/apt.dat'
+	dir2='/mnt/data/XPLANE/X-Plane10/Resources/default scenery/default apt dat/Earth nav data/apt.dat'
 	for line in fileinput.input([dir1,dir2]): # I am forever indebted to Padraic Cunningham for this code
 		params=line.split()
 		try:
@@ -268,32 +196,19 @@ def build_xplane_locations(): #keeping this in case FSE csv file fails
 			pass
 	return loc_dict
 
-def build_csv(): #return dictionary of airport locations, using FSE csv file
-	loc_dict = {}
-	file='/mnt/data/XPLANE10/XSDK/icaodata.csv'
-	with open(file, 'r') as f:
-		has_header = csv.Sniffer().has_header(f.read(1024))
-		f.seek(0)  # rewind
-		reader = csv.reader(f)
-		if has_header:
-			next(reader)  # skip header row
-		for row in reader:
-			loc_dict[row[0]]=(float(row[1]),float(row[2]))
-	return loc_dict
-
 def walkthewalk(icaofrom,icaoto,chain,green,minpax,maxpax):
 	print("Walking from "+icaofrom+" to "+icaoto)
 	global checked
 	print("Basic direction from "+icaoto[0:4]+" to "+icaofrom)
-	hdg=dirbwt(icaoto[0:4],icaofrom)
+	hdg=fseutils.dirbwt(icaoto[0:4],icaofrom)
 	if green>0:
 		min=-120
 		max=120
 	else:
 		min=-60
 		max=60
-	min_hdg=chgdir(hdg,min)
-	max_hdg=chgdir(hdg,max)
+	min_hdg=fseutils.chgdir(hdg,min)
+	max_hdg=fseutils.chgdir(hdg,max)
 	if green==2: #Include green jobs
 		jobs=paxto(icaoto,minpax,maxpax)
 		checked[2]=checked[2]+"-"+icaoto
@@ -315,7 +230,7 @@ def walkthewalk(icaofrom,icaoto,chain,green,minpax,maxpax):
 			chain.append(job)
 			return chain
 		else:
-			hdg=dirbwt(job[1],job[0])
+			hdg=fseutils.dirbwt(job[1],job[0])
 			#print("JOB:"+job[2]+" "+job[3]+" "+job[0]+"-"+job[1]+" "+str(hdg)+" $"+str(int(job[4]))+" "+str(distbwt(job[0],job[1]))+"Nm "+job[5])
 			if (hdg<max_hdg and (hdg>min_hdg or min_hdg>max_hdg) or hdg>min_hdg and (hdg<max_hdg or min_hdg>max_hdg)):
 				print("Adding job "+job[0]+" to "+job[1]+" "+job[2]+" "+job[3]+" $"+str(job[4])+" "+job[5])
@@ -345,14 +260,6 @@ def walkthewalk(icaofrom,icaoto,chain,green,minpax,maxpax):
 				print("Dead end, no airports near"+icaoto)
 				return chain
 
-def chgdir(hdg,delt):
-	hdg+=delt
-	if hdg>360:
-		hdg-=360
-	elif hdg<0:
-		hdg+=360
-	return hdg
-
 def nearby(icao,rad):
 	#print("Looking for airports near "+icao)
 	near=""
@@ -360,11 +267,11 @@ def nearby(icao,rad):
 	for apt,coords in loc_dict.items():
 		if apt!=icao:
 			#print("Dist from "+str(clat)+" "+str(clon)+" to "+str(coords[0])+" "+str(coords[1]))
-			dist=cosinedist(clat,clon,coords[0],coords[1])
+			dist=fseutils.cosinedist(clat,clon,coords[0],coords[1])
 			if dist<rad:
 				if near=="":
 					near=apt
-				else:					
+				else:
 					near=near+"-"+apt
 	#print(near)
 	return near
@@ -383,10 +290,7 @@ def bigjobs(apts,dir):
 	print("Found these "+str(total)+" big jobs "+word+" those airports:")
 
 def main(argv):
-	file='/mnt/data/XPLANE10/XSDK/mykey.txt'
-	with open(file, 'r') as f:
-		mykey = f.readline()
-	mykey=mykey.strip()
+	mykey=fseutils.getkey()
 	chain=[]
 	checked=["","",""]
 	requests=[]
@@ -404,7 +308,7 @@ def main(argv):
 	fromregion=""
 	toregion=""
 	print("Building airport location dictionary from csv...")
-	loc_dict=build_csv()
+	loc_dict=fseutils.build_csv("latlon")
 	syntaxstring='fses.py -hcpsb -f <from ICAOs> -t <to ICAOs> -r <min pay> -m <min pax> -n <max pax> -g <from region> -u <to region>'
 	try:
 		opts, args = getopt.getopt(argv,"hcpf:t:r:m:n:g:u:",["from=","to=","minrev=","minpax=","maxpax=","fromregion=","toregion="])
@@ -419,8 +323,6 @@ def main(argv):
 			walk=1
 		elif opt=='-p':
 			planes=1
-		elif opt=='-s':
-			sale=1
 		elif opt=='-b':
 			big=1
 		elif opt in ("-r", "--minrev"):
@@ -460,17 +362,13 @@ def main(argv):
 		if toairports!="":
 			jobs=jobsto(toairports,minrev,maxpax)
 			printjobs(jobs,0)
-	if sale==1:
-		acforsale()
 	if planes==1:
 		dudewheresmyairplane()
 		jobs=jobsforairplanes(minrev)
 		printjobs(jobs,0)
-	
 	
 	print("Made "+str(len(requests))+" requests in "+str(requests[len(requests)-1]-requests[0])+" secs.")
 	print("Considered "+str(totalto)+" jobs to and "+str(totalfrom)+" jobs from airports.")
 
 if __name__ == "__main__":
    main(sys.argv[1:])
-   
