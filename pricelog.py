@@ -30,6 +30,7 @@ def acforsale(conn): #Log aircraft currently for sale
 		count=getmaxiter(conn)+1 #Index for this new iteration
 		now=time.strftime("%Y-%m-%d %H:%M", time.gmtime())
 		row=(count, now) #Record time and index of this iteration
+		c.execute('BEGIN TRANSACTION')
 		c.execute('INSERT INTO queries VALUES (?,?)',row) #Record date/time of this query
 		goodones=[] #List of aircraft criteria will be read from file
 		dirs=AppDirs("nattgew-xpp","Nattgew")
@@ -45,7 +46,7 @@ def acforsale(conn): #Log aircraft currently for sale
 		fields=(("SerialNumber", 1), ("MakeModel", 0), ("Location", 0), ("AirframeTime", 0), ("SalePrice", 2))
 		rows=[] #List to INSERT, each row is a tuple
 		bargains=[] #List of aircraft for sale matching criteria
-		for airplane in airplanes: #Record aircraft for sale
+		for airplane in airplanes: #Compile list of aircraft for sale
 			row=fseutils.getbtns(airplane,fields) #Extract the relevant fields
 			row[3]=int(row[3].split(":")[0]) #Get hours as int
 			row.append(count) #Add iteration to end
@@ -55,7 +56,6 @@ def acforsale(conn): #Log aircraft currently for sale
 					pricedelta=option[2]-row[4]
 					#bargains.append((option[1],option[1]+" | $"+str(row[4])+" <span class='discount'>(-"+str(pricedelta)+")</span> | "+str(row[3])+" hrs | "+row[2]))
 					bargains.append((option[1],row[4],pricedelta,row[3],row[2]))
-		c.execute('BEGIN TRANSACTION')
 		c.executemany('INSERT INTO allac VALUES (?,?,?,?,?,?)',rows) #Add all of the aircraft to the log
 		conn.commit()
 
@@ -77,8 +77,8 @@ def acforsale(conn): #Log aircraft currently for sale
 					#print("Updating: hours->"+str(listing[3])+"  lastiter->"+str(count))
 					c.execute('UPDATE listings SET lastiter = ?, hours = ? WHERE serial = ? AND lastiter = ?',(count, listing[3], listing[0], count-1))
 					updated+=1
-			print("Updated "+str(updated)+" and added "+str(added)+" entries for iter "+str(count))
 			conn.commit()
+			print("Updated "+str(updated)+" and added "+str(added)+" entries for iter "+str(count))
 
 		if bargains!=[]: #Found some bargains to send by email
 			bargains=fseutils.isnew(bargains,"bargains")
@@ -109,6 +109,7 @@ def salepickens(conn): #Convert log to compact format - in work
 	#Create a new table to hold the converted info
 	print("Creating new table...")
 	c.execute('BEGIN TRANSACTION')
+	#Assume new table does not exist
 	if sndb==0:
 		c.execute('''CREATE TABLE listings
 				 (serial int, type text, loc text, hours real, price real, firstiter int, lastiter int)''')
@@ -235,6 +236,7 @@ def logpaymonth(conn,fromdate): #Log a month of payments
 			rows.append(tuple(row))
 		#Add all processed rows to db
 		print("Adding to database...")
+		c.execute('BEGIN TRANSACTION')
 		c.executemany('INSERT INTO payments VALUES (?,?,?,?,?,?,?,?,?)',rows)
 		conn.commit()
 	else:
@@ -252,6 +254,7 @@ def logconfigs(conn): #Update database of aircraft configs
 		fields=(("MakeModel", 0), ("Crew", 1), ("Seats", 1), ("CruiseSpeed", 1), ("GPH", 1), ("FuelType", 1), ("MTOW", 1), ("EmptyWeight", 1), ("Price", 3), ("Ext1", 1), ("LTip", 1), ("LAux", 1), ("LMain", 1), ("Center1", 1), ("Center2", 1), ("Center3", 1), ("RMain", 1), ("RAux", 1), ("RTip", 1), ("Ext2", 1), ("Engines", 1), ("EnginePrice", 3))
 		print("Updating config data...")
 		#Process each aircraft
+		c.execute('BEGIN TRANSACTION')
 		for config in configs:
 			#Get the fields for this aircraft
 			row=fseutils.getbtns(config, fields)
@@ -276,7 +279,7 @@ def logconfigs(conn): #Update database of aircraft configs
 				#Couldn't find the aircraft in the db, adding new entry
 				print("Adding new config: "+row[0])
 				c.execute('INSERT INTO aircraft VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',row)
-			conn.commit()
+		conn.commit()
 		print("Configs up to date")
 
 def getdbcon(conn): #Get cursor for aircraft sale database
@@ -292,6 +295,7 @@ def getdbcon(conn): #Get cursor for aircraft sale database
 		exist=c.fetchone()
 		#print("Found " + str(exist[0]) + " tables...")
 		if exist[0]==0: #Tables do not exist, create tables
+			c.execute('BEGIN TRANSACTION')
 			print("No existing table found! Creating tables...")
 			c.execute('''CREATE TABLE allac
 				 (serial real, type text, loc text, hours real, price real, obsiter real)''')
@@ -309,6 +313,7 @@ def getdbcon(conn): #Get cursor for aircraft sale database
 			c.execute('''CREATE INDEX idx_type_list ON listings(type)''')
 			c.execute('''CREATE INDEX idx_price_list ON listings(price)''')
 			c.execute('''CREATE INDEX idx_lastiter ON listings(lastiter)''')
+			conn.commit()
 		else:
 			#Tables already exist, just check on last query time
 			c.execute('SELECT qtime FROM queries ORDER BY iter DESC')
@@ -327,9 +332,11 @@ def getpaydbcon(conn): #Get cursor for payment database
 		exist=c.fetchone()
 		if exist[0]==0: #Table does not exist, create table
 			print("No payments table found! Creating payment tables...")
+			c.execute('BEGIN TRANSACTION')
 			c.execute('''CREATE TABLE payments
 				 (date text, payto text, payfrom text, amount real, reason text, location text, aircraft text, pid real, comment text)''')
 			c.execute('''CREATE INDEX idx_pay_date ON payments(date)''')
+			conn.commit()
 		else:
 			c.execute('SELECT date FROM payments ORDER BY date DESC')
 			dtime=c.fetchone()
@@ -345,6 +352,7 @@ def getconfigdbcon(conn): #Get cursor for config database
 		exist=c.fetchone()
 		if exist[0]==0: #Table does not exist, create table
 			print("No config table found! Creating config tables...")
+			c.execute('BEGIN TRANSACTION')
 			c.execute('''CREATE TABLE aircraft
 				 (ac text, crew real, seats real, cruise real, gph real, fuel real, mtow real, ew real, price real, ext1 real, ltip real, laux real, lmain real, c1 real, c2 real, c3 real, rmain real, raux real, rtip real, ext2 real, fcap real, eng real, engprice real)''')
 			c.execute('''CREATE INDEX idx_conf_ac ON aircraft(ac)''')
@@ -352,6 +360,7 @@ def getconfigdbcon(conn): #Get cursor for config database
 			c.execute('''CREATE INDEX idx_conf_mtow ON aircraft(mtow)''')
 			c.execute('''CREATE INDEX idx_conf_ew ON aircraft(ew)''')
 			c.execute('''CREATE INDEX idx_conf_fcap ON aircraft(fcap)''')
+			conn.commit()
 		getconfigdbcon.has_been_called=True
 	return c
 
