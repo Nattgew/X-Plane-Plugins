@@ -53,7 +53,8 @@ def acforsale(conn): #Log aircraft currently for sale
 			for option in goodones: #Check if any sales meet criteria for notify
 				if row[1]==option[0] and row[4]<option[2] and row[3]<option[3]:
 					pricedelta=option[2]-row[4]
-					bargains.append(option[1]+" | $"+str(row[4])+" <span class='discount'>(-"+str(pricedelta)+")</span> | "+str(row[3])+" hrs | "+row[2])
+					#bargains.append((option[1],option[1]+" | $"+str(row[4])+" <span class='discount'>(-"+str(pricedelta)+")</span> | "+str(row[3])+" hrs | "+row[2]))
+					bargains.append((option[1],row[4],pricedelta,row[3],row[2]))
 		c.executemany('INSERT INTO allac VALUES (?,?,?,?,?,?)',rows) #Add all of the aircraft to the log
 		
 		if new==1:
@@ -77,9 +78,10 @@ def acforsale(conn): #Log aircraft currently for sale
 		conn.commit()
 		
 		if bargains!=[]: #Found some bargains to send by email
+			bargains=fseutils.isnew(bargains)
 			barglist=""
 			for bargain in bargains:
-				barglist+=bargain+"<br/>"
+				barglist+=bargain[0]+" | $"+str(bargain[1])+" <span class='discount'>(-"+str(bargain[2])+")</span> | "+str(bargain[3])+" hrs | "+bargain[4]+"<br/>"
 			msg=html_email_template_basic.format(aclist=barglist)
 			fseutils.sendemail("FSE Aircraft Deals",msg)
 
