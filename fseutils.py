@@ -24,6 +24,18 @@ def getkey(grp): #Returns API key stored in file
 		mykey=""
 	return mykey
 
+def getname(): #Returns username stored in file
+	dirs=AppDirs("nattgew-xpp","Nattgew")
+	filename=Path(dirs.user_data_dir).joinpath('mykey.txt')
+	try:
+		with filename.open() as f:
+			nothing = f.readline() #skip the key
+			myname = f.readline()
+			myname=myname.strip() #remove newline
+			return myname
+	except IOError:
+		print("Failed to open user key file")
+
 def getemail(): #Gets email info stored in file
 	dirs=AppDirs("nattgew-xpp","Nattgew")
 	filename=Path(dirs.user_data_dir).joinpath('creds.txt')
