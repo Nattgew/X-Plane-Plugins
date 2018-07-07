@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import math, sys, getopt, sqlite3
 import fseutils # My custom FSE functions
 from mpl_toolkits.basemap import Basemap

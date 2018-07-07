@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 import fseutils # My custom FSE functions
 
 ns = {'sfn': 'http://server.fseconomy.net'} #namespace for XML stuff

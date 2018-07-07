@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 import sys, getopt, sqlite3
 import locale, time
 import fseutils # My custom FSE functions

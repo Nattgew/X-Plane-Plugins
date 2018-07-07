@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 import smtplib, sys
 import fseutils # My custom FSE functions
 #import dicts # My script for custom dictionaries

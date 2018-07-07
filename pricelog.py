@@ -1052,7 +1052,6 @@ def main(argv): #This is where the magic happens
 		if pout:
 			actypes=[]
 			#Open the file specifying what types to plot
-			dirs=AppDirs("nattgew-xpp","Nattgew")
 			filename=Path(dirs.user_data_dir).joinpath('dailytypes.txt')
 			with filename.open() as f:
 				for actype in f:
