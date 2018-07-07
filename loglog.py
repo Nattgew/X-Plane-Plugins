@@ -3,11 +3,13 @@ import math, sys, getopt, sqlite3
 import fseutils # My custom FSE functions
 from mpl_toolkits.basemap import Basemap
 import matplotlib.pyplot as plt
+from appdirs import AppDirs
+from pathlib import Path
 
 def loglogmonth(conn,fromdate): #Log a month of logs
 	year,month,*rest=fromdate.split('-', 2)
 	print("Sending request for logs from "+month+"-"+year+"...")
-	logs = fseutils.fserequest(1,'query=flightlogs&search=monthyear&month='+month+'&year='+year,'FlightLog','xml')
+	logs = fseutils.fserequest_new('flightlogs','monthyear','FlightLog','xml',1,1,'&month='+month+'&year='+year)
 	if logs!=[]:
 		c=getlogdbcon(conn)
 		rows=[]
@@ -17,6 +19,7 @@ def loglogmonth(conn,fromdate): #Log a month of logs
 			row=fseutils.getbtns(log, fields)
 			row[2]=row[2].replace('/','-')
 			rows.append(tuple(row))
+		c.execute('BEGIN TRANSACTION')
 		c.executemany('INSERT INTO logs VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',rows)
 		conn.commit()
 	else:
@@ -30,6 +33,7 @@ def getlogdbcon(conn): #Get cursor for log database
 		exist=c.fetchone()
 		if exist[0]==0: #Table does not exist, create table
 			print("Creating log database tables...")
+			c.execute('BEGIN TRANSACTION')
 			c.execute('''CREATE TABLE logs
 				 (fid real, type text, date text, dist real, sn real, ac text, model text, dep text, arr text, fltime text, income real, pfee real, crew real, bkfee real, bonus real, fuel real, gndfee real, rprice real, rtype text, runits text, rcost real)''')
 			c.execute('''CREATE INDEX idx1 ON logs(date)''')
@@ -37,6 +41,7 @@ def getlogdbcon(conn): #Get cursor for log database
 			c.execute('''CREATE INDEX idx3 ON logs(dist)''')
 			c.execute('''CREATE INDEX idx4 ON logs(model)''')
 			c.execute('''CREATE INDEX idx5 ON logs(ac)''')
+			conn.commit()
 		else:
 			c.execute('SELECT date FROM logs ORDER BY date DESC')
 			dtime=c.fetchone()
@@ -223,7 +228,9 @@ def main(argv): #This is where the magic happens
 			stattype,stat=fseutils.gettype(arg)
 
 	if True in (logs, cmap, stat):
-		conn=sqlite3.connect('/mnt/data/XPLANE/XSDK/flightlogs.db')
+		dirs=AppDirs("nattgew-xpp","Nattgew")
+		filename=str(Path(dirs.user_data_dir).joinpath('flightlogs.db'))
+		conn=sqlite3.connect(filename)
 		if stat:
 			getapstats(conn,stattype)
 		if cmap:
