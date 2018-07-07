@@ -46,32 +46,35 @@ nosupp = []
 for fbo in commo: #Parse commodity info
 	#print(fbo)
 	icao = fseutils.gebtn(fbo,"Icao",0)
-	print("ICAO="+icao)
+	#print("ICAO="+icao)
 	f100 = int(fseutils.gebtn(fbo,"Fuel100LL",0))
-	print("f100="+str(f100))
+	#print("f100="+str(f100))
 	fja = int(fseutils.gebtn(fbo,"FuelJetA",0))
-	print("fja="+str(fja))
+	#print("fja="+str(fja))
 	days = int(fseutils.gebtn(fbo,"SuppliedDays",0))
-	print("days="+str(days))
+	#print("days="+str(days))
 	if fja<1:
-		nojeta.append((icao,round(fja/2.65)))
-	elif fja/2.65 < warnjeta+1:
-		lowjeta.append((icao,round(fja/2.65)))
-	if f100 < 0:
-		no100ll.append((icao,round(f100/2.65)))
-	elif f100 < warn100ll+1:
-		low100ll.append((icao,round(f100/2.65)))
-	if days < 1:
-		nosupp.append((icao,days))
-	elif days < warndays+1:
-		lowsupp.append((icao,days))
+		nojeta.append((icao,str(round(fja/2.65))))
+	elif fja/2.65 <= cautjeta:
+		lowjeta.append((icao,str(round(fja/2.65))))
+		#print(lowjeta)
+	if f100 < 1:
+		no100ll.append((icao,str(round(f100/2.65))))
+	elif f100 <= caut100ll:
+		low100ll.append((icao,str(round(f100/2.65))))
+		#print(low100ll)
+	if days <= warndays:
+		nosupp.append((icao,str(days)))
+	elif days <= cautdays:
+		lowsupp.append((icao,str(days)))
+		#print(lowsupp)
 #print(msg)
 lowjeta=fseutils.isnew(lowjeta,"lowjeta")
 low100ll=fseutils.isnew(low100ll,"low100ll")
 lowsupp=fseutils.isnew(lowsupp,"lowsupp")
-nojeta=fseutils.isnew(lowjeta,"nojeta")
-no100ll=fseutils.isnew(low100ll,"no100ll")
-nosupp=fseutils.isnew(lowsupp,"nosupp")
+nojeta=fseutils.isnew(nojeta,"nojeta")
+no100ll=fseutils.isnew(no100ll,"no100ll")
+nosupp=fseutils.isnew(nosupp,"nosupp")
 print("Building message...")
 msg=""
 #TODO: functions for these?
