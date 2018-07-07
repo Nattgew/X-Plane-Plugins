@@ -62,7 +62,7 @@ def sendemail(subj,msg,html=0): #Sends email
 	message['From'] = addr
 	message['To'] = addrto
 	message['Subject'] = subj
-	
+
 	try:
 		#print("Sending mail from "+addr+" to "+addrto)
 		server=smtplib.SMTP_SSL(srvr, 465)
@@ -87,7 +87,9 @@ def isnew(currents,filename):
 		with file.open() as f:
 			for oldnews in f: #Loop over all shortages in the file
 				for current in currents: #Loop over all current shortanges
-					if current[0]==oldnews: #Shortage was already listed in the file
+					#print('Comparing: "'+current[0]+'" vs. "'+oldnews.strip()+'"')
+					if current[0]==oldnews.strip(): #Shortage was already listed in the file
+						#print("Already notified on "+current[0])
 						repeats.append(current) #Full list item to be logged and removed from notification list
 						break
 		with file.open('w') as f: #Overwrite the file with the new list of shortages

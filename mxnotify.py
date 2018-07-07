@@ -76,6 +76,7 @@ for plane in airplanes:
 		mx=2
 	if mx>0: #Something is broken
 		row=fseutils.getbtns(plane, [("Registration", 0), ("MakeModel", 0), ("Location", 0)]) #License and registration please
+		print("Finding repair options for "+row[0])
 		shops=getshops(row[2]) #Get list of shops here
 		if len(shops)==0: #Start looking around
 			relatives=reldist(row[2]) #List of all airports sorted by closest to this one
@@ -84,8 +85,9 @@ for plane in airplanes:
 				if len(shops)>1: #Get a couple of options
 					break
 		aog.append((row[0],row[1],row[2],mx,shops)) #Reg, Type, Loc, repair, options
+print(aog)
 aog=fseutils.isnew(aog,"aog") #Remove aircraft already notified
-srvr,addrto,addr,passw=fseutils.getemail()
+print(aog)
 msg="Airplanes in need of repair:"
 #print(msg)
 if len(aog)>0:
