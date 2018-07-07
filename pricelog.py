@@ -12,7 +12,7 @@ def acforsale(conn): #Log aircraft currently for sale
 	airplanes = fseutils.fserequest_new('aircraft','forsale','Aircraft','xml',0,1)
 	if airplanes!=[]:
 		print("Recording data...")
-		new=0 #Whether to add to new table
+		new=1 #Whether to add to new table
 		c=getdbcon(conn)
 		d=getdbcon(conn)
 		count=getmaxiter(conn)+1 #Index for this new iteration
