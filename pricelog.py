@@ -39,7 +39,7 @@ def acforsale(conn): #Log aircraft currently for sale
 				if row[1]==option[0] and row[4]<option[2] and row[3]<option[3]:
 					pricedelta=option[2]-row[4]
 					#bargains.append((option[1],option[1]+" | $"+str(row[4])+" <span class='discount'>(-"+str(pricedelta)+")</span> | "+str(row[3])+" hrs | "+row[2]))
-					bargains.append((row[0],option[1],row[4],pricedelta,row[3],row[2]))
+					bargains.append((str(row[0]),option[1],row[4],pricedelta,row[3],row[2]))
 		#Keep adding to old table until new one is stable
 		c.executemany('INSERT INTO allac VALUES (?,?,?,?,?,?)',rows) #Add all of the aircraft to the log
 		#conn.commit()
