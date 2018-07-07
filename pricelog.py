@@ -39,7 +39,7 @@ def acforsale(conn): #Log aircraft currently for sale
 				if row[1]==option[0] and row[4]<option[2] and row[3]<option[3]:
 					pricedelta=option[2]-row[4]
 					#bargains.append((option[1],option[1]+" | $"+str(row[4])+" <span class='discount'>(-"+str(pricedelta)+")</span> | "+str(row[3])+" hrs | "+row[2]))
-					bargains.append((option[1],row[4],pricedelta,row[3],row[2]))
+					bargains.append((row[0],option[1],row[4],pricedelta,row[3],row[2]))
 		#Keep adding to old table until new one is stable
 		c.executemany('INSERT INTO allac VALUES (?,?,?,?,?,?)',rows) #Add all of the aircraft to the log
 		#conn.commit()
@@ -78,7 +78,7 @@ def acforsale(conn): #Log aircraft currently for sale
 			bargains=fseutils.isnew(bargains,"bargains")
 			barglist=""
 			for bargain in bargains:
-				barglist+=bargain[0]+" | $"+str(bargain[1])+" <span class='discount'>(-"+str(bargain[2])+")</span> | "+str(bargain[3])+" hrs | "+bargain[4]+"<br/>"
+				barglist+=bargain[1]+" | $"+str(bargain[2])+" <span class='discount'>(-"+str(bargain[3])+")</span> | "+str(bargain[4])+" hrs | "+bargain[5]+"<br/>"
 			if new==1: #Add info about added vs. updated entries in new table
 				barglist+="<br/>Updated "+str(updated)+" and added "+str(added)+" entries for iter "+str(count)
 			msg=html_email_template_basic.format(aclist=barglist)
