@@ -3,18 +3,13 @@ import sys, getopt, sqlite3
 import locale, time
 import fseutils # My custom FSE functions
 from datetime import timedelta, date
-
-def getname(): #Returns username stored in file
-	with open('/mnt/data/XPLANE10/XSDK/myfbokey.txt', 'r') as f:
-		nothing = f.readline()
-		myname = f.readline()
-	myname=myname.strip()
-	return myname
+from appdirs import AppDirs
+from pathlib import Path
 
 def logpaymonth(conn,fromdate): #Log a month of payments
 	year,month,*rest=fromdate.split('-', 2)
 	print("Sending request for payment listing...")
-	payments = fseutils.fserequest(1,'query=payments&search=monthyear&month='+month+'&year='+year,'Payment','xml')
+	payments = fseutils.fserequest_new('payments','monthyear','Payment','xml',1,1,'&month='+month+'&year='+year)
 	if payments!=[]:
 		c=getpaydbcon(conn)
 		rows=[]
@@ -26,6 +21,7 @@ def logpaymonth(conn,fromdate): #Log a month of payments
 				row[8]=""
 			row[0]=row[0].replace('/','-')
 			rows.append(tuple(row))
+		c.execute('BEGIN TRANSACTION')
 		c.executemany('INSERT INTO payments VALUES (?,?,?,?,?,?,?,?,?,?)',rows)
 		conn.commit()
 
@@ -37,9 +33,11 @@ def getpaydbcon(conn): #Get cursor for payment database
 		exist=c.fetchone()
 		if exist[0]==0: #Table does not exist, create table
 			print("Creating payment tables...")
+			c.execute('BEGIN TRANSACTION')
 			c.execute('''CREATE TABLE payments
 				 (date text, payto text, payfrom text, amount real, reason text, location text, fbo text, aircraft text, pid real, comment text)''')
 			c.execute('''CREATE INDEX idx1 ON payments(date)''')
+			conn.commit()
 		else:
 			c.execute('SELECT date FROM payments ORDER BY date DESC')
 			dtime=c.fetchone()
@@ -58,7 +56,7 @@ def getfborev(conn): #Gets the revenues for FBO's
 	for fbo in getfbos(conn):
 		revs.append([fbo,0,"",""]) #location, revenue total, first revenue, last revenue
 	#(date text, payto text, payfrom text, amount real, reason text, location text, fbo text, aircraft text, pid real, comment text)
-	for log in c.execute('SELECT date, amount, reason, fbo, comment FROM payments WHERE payto = ? ORDER BY date DESC',(getname(),)):
+	for log in c.execute('SELECT date, amount, reason, fbo, comment FROM payments WHERE payto = ? ORDER BY date DESC',(fseutils.getname(),)):
 		for cat in categories: #See if payment is a category we care about
 			if log[2]==cat:
 				for rev in revs: #See if payment is for FBO we care about
@@ -91,7 +89,7 @@ def getwkrev(conn): #Gets the revenue/week of FBO's
 	revs=[] #List of revenue per week for each week
 	fbos=getfbos(conn) #FBO's we care about
 	wk=0 #Track which week is being added
-	for pay in c.execute('SELECT date, amount, reason, fbo, comment FROM payments WHERE payto = ? ORDER BY date DESC',(getname(),)):
+	for pay in c.execute('SELECT date, amount, reason, fbo, comment FROM payments WHERE payto = ? ORDER BY date DESC',(fseutils.getname(),)):
 		for cat in categories:
 			if log[2]==cat:
 				for fbo in fbos:
@@ -115,7 +113,7 @@ def getfbos(conn): #Returns a list of all user's FBO's in the log
 	c=getpaydbcon(conn)
 	print("Getting list of FBO's...")
 	fbos=[]
-	for place in c.execute('SELECT DISTINCT fbo FROM payments WHERE payto = ?',(getname(),)):
+	for place in c.execute('SELECT DISTINCT fbo FROM payments WHERE payto = ?',(fseutils.getname(),)):
 		if place[0]!="N/A":
 			fbos.append(place[0])
 	return fbos
@@ -131,7 +129,7 @@ def getcommo(ctype): # Adds up locations and quantities of stuff to send to the 
 		print("Commodity type "+ctype+" not recognized!")
 	if t1 is not None:
 		print("Sending request for commodities...")
-		commo = fseutils.fserequest(1,'query=commodities&search=key','Commodity','xml')
+		commo = fseutils.fserequest_new('commodities','key','Commodity','xml',1,1)
 		print("Sorting results...")
 		stuff = []
 		for item in commo: #Parse commodity info
@@ -172,7 +170,7 @@ def getcommo(ctype): # Adds up locations and quantities of stuff to send to the 
 
 def plotpayments(conn,fromdate,todate): #Plot payment totals per category
 	c=getpaydbcon(conn)
-	user=getname()
+	user=fseutils.getname()
 	delta=timedelta(days=1)
 	fyear,fmonth,fday=fromdate.split('-', 2)
 	tyear,tmonth,tday=todate.split('-', 2)
@@ -243,7 +241,9 @@ def main(argv): #This is where the magic happens
 			plrev=True
 	
 		if True in (pay, plrev, maprev):
-			conn=sqlite3.connect('/mnt/data/XPLANE10/XSDK/fbopayments.db')
+			dirs=AppDirs("nattgew-xpp","Nattgew")
+			filename=str(Path(dirs.user_data_dir).joinpath('fbopayments.db'))
+			conn=sqlite3.connect(filename)
 			if pay:
 				logpaymonth(conn,fromdate)
 			if plrev:
