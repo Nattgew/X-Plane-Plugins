@@ -102,6 +102,7 @@ def isnew(currents,filename):
 	return currents
 
 def fserequest(ra,rqst,tagname,fmt): #Requests data in format, returns list of requested tag
+	print("**WARN** - This function is being deprecated, use the new function instead")
 	if ra==1: #Some queries seem to need this, others don't
 		rakey="&readaccesskey="+getkey(0)
 	else:
