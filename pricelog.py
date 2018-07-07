@@ -42,12 +42,12 @@ def acforsale(conn): #Log aircraft currently for sale
 					bargains.append((option[1],row[4],pricedelta,row[3],row[2]))
 		#Keep adding to old table until new one is stable
 		c.executemany('INSERT INTO allac VALUES (?,?,?,?,?,?)',rows) #Add all of the aircraft to the log
-		conn.commit()
+		#conn.commit()
 
 		if new==1: #Add to new table
 			added=0
 			updated=0
-			c.execute('BEGIN TRANSACTION')
+			#c.execute('BEGIN TRANSACTION')
 			for listing in rows:
 				if listing[2]=="In Flight":
 					#Don't select based on location of previous log
@@ -70,9 +70,10 @@ def acforsale(conn): #Log aircraft currently for sale
 						d.execute('UPDATE listings SET lastiter = ?, hours = ? WHERE serial = ? AND lastiter = ?',(count, listing[3], listing[0], count-1))
 					#print('-', end='', flush=True)
 					updated+=1
-			conn.commit()
+			#conn.commit()
 			print("Updated "+str(updated)+" and added "+str(added)+" entries for iter "+str(count))
 
+		conn.commit()
 		if bargains!=[]: #Found some bargains to send by email
 			bargains=fseutils.isnew(bargains,"bargains")
 			barglist=""
