@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 import math, sys, getopt, sqlite3
 import fseutils # My custom FSE functions
-from mpl_toolkits.basemap import Basemap
-import matplotlib.pyplot as plt
 from appdirs import AppDirs
 from pathlib import Path
 
@@ -50,6 +48,8 @@ def getlogdbcon(conn): #Get cursor for log database
 	return c
 
 def getapstats(conn,actype): #Return something about airplane flight logs
+	from mpl_toolkits.basemap import Basemap
+	import matplotlib.pyplot as plt
 	#(fid real, type text, time text, dist real, sn real, ac text, model text, dep text, arr text, fltime text, income real, pfee real, crew real, bkfee real, bonus real, fuel real, gndfee real, rprice real, rtype text, runits text, rcost real)
 	c=getlogdbcon(conn)
 	gals=0
@@ -159,6 +159,8 @@ def getcountries(conn): #Return list of countries?
 	return countries
 
 def mapcountries(countries): #Map list of countries?
+	from mpl_toolkits.basemap import Basemap
+	import matplotlib.pyplot as plt
 	fig = plt.figure(figsize=(11.7,8.3))
 	plt.subplots_adjust()
 	m = Basemap(projection='hammer', resolution=None, lon_0=0)
