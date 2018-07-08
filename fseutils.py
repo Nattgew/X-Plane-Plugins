@@ -1,11 +1,8 @@
 #!/usr/bin/python3
 import xml.etree.ElementTree as etree
-import urllib.request, math, csv, time
+import urllib.request, math, csv, time, sys
 import dicts # My script for custom dictionaries
-from datetime import datetime
-import smtplib, sys
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+from datetime import datetime 
 from appdirs import AppDirs
 from pathlib import Path
 
@@ -51,6 +48,9 @@ def getemail(): #Gets email info stored in file
 	return srvr,addrto,addr,passw
 
 def sendemail(subj,msg,html=0): #Sends email
+	import smtplib
+	from email.mime.multipart import MIMEMultipart
+	from email.mime.text import MIMEText
 	srvr,addrto,addr,passw=getemail()
 	#message="""\From: %s\nTo: %s\nSubject: %s\n\n%s""" % (addr, addrto, subj, msg)
 	if html==1:
