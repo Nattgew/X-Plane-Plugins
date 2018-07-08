@@ -344,7 +344,7 @@ def main(argv):
 			walkthewalk(fromairports,toairports,chain,0,minpax,maxpax)
 			printjobs(chain,1)
 		else:
-			print 'fses.py: need both from and to airports for -c chain option'
+			print('fses.py: need both from and to airports for -c chain option')
 			sys.exit(2)
 	elif big==1:
 		if fromairports!="":
