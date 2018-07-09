@@ -14,7 +14,7 @@ def acforsale(conn): #Log aircraft currently for sale
 		print("Recording data...")
 		new=1 #Whether to add to new table
 		c=getdbcon(conn)
-		d=getdbcon(conn)
+		#d=getdbcon(conn)
 		count=getmaxiter(conn)+1 #Index for this new iteration
 		now=time.strftime("%Y-%m-%d %H:%M", time.gmtime())
 		row=(count, now) #Record time and index of this iteration
@@ -35,11 +35,12 @@ def acforsale(conn): #Log aircraft currently for sale
 			row[3]=int(row[3].split(":")[0]) #Get hours as int
 			row.append(count) #Add iteration to end
 			rows.append(tuple(row)) #Add row as tuple to list
-			for option in goodones: #Check if any sales meet criteria for notify
-				if row[1]==option[0] and row[4]<option[2] and row[3]<option[3]:
-					pricedelta=option[2]-row[4]
-					#bargains.append((option[1],option[1]+" | $"+str(row[4])+" <span class='discount'>(-"+str(pricedelta)+")</span> | "+str(row[3])+" hrs | "+row[2]))
-					bargains.append((str(row[0]),option[1],row[4],pricedelta,row[3],row[2]))
+			if new==0:
+				for option in goodones: #Check if any sales meet criteria for notify
+					if row[1]==option[0] and row[4]<option[2] and row[3]<option[3]:
+						pricedelta=option[2]-row[4]
+						#bargains.append((option[1],option[1]+" | $"+str(row[4])+" <span class='discount'>(-"+str(pricedelta)+")</span> | "+str(row[3])+" hrs | "+row[2]))
+						bargains.append((str(row[0]),option[1],row[4],pricedelta,row[3],row[2]))
 		#Keep adding to old table until new one is stable
 		c.executemany('INSERT INTO allac VALUES (?,?,?,?,?,?)',rows) #Add all of the aircraft to the log
 		#conn.commit()
@@ -51,30 +52,39 @@ def acforsale(conn): #Log aircraft currently for sale
 			for listing in rows:
 				if listing[2]=="In Flight":
 					#Don't select based on location of previous log
-					d.execute('SELECT loc FROM listings WHERE serial = ? AND price = ? AND lastiter = ?',(listing[0], listing[4], count-1))
+					c.execute('SELECT loc FROM listings WHERE serial = ? AND price = ? AND lastiter = ?',(listing[0], listing[4], count-1))
 				else:
-					d.execute('SELECT loc FROM listings WHERE serial = ? AND price = ? AND (loc = ? OR loc = "In Flight") AND lastiter = ?',(listing[0], listing[4], listing[2], count-1))
-				result=d.fetchone()
+					c.execute('SELECT loc FROM listings WHERE serial = ? AND price = ? AND (loc = ? OR loc = "In Flight") AND lastiter = ?',(listing[0], listing[4], listing[2], count-1))
+				result=c.fetchone()
 				if result is None: #No exact match on previous iter, add new entry
 					newlisting=list(listing)
 					newlisting.append(count)
-					d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,?)',([value for value in newlisting]))
+					c.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,?)',([value for value in newlisting]))
+					for option in goodones: #Check if any sales meet criteria for notify
+						#Moved this here so we can avoid doing an isnew check, we already know it's a new listing
+						#This way it will notify if location/price change too
+						#TODO: indicate changes in price/location
+						if listing[1]==option[0] and listing[4]<option[2] and listing[3]<option[3]:
+							pricedelta=option[2]-listing[4]
+							#bargains.append((option[1],option[1]+" | $"+str(listing[4])+" <span class='discount'>(-"+str(pricedelta)+")</span> | "+str(listing[3])+" hrs | "+listing[2]))
+							bargains.append((str(listing[0]),option[1],listing[4],pricedelta,listing[3],listing[2]))
 					added+=1
 				else: #Exact match, update iter and hours, maybe location too
 					if result[0]=="In Flight":
 						#If previous log was "in flight" then update the location too
 						#It may still be "in flight" but whatever
-						d.execute('UPDATE listings SET lastiter = ?, hours = ?, loc = ? WHERE serial = ? AND lastiter = ?',(count, listing[3], listing[2], listing[0], count-1))
+						c.execute('UPDATE listings SET lastiter = ?, hours = ?, loc = ? WHERE serial = ? AND lastiter = ?',(count, listing[3], listing[2], listing[0], count-1))
 					else:
 						#If last log wasn't "in flight" then it must have matched location, or listing is "in flight", don't need to update
-						d.execute('UPDATE listings SET lastiter = ?, hours = ? WHERE serial = ? AND lastiter = ?',(count, listing[3], listing[0], count-1))
+						c.execute('UPDATE listings SET lastiter = ?, hours = ? WHERE serial = ? AND lastiter = ?',(count, listing[3], listing[0], count-1))
 					#print('-', end='', flush=True)
 					updated+=1
 			#conn.commit()
 			print("Updated "+str(updated)+" and added "+str(added)+" entries for iter "+str(count))
 
 		conn.commit()
-		bargains=fseutils.isnew(bargains,"bargains")
+		if new==0:
+			bargains=fseutils.isnew(bargains,"bargains")
 		if bargains!=[]: #Found some bargains to send by email
 			barglist=""
 			for bargain in bargains:
@@ -162,16 +172,20 @@ def salepickens(conn): #Convert log to compact format - in work
 							#print('-', end='', flush=True)
 							updated+=1
 					else: #Disregard hours, region must be same
-						d.execute('SELECT loc FROM listings WHERE serial = ? AND price = ? AND loc = ? AND lastiter = ?',(listing[0], listing[4], listing[2], i))
+						if listing[2]=="In Flight":
+							#Don't select based on location of previous log
+							d.execute('SELECT loc FROM listings WHERE serial = ? AND price = ? AND lastiter = ?',(listing[0], listing[4], i))
+						else:
+							d.execute('SELECT loc FROM listings WHERE serial = ? AND price = ? AND (loc = ? OR loc = "In Flight") AND lastiter = ?',(listing[0], listing[4], listing[2], i))
 						result=d.fetchone()
-						#Check if location is in same region as previous query
-						#TODO: Think about how to handle airborne aircraft here
-						if rdict[result[0]]!=rdict[listing[2]]: #Not same region, insert new row
+						if result is None or rdict[result[0]]!=rdict[listing[2]]: #No exact match on previous iter for exact or region, add new entry
 							newlisting=list(listing)
 							newlisting.append(i+1)
 							d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,?)',([value for value in newlisting]))
+							#print('+', end='', flush=True)
+							added+=1
 						else: #Same region, only last iter needs to be updated
-							d.execute('UPDATE listings SET lastiter = ?, loc = ? WHERE serial = ? AND price = ? AND lastiter = ? AND hours = ?',(i+1, listing[2], listing[0], listing[4], i, listing[3]))
+							d.execute('UPDATE listings SET lastiter = ?, loc = ?, hours = ? WHERE serial = ? AND lastiter = ?',(i+1, listing[2], listing[3], listing[0], i))
 				else: #This is the first iteration, just insert the data
 					d.execute('INSERT INTO listings VALUES (?,?,?,?,?,?,1.0)',([value for value in listing]))
 			else:
