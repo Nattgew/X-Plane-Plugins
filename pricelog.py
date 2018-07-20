@@ -8,6 +8,7 @@ from appdirs import AppDirs
 from pathlib import Path
 
 def acforsale(conn): #Log aircraft currently for sale
+	#TODO: make friendlier variable names for the lists
 	print("Sending request for sales listing...")
 	airplanes = fseutils.fserequest_new('aircraft','forsale','Aircraft','xml',0,1)
 	if airplanes!=[]:
@@ -30,6 +31,7 @@ def acforsale(conn): #Log aircraft currently for sale
 		fields=(("SerialNumber", 1), ("MakeModel", 0), ("Location", 0), ("AirframeTime", 0), ("SalePrice", 2))
 		rows=[] #List to INSERT, each row is a tuple
 		bargains=[] #List of aircraft for sale matching criteria
+		oldbargains=[]
 		for airplane in airplanes: #Compile list of aircraft for sale
 			row=fseutils.getbtns(airplane,fields) #Extract the relevant fields
 			row[3]=int(row[3].split(":")[0]) #Get hours as int
@@ -39,8 +41,9 @@ def acforsale(conn): #Log aircraft currently for sale
 				for option in goodones: #Check if any sales meet criteria for notify
 					if row[1]==option[0] and row[4]<option[2] and row[3]<option[3]:
 						pricedelta=option[2]-row[4]
+						discount=round(row[4]/option[2])
 						#bargains.append((option[1],option[1]+" | $"+str(row[4])+" <span class='discount'>(-"+str(pricedelta)+")</span> | "+str(row[3])+" hrs | "+row[2]))
-						bargains.append((str(row[0]),option[1],row[4],pricedelta,row[3],row[2]))
+						bargains.append((str(row[0]),option[1],row[4],pricedelta,discount,row[3],row[2]))
 		#Keep adding to old table until new one is stable
 		c.executemany('INSERT INTO allac VALUES (?,?,?,?,?,?)',rows) #Add all of the aircraft to the log
 		#conn.commit()
@@ -64,12 +67,16 @@ def acforsale(conn): #Log aircraft currently for sale
 						#Moved this here so we can avoid doing an isnew check, we already know it's a new listing
 						#This way it will notify if location/price change too
 						#TODO: indicate changes in price/location
+						#makemodel,type,price,hours
 						if listing[1]==option[0] and listing[4]<option[2] and listing[3]<option[3]:
 							pricedelta=option[2]-listing[4]
+							discount=round(row[4]/option[2])
 							#bargains.append((option[1],option[1]+" | $"+str(listing[4])+" <span class='discount'>(-"+str(pricedelta)+")</span> | "+str(listing[3])+" hrs | "+listing[2]))
-							bargains.append((str(listing[0]),option[1],listing[4],pricedelta,listing[3],listing[2]))
+							#serial(for comparison),type,price,delta,discount,hours,loc
+							bargains.append((str(listing[0]),option[1],listing[4],pricedelta,discount,listing[3],listing[2]))
 					added+=1
 				else: #Exact match, update iter and hours, maybe location too
+					oldbargains.append((str(listing[0]),option[1],listing[4],pricedelta,discount,listing[3],listing[2]))
 					if result[0]=="In Flight":
 						#If previous log was "in flight" then update the location too
 						#It may still be "in flight" but whatever
@@ -84,17 +91,27 @@ def acforsale(conn): #Log aircraft currently for sale
 
 		conn.commit()
 		if new==0:
-			bargains=fseutils.isnew(bargains,"bargains")
+			newbargains=fseutils.isnew(bargains,"bargains")
+			for newbargain in newbargains:
+				for oldbargain in bargains:
+					if oldbargain==newbargain: #Remove the new ones from the bargain list
+						bargians.remove(newbargain)
+			oldbargains=bargains
+			bargains=newbargains #Awkward but this will probably go away soon
 		if bargains!=[]: #Found some bargains to send by email
 			barglist=""
-			for bargain in bargains:
-				barglist+=bargain[1]+" | $"+str(bargain[2])+" <span class='discount'>(-"+str(bargain[3])+")</span> | "+str(bargain[4])+" hrs | "+bargain[5]+"<br/>"
+			for bargain in bargains: #Add new listings to message
+				barglist+=bargain[1]+" | $"+str(bargain[2])+" <span class='discount'>(-"+str(bargain[3])+" "+str(bargain[4])+")</span> | "+str(bargain[5])+" hrs | "+bargain[6]+"<br/>"
+			if oldbargains!=[]: #Add old listings to message
+				barglist+="<br/>Listed aircraft already notified:<br/>"
+				for bargain in oldbargains:
+					barglist+=bargain[1]+" | $"+str(bargain[2])+" <span class='discount'>(-"+str(bargain[3])+" "+str(bargain[4])+")</span> | "+str(bargain[5])+" hrs | "+bargain[6]+"<br/>"
 			if new==1: #Add info about added vs. updated entries in new table
 				barglist+="<br/>Updated "+str(updated)+" and added "+str(added)+" entries for iter "+str(count)
 			msg=html_email_template_basic.format(aclist=barglist)
 			fseutils.sendemail("FSE Aircraft Deals",msg,1)
 
-def salepickens(conn): #Convert log to compact format - in work
+def salepickens(conn): #Convert log to compact format
 	#Making a new table where each entry has a range of observations instead of one
 	#This reduces the number of rows for aircraft that continue to show up for sale, at the cost of another column
 	#Right now it is set up to optionally group listings by region or country
