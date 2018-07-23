@@ -6,7 +6,9 @@ from datetime import datetime
 from appdirs import AppDirs
 from pathlib import Path
 
-def getkey(grp): #Returns API key stored in file
+#TODO: add function to get appdirs so it's standardized
+
+def getkey(grp=0): #Returns API key stored in file
 	dirs=AppDirs("nattgew-xpp","Nattgew")
 	if grp==0: #User key
 		filename=Path(dirs.user_data_dir).joinpath('mykey.txt')
@@ -78,6 +80,7 @@ def sendemail(subj,msg,html=0): #Sends email
 
 def isnew(currents,filename):
 	#This function prevents repeat notifications for the same situation
+	#TODO: also return inverse list of old items?
 	dirs=AppDirs("nattgew-xpp","Nattgew")
 	file=Path(dirs.user_data_dir).joinpath(filename+'.txt')
 	try:
@@ -210,7 +213,7 @@ def gebtn(field,tag,nsb=1): #Shorter way to get tags
 	return tags
 
 def getbtns(field,tags): #Shorter way to get list of tags
-	ns = {'sfn': 'http://server.fseconomy.net'} #namespace for XML stuff
+	#ns = {'sfn': 'http://server.fseconomy.net'} #namespace for XML stuff
 	vals=[]
 	for tag in tags: #Converts value based on second field
 		val=gebtn(field,tag[0])
