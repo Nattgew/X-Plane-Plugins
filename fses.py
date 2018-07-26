@@ -5,6 +5,11 @@ import fseutils # My custom FSE functions
 from appdirs import AppDirs
 from pathlib import Path
 
+requests=[]
+checked=["","",""]
+totalto=0
+totalfrom=0
+
 def request_throttle(qry,srch,tagname,ra,more=""):
 	global requests
 	now=int(time.time())
@@ -199,8 +204,8 @@ def build_xplane_locations(): #keeping this in case FSE csv file fails
 def walkthewalk(icaofrom,icaoto,chain,green,minpax,maxpax):
 	print("Walking from "+icaofrom+" to "+icaoto)
 	global checked
-	print("Basic direction from "+icaoto[0:4]+" to "+icaofrom)
-	hdg=fseutils.dirbwt(icaoto[0:4],icaofrom)
+	print("Basic direction from "+icaoto+" to "+icaofrom)
+	hdg=fseutils.dirbwt(icaoto,icaofrom)
 	if green>0:
 		min=-120
 		max=120
@@ -263,6 +268,7 @@ def walkthewalk(icaofrom,icaoto,chain,green,minpax,maxpax):
 def nearby(icao,rad):
 	#print("Looking for airports near "+icao)
 	near=""
+	loc_dict=fseutils.build_csv("latlon")
 	clat,clon=loc_dict[icao]
 	for apt,coords in loc_dict.items():
 		if apt!=icao:
@@ -292,10 +298,10 @@ def bigjobs(apts,dir):
 def main(argv):
 	mykey=fseutils.getkey()
 	chain=[]
-	checked=["","",""]
-	requests=[]
-	totalto=0
-	totalfrom=0
+	global checked
+	global requests
+	global totalto
+	global totalfrom
 	walk=0
 	planes=0
 	sale=0
@@ -308,7 +314,6 @@ def main(argv):
 	fromregion=""
 	toregion=""
 	print("Building airport location dictionary from csv...")
-	loc_dict=fseutils.build_csv("latlon")
 	syntaxstring='fses.py -hcpsb -f <from ICAOs> -t <to ICAOs> -r <min pay> -m <min pax> -n <max pax> -g <from region> -u <to region>'
 	try:
 		opts, args = getopt.getopt(argv,"hcpf:t:r:m:n:g:u:",["from=","to=","minrev=","minpax=","maxpax=","fromregion=","toregion="])
@@ -366,7 +371,7 @@ def main(argv):
 		dudewheresmyairplane()
 		jobs=jobsforairplanes(minrev)
 		printjobs(jobs,0)
-	
+
 	print("Made "+str(len(requests))+" requests in "+str(requests[len(requests)-1]-requests[0])+" secs.")
 	print("Considered "+str(totalto)+" jobs to and "+str(totalfrom)+" jobs from airports.")
 
