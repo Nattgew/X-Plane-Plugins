@@ -6,7 +6,7 @@ from datetime import datetime
 from appdirs import AppDirs
 from pathlib import Path
 
-def getkey(grp): #Returns API key stored in file
+def getkey(grp=0): #Returns API key stored in file
 	dirs=AppDirs("nattgew-xpp","Nattgew")
 	if grp==0: #User key
 		filename=Path(dirs.user_data_dir).joinpath('mykey.txt')
