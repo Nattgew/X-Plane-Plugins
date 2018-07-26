@@ -76,7 +76,7 @@ def acforsale(conn): #Log aircraft currently for sale
 							bargains.append((str(listing[0]),option[1],listing[4],pricedelta,discount,listing[3],listing[2]))
 					added+=1
 				else: #Exact match, update iter and hours, maybe location too
-					oldbargains.append((str(listing[0]),option[1],listing[4],pricedelta,discount,listing[3],listing[2]))
+					oldbargains.append((str(listing[0]),listing[1],listing[4],pricedelta,discount,listing[3],listing[2]))
 					if result[0]=="In Flight":
 						#If previous log was "in flight" then update the location too
 						#It may still be "in flight" but whatever
