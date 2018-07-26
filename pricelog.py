@@ -76,7 +76,15 @@ def acforsale(conn): #Log aircraft currently for sale
 							bargains.append((str(listing[0]),option[1],listing[4],pricedelta,discount,listing[3],listing[2]))
 					added+=1
 				else: #Exact match, update iter and hours, maybe location too
-					oldbargains.append((str(listing[0]),listing[1],listing[4],pricedelta,discount,listing[3],listing[2]))
+					for option in goodones: #Check if any sales meet criteria for notify
+						#Moved this here so we can avoid doing an isnew check, we already know it's a new listing
+						#This way it will notify if location/price change too
+						#TODO: indicate changes in price/location
+						#makemodel,type,price,hours
+						if listing[1]==option[0] and listing[4]<option[2] and listing[3]<option[3]:
+							pricedelta=option[2]-listing[4]
+							discount=round(row[4]/option[2])
+							oldbargains.append((str(listing[0]),option[1],listing[4],pricedelta,discount,listing[3],listing[2]))
 					if result[0]=="In Flight":
 						#If previous log was "in flight" then update the location too
 						#It may still be "in flight" but whatever
