@@ -41,7 +41,7 @@ def acforsale(conn): #Log aircraft currently for sale
 				for option in goodones: #Check if any sales meet criteria for notify
 					if row[1]==option[0] and row[4]<option[2] and row[3]<option[3]:
 						pricedelta=option[2]-row[4]
-						discount=round(row[4]/option[2]*100)
+						discount=round((1-row[4]/option[2])*100)
 						#bargains.append((option[1],option[1]+" | $"+str(row[4])+" <span class='discount'>(-"+str(pricedelta)+")</span> | "+str(row[3])+" hrs | "+row[2]))
 						bargains.append((str(row[0]),option[1],row[4],pricedelta,discount,row[3],row[2]))
 		#Keep adding to old table until new one is stable
@@ -70,7 +70,7 @@ def acforsale(conn): #Log aircraft currently for sale
 						#makemodel,type,price,hours
 						if listing[1]==option[0] and listing[4]<option[2] and listing[3]<option[3]:
 							pricedelta=option[2]-listing[4]
-							discount=round(row[4]/option[2]*100)
+							discount=round((1-row[4]/option[2])*100)
 							#bargains.append((option[1],option[1]+" | $"+str(listing[4])+" <span class='discount'>(-"+str(pricedelta)+")</span> | "+str(listing[3])+" hrs | "+listing[2]))
 							#serial(for comparison),type,price,delta,discount,hours,loc
 							bargains.append((str(listing[0]),option[1],listing[4],pricedelta,discount,listing[3],listing[2]))
@@ -83,7 +83,7 @@ def acforsale(conn): #Log aircraft currently for sale
 						#makemodel,type,price,hours
 						if listing[1]==option[0] and listing[4]<option[2] and listing[3]<option[3]:
 							pricedelta=option[2]-listing[4]
-							discount=round(row[4]/option[2]*100)
+							discount=round((1-row[4]/option[2])*100)
 							oldbargains.append((str(listing[0]),option[1],listing[4],pricedelta,discount,listing[3],listing[2]))
 					if result[0]=="In Flight":
 						#If previous log was "in flight" then update the location too
@@ -113,7 +113,7 @@ def acforsale(conn): #Log aircraft currently for sale
 			if oldbargains!=[]: #Add old listings to message
 				barglist+="<br/>Listed aircraft already notified:<br/>"
 				for bargain in oldbargains:
-					barglist+=bargain[1]+" | $"+str(bargain[2])+" <span class='discount'>(-"+str(bargain[3])+" "+str(bargain[4])+")</span> | "+str(bargain[5])+" hrs | "+bargain[6]+"<br/>"
+					barglist+=bargain[1]+" | $"+str(bargain[2])+" <span class='discount'>(-"+str(bargain[3])+" "+str(bargain[4])+"%)</span> | "+str(bargain[5])+" hrs | "+bargain[6]+"<br/>"
 			if new==1: #Add info about added vs. updated entries in new table
 				barglist+="<br/>Updated "+str(updated)+" and added "+str(added)+" entries for iter "+str(count)
 			msg=html_email_template_basic.format(aclist=barglist)
