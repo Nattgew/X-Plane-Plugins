@@ -109,11 +109,11 @@ def acforsale(conn): #Log aircraft currently for sale
 		if bargains!=[]: #Found some bargains to send by email
 			barglist=""
 			for bargain in bargains: #Add new listings to message
-				barglist+=bargain[1]+" | $"+str(bargain[2])+" <span class='discount'>(-"+str(bargain[3])+" "+str(bargain[4])+")</span> | "+str(bargain[5])+" hrs | "+bargain[6]+"<br/>"
+				barglist+=bargain[1]+" | $"+str(bargain[2])+" <span class='discount'>(-$"+str(bargain[3])+" "+str(bargain[4])+"%)</span> | "+str(bargain[5])+" hrs | "+bargain[6]+"<br/>"
 			if oldbargains!=[]: #Add old listings to message
 				barglist+="<br/>Listed aircraft already notified:<br/>"
 				for bargain in oldbargains:
-					barglist+=bargain[1]+" | $"+str(bargain[2])+" <span class='discount'>(-"+str(bargain[3])+" "+str(bargain[4])+"%)</span> | "+str(bargain[5])+" hrs | "+bargain[6]+"<br/>"
+					barglist+=bargain[1]+" | $"+str(bargain[2])+" <span class='discount'>(-$"+str(bargain[3])+" "+str(bargain[4])+"%)</span> | "+str(bargain[5])+" hrs | "+bargain[6]+"<br/>"
 			if new==1: #Add info about added vs. updated entries in new table
 				barglist+="<br/>Updated "+str(updated)+" and added "+str(added)+" entries for iter "+str(count)
 			msg=html_email_template_basic.format(aclist=barglist)
