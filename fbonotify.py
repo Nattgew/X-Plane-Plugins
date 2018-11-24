@@ -64,8 +64,15 @@ def supmsg(clist,no,type):
 		msg+="\n"
 	return msg
 
-for clist in nosupp,lowsupp,nojeta,lowjeta,no100ll,low100ll:
-	msg+=supmsg(clist)
+#for clist in nosupp,lowsupp,nojeta,lowjeta,no100ll,low100ll:
+#	msg+=supmsg(clist)
+
+msg+=supmsg(nosupp,1,"supplies")
+msg+=supmsg(lowsupp,0,"supplies")
+msg+=supmsg(nojeta,1,"jeta")
+msg+=supmsg(lowjeta,0,"jeta")
+msg+=supmsg(no100ll,1,"100ll")
+msg+=supmsg(low100ll,0,"100ll")
 
 # if len(nosupp)>0:
 	# msg+="Airports with NO supplies:\n"
