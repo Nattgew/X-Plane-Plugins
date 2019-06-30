@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-import sys
+
 import fseutils # My custom FSE functions
 from appdirs import AppDirs
 from pathlib import Path
@@ -56,7 +56,7 @@ def isnew(needfixes):
 			#print("Removing "+oldie[0]+" from notify list")
 			needfixes.remove(oldie)
 	except IOError:
-		print("Could not open file: "+str(file))
+		print("Could not open file: "+str(filename))
 	return needfixes
 
 ns = {'sfn': 'http://server.fseconomy.net'} #namespace for XML stuff
