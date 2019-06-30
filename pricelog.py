@@ -2,8 +2,8 @@
 import dicts # My script for custom dictionaries
 import fseutils # My custom FSE functions
 from fsetemplates import html_email_template_basic
-import csv, sqlite3, time, math, sys, getopt
-from datetime import timedelta, date, datetime
+import sqlite3, time, math, sys, getopt
+from datetime import timedelta, date
 from appdirs import AppDirs
 from pathlib import Path
 
@@ -103,7 +103,7 @@ def acforsale(conn): #Log aircraft currently for sale
 			for newbargain in newbargains:
 				for oldbargain in bargains:
 					if oldbargain==newbargain: #Remove the new ones from the bargain list
-						bargians.remove(newbargain)
+						bargains.remove(newbargain)
 			oldbargains=bargains
 			bargains=newbargains #Awkward but this will probably go away soon
 		if bargains!=[]: #Found some bargains to send by email
@@ -436,7 +436,7 @@ def gettimeforsale(conn,timetype): # Get data for all ac of timetype for sale
 		#for qp in d.execute('SELECT price, obsiter FROM allac WHERE serial = ?',(dac[0],)):
 		for qp in d.execute('SELECT price, firstiter, lastiter FROM listings WHERE serial = ?',(dac[0],)):
 			for j in range(qp[1],qp[2]): #Add each iter in the range to the list
-				qtime=e.execute('SELECT qtime FROM queries WHERE iter = ?',(j,)) #Get date/time of this iter
+				e.execute('SELECT qtime FROM queries WHERE iter = ?',(j,)) #Get date/time of this iter
 				date=fseutils.getdtime(e.fetchone()[0])
 				#print("AC: "+str(dac[0])+"  "+str(date)+": "+str(qp[0]))
 				#Add this listing to the list for this aircraft
@@ -1029,7 +1029,7 @@ def main(argv): #This is where the magic happens
 		elif opt=="-z": #Temporary - Converts db to fancy new format
 			com=True
 	print("Running option...")
-	
+
 	#Functions using the payments db
 	if True in (pay, ppay, spay, stot, fuel):
 		filename=str(Path(dirs.user_data_dir).joinpath('payments.db'))
@@ -1089,7 +1089,7 @@ def main(argv): #This is where the magic happens
 				print(str(listings[2])+": "+str(duration))
 			fseutils.plotdates([durations],"Time to sell for "+durtype,"Days",['o-'],None,0)
 		if pout:
-			actypes=[]
+			#actypes=[]
 			#Open the file specifying what types to plot
 			filename=Path(dirs.user_data_dir).joinpath('dailytypes.txt')
 			with filename.open() as f:
