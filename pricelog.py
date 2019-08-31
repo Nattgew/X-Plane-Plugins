@@ -273,6 +273,7 @@ def logpaymonth(conn,fromdate,group,fbo): #Log a month of payments
 			#Set null comments to blank
 			if row[8]=="null":
 				row[8]=""
+			row[9] = row[9][:4]
 			#Replace slashes in date with dashes
 			row[0]=row[0].replace('/','-')
 			#Add to list for later db insertion
