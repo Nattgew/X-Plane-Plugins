@@ -256,7 +256,7 @@ def gettypesns(conn,type): #Look up serial numbers for an aircraft type
 		serials.append(row[0])
 	return serials
 
-def logpaymonth(conn,fromdate,group): #Log a month of payments
+def logpaymonth(conn,fromdate,group,fbo): #Log a month of payments
 	year,month,*rest=fromdate.split('-', 2) #Get the year and month from the date
 	print("Sending request for payment listing for "+fromdate+"...")
 	ra = 2 if group else 1
@@ -265,7 +265,7 @@ def logpaymonth(conn,fromdate,group): #Log a month of payments
 		c=getpaydbcon(conn)
 		rows=[] #To hold processed rows
 		#Fields to log
-		fields=(("Date", 0), ("To", 0), ("From", 0), ("Amount", 2), ("Reason", 0), ("Location", 0), ("Id", 1), ("Aircraft", 0), ("Comment", 0))
+		fields=(("Date", 0), ("To", 0), ("From", 0), ("Amount", 2), ("Reason", 0), ("Location", 0), ("Id", 1), ("Aircraft", 0), ("Comment", 0), ("Fbo", 0))
 		print("Processing data...")
 		for payment in payments: #Process the results
 			#Get all of the fields we want to log
@@ -280,7 +280,7 @@ def logpaymonth(conn,fromdate,group): #Log a month of payments
 		#Add all processed rows to db
 		print("Adding to database...")
 		c.execute('BEGIN TRANSACTION')
-		c.executemany('INSERT INTO payments VALUES (?,?,?,?,?,?,?,?,?)',rows)
+		c.executemany('INSERT INTO payments VALUES (?,?,?,?,?,?,?,?,?,?)',rows)
 		conn.commit()
 	else:
 		print("No payments received for: "+'query=payments&search=monthyear&month='+month+'&year='+year,'Payment')
@@ -377,7 +377,7 @@ def getpaydbcon(conn): #Get cursor for payment database
 			print("No payments table found! Creating payment tables...")
 			c.execute('BEGIN TRANSACTION')
 			c.execute('''CREATE TABLE payments
-				 (date text, payto text, payfrom text, amount real, reason text, location text, aircraft text, pid real, comment text)''')
+				 (date text, payto text, payfrom text, amount real, reason text, location text, aircraft text, pid real, comment text, fbo text)''')
 			c.execute('''CREATE INDEX idx_pay_date ON payments(date)''')
 			conn.commit()
 		else:
@@ -719,11 +719,11 @@ def mapaclocations(conn, actype): #Map locations of aircraft type for sale
 	if len(locations)>0:
 		fseutils.mapper('ac', locations, cmin, cmax, title)
 
-def plotpayments(conn,fromdate,todate): #Plot payment totals per category
+def plotpayments(conn,fromdate,todate,group,fbo): #Plot payment totals per category
 	#For getting the payment data
 	c=getpaydbcon(conn)
 	#Get user name
-	user=fseutils.getname()
+	user=fseutils.getname(group)
 	#timedelta of one day
 	delta=timedelta(days=1)
 	#Fields for from date
@@ -734,9 +734,9 @@ def plotpayments(conn,fromdate,todate): #Plot payment totals per category
 	fdate=date(int(fyear),int(fmonth),int(fday))
 	tdate=date(int(tyear),int(tmonth),int(tday))
 	#Initialize the payment lists
-	rentexp, rentinc, assnmtexp, assnmtinc, pltfee, addcrewfee, gndcrewfee, bkgfee, ref100, refjet, mxexp, eqinstl, acsold, acbought, fboref100, fborefjet, fbogndcrew, fborepinc, fborepexp, fboeqpexp, fboeqpinc, ptrentinc, ptrentexp, fbosell, fbobuy, wsbuy100, wssell100, wsbuyjet, wsselljet, wsbuybld, wssellbld, wsbuysupp, wssellsupp, grpay=([[fdate,0]] for i in range(34))
+	rentexp, rentinc, assnmtexp, assnmtinc, pltfee, addcrewfee, gndcrewfee, bkgfee, ref100, refjet, mxexp, eqinstl, acsold, acbought, fboref100, fborefjet, fbogndcrew, fborepinc, fborepexp, fboeqpexp, fboeqpinc, ptrentinc, ptrentexp, fbosell, fbobuy, wsbuy100, wssell100, wsbuyjet, wsselljet, wsbuybld, wssellbld, wsbuysupp, wssellsupp, grpay, inctot, exptot, fbosell, fbobuy=([[fdate,0]] for i in range(38))
 	#List of list names
-	allthat=[rentexp, rentinc, assnmtexp, assnmtinc, pltfee, addcrewfee, gndcrewfee, bkgfee, ref100, refjet, mxexp, eqinstl, acsold, acbought, fboref100, fborefjet, fbogndcrew, fborepinc, fborepexp, fboeqpexp, fboeqpinc, ptrentinc, ptrentexp, fbosell, fbobuy, wsbuy100, wssell100, wsbuyjet, wsselljet, wsbuybld, wssellbld, wsbuysupp, wssellsupp, grpay]
+	allthat=[rentexp, rentinc, assnmtexp, assnmtinc, pltfee, addcrewfee, gndcrewfee, bkgfee, ref100, refjet, mxexp, eqinstl, acsold, acbought, fboref100, fborefjet, fbogndcrew, fborepinc, fborepexp, fboeqpexp, fboeqpinc, ptrentinc, ptrentexp, fbosell, fbobuy, wsbuy100, wssell100, wsbuyjet, wsselljet, wsbuybld, wssellbld, wsbuysupp, wssellsupp, grpay, inctot, exptot, fbosell, fbobuy]
 	#Category names for the different payment types, and corresponding lists
 	#[1] is income, [2] is expense
 	categories=[("Rental of aircraft", rentinc, rentexp),
@@ -754,6 +754,7 @@ def plotpayments(conn,fromdate,todate): #Plot payment totals per category
 				("Sale of building materials", wssellbld, wsbuybld),
 				("Group payment", grpay, grpay),
 				("Pilot fee", pltfee, pltfee),
+				("FBO sale", fbosell, fbobuy),
 				("Installation of equipment in aircraft", fboeqpinc, eqinstl)]
 	i=0
 	print('Tallying daily payments from %i-%i to %i-%i...' % (fdate.year,fdate.month,tdate.year,tdate.month))
@@ -772,16 +773,19 @@ def plotpayments(conn,fromdate,todate): #Plot payment totals per category
 				if payment[2]==cat[0]: #Test if category name matches
 					if payment[0]!=user: #If payment not from user, it is income
 						cat[1][i][1]+=payment[1]
+						inctot[i][1] += payment[1]
 					else: #It is expense
+						#print("Expense: "+str(payment))
 						cat[2][i][1]+=payment[1]
+						exptot[i][1] += payment[1]
 					break
 		#Next day
 		fdate += delta
 		i += 1
 	#I guess we're just plotting these expenses for now
-	fseutils.plotdates([fborefjet, grpay, fbogndcrew],"Money","Money",['-'],None,0)
+	fseutils.plotdates([inctot, exptot],"Money","Money",['-'],["g","r"],0)
 
-def sumpayments(conn,fdate,tdate): #Plot portion of income/expense per category
+def sumpayments(conn,fdate,tdate,group,fbo): #Plot portion of income/expense per category
 	c=getpaydbcon(conn)
 	#Income
 	rentinc=[0,"Rental income"]
@@ -836,7 +840,7 @@ def sumpayments(conn,fdate,tdate): #Plot portion of income/expense per category
 				("Pilot fee", pltfee, pltfee),
 				("Installation of equipment in aircraft", fboeqpinc, eqinstl),
 				("Ownership Fee", ownership, ownership)]
-	user=fseutils.getname()
+	user=fseutils.getname(group)
 	fromdate=fdate+" 00:01"
 	todate=tdate+" 23:59"
 	print("Tallying payments from "+str(fdate[0])+"-"+str(fdate[1])+" to "+str(tdate[0])+"-"+str(tdate[1])+"...")
@@ -881,7 +885,7 @@ def sumpayments(conn,fdate,tdate): #Plot portion of income/expense per category
 	fseutils.pieplot(revs,None,5,"Revenues")
 	fseutils.pieplot(exps,None,5,"Expenses")
 
-def sumacpayments(conn,fdate,tdate): #Plot revenue portion by aircraft
+def sumacpayments(conn,fdate,tdate,group,fbo): #Plot revenue portion by aircraft
 	c=getpaydbcon(conn)
 	d=getpaydbcon(conn)
 	#Income
@@ -910,7 +914,7 @@ def sumacpayments(conn,fdate,tdate): #Plot revenue portion by aircraft
 				("Aircraft sale", acbuy, acbuy),
 				("Pilot fee", pltfee, pltfee),
 				("Installation of equipment in aircraft", z, eqinstl)]
-	user=fseutils.getname()
+	user=fseutils.getname(group)
 	fromdate=fdate+" 00:01"
 	todate=tdate+" 23:59"
 	ac=[]
@@ -942,6 +946,7 @@ def main(argv): #This is where the magic happens
 	syntaxstring=("pricelog.py -acdgm <aircraft> -hjknpqsuvz -e <fuel/mtrls> -ft <YYYY-MM-DD> -il <price>\n"
 			" Options:\n"
 			"   -a, --average     Plots average prices for a type (type required)\n"
+			"   -b, --fbo         Specify FBO (for payments)"
 			"   -c, --cheapest    Plots cheapest prices for a type (type required)\n"
 			"   -d, --duration    Plots time for a type to sell (type required) (in work)\n"
 			"   -e, --commodity   Maps locations and amounts of commodities (type required)\n"
@@ -964,8 +969,8 @@ def main(argv): #This is where the magic happens
 			"   -t, --to          To date\n"
 			"   -i, --high        Highest price\n"
 			"   -l, --low         Lowest price\n")
-	try: #_b___________no__r_____x__
-		opts, args = getopt.getopt(argv,"a:c:d:e:f:gh:i:jkl:m:opqst:uvwy:z",["duration=","map=","average=","cheapest=","from=","to=","low=","high=","total=","help=","commodity=","timeforsale="])
+	try: #_____________n___r_____x__
+		opts, args = getopt.getopt(argv,"a:b:c:d:e:f:gh:i:jkl:m:opqst:uvwy:z",["fbo=","duration=","map=","average=","cheapest=","from=","to=","low=","high=","total=","help=","commodity=","timeforsale="])
 	except getopt.GetoptError:
 		print(syntaxstring)
 		sys.exit(2)
@@ -974,6 +979,7 @@ def main(argv): #This is where the magic happens
 	getdbcon.has_been_called=False #To know when it's the first cursor initialized
 	getpaydbcon.has_been_called=False
 	getconfigdbcon.has_been_called=False
+	fbo = None
 	#Defaults
 	highprice=99999999
 	#TODO: Make default date range from first data to last data instead of hardcoded range
@@ -983,6 +989,8 @@ def main(argv): #This is where the magic happens
 	for opt, arg in opts:
 		if opt in ("-a", "--average"): #Plots average prices for type
 			avgtype,avg=fseutils.gettype(arg)
+		elif opt in ("-f", "--fbo"): #Get FBO to use for plotpayments
+			fbo=arg
 		elif opt in ("-c", "--cheapest"): #Plots the cheapest aircraft of this type
 			lowtype,low=fseutils.gettype(arg)
 		elif opt in ("-d", "--duration"): #Calculates duration to sell for a type (in work)
@@ -1042,13 +1050,13 @@ def main(argv): #This is where the magic happens
 			filename=str(Path(dirs.user_data_dir).joinpath('payments.db'))
 		conn=sqlite3.connect(filename)
 		if pay:
-			logpaymonth(conn,fromdate,group)
+			logpaymonth(conn,fromdate,group, fbo)
 		if ppay:
-			plotpayments(conn,fromdate,todate)
+			plotpayments(conn,fromdate,todate,group, fbo)
 		if spay:
-			sumpayments(conn,fromdate,todate)
+			sumpayments(conn,fromdate,todate,group, fbo)
 		if stot:
-			sumacpayments(conn,fromdate,todate)
+			sumacpayments(conn,fromdate,todate,group, fbo)
 		#if com:
 			#logpaymonthcom(conn,fromdate)
 		if fuel:
