@@ -304,7 +304,8 @@ def getactypedict():
 	"YK18": "Yakovlev Yak-18T",
 	"YK40": "Yakovlev Yak-40",
 	"CH80": "Zenair CH 801",
-	"Z43": "Zlin Z-43"}
+	"Z43": "Zlin Z-43",
+	"B429": "Bell 429"}
 	#"": "Aircreation 582SL",
 	#"": "Boeing 221A Monomail",
 	#"": "Boeing 247D",

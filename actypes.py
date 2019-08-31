@@ -176,6 +176,6 @@ def getdict():
 	'DHC6': 'DeHavilland DHC-6 Twin Otter',
 	'C195': 'Cessna 195',
 	'C172': 'Cessna 172 Skyhawk',
-	'C182': 'Cessna 182 Skylane'}
+	'C182': 'Cessna 182 Skylane',
+	'B429': 'Bell 429'}
 	return dict
-	
