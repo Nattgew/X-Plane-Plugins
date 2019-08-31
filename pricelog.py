@@ -978,7 +978,7 @@ def main(argv): #This is where the magic happens
 	highprice=99999999
 	#TODO: Make default date range from first data to last data instead of hardcoded range
 	fromdate="2014-01-01"
-	todate="2020-12-31"
+	todate="2025-12-31"
 	dirs=AppDirs("nattgew-xpp","Nattgew")
 	for opt, arg in opts:
 		if opt in ("-a", "--average"): #Plots average prices for type
