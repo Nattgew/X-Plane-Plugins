@@ -256,10 +256,11 @@ def gettypesns(conn,type): #Look up serial numbers for an aircraft type
 		serials.append(row[0])
 	return serials
 
-def logpaymonth(conn,fromdate): #Log a month of payments
+def logpaymonth(conn,fromdate,group): #Log a month of payments
 	year,month,*rest=fromdate.split('-', 2) #Get the year and month from the date
 	print("Sending request for payment listing for "+fromdate+"...")
-	payments = fseutils.fserequest_new('payments','monthyear','Payment','xml',1,1,'&month='+month+'&year='+year)
+	ra = 2 if group else 1
+	payments = fseutils.fserequest_new('payments','monthyear','Payment','xml',ra,1,'&month='+month+'&year='+year)
 	if payments!=[]: #Check if we received any data
 		c=getpaydbcon(conn)
 		rows=[] #To hold processed rows
@@ -945,6 +946,7 @@ def main(argv): #This is where the magic happens
 			"   -d, --duration    Plots time for a type to sell (type required) (in work)\n"
 			"   -e, --commodity   Maps locations and amounts of commodities (type required)\n"
 			"   -g, --total       Plots total aircraft for sale of type (type aircraft for all)\n"
+			"   --group           Query against group (currently only payment logs)"
 			"   -h, --help        Prints this info\n"
 			"   -j                Plots fuel prices averaged for each day\n"
 			"   -k                Updates aircraft configuration database\n"
@@ -968,7 +970,7 @@ def main(argv): #This is where the magic happens
 		print(syntaxstring)
 		sys.exit(2)
 	#Initialize all options as false
-	tot, avg, low, dur, pay, ppay, spay, stot, com, lowprice, fuel, domap, sale, tots, pout, tfs=(False,)*16
+	tot, avg, low, dur, pay, ppay, spay, stot, com, lowprice, fuel, domap, sale, tots, pout, tfs, group=(False,)*17
 	getdbcon.has_been_called=False #To know when it's the first cursor initialized
 	getpaydbcon.has_been_called=False
 	getconfigdbcon.has_been_called=False
@@ -992,6 +994,8 @@ def main(argv): #This is where the magic happens
 			fromdate=arg
 		elif opt in ("-g", "--total"): #Plots total aircraft of this type for sale
 			tottype,tot=fseutils.gettype(arg)
+		elif opt in ("--group"): #Query against Group
+			group = True
 		elif opt in ("-h", "--help"): #plshelp
 			print(syntaxstring)
 			sys.exit() #kthxbye
@@ -1028,14 +1032,17 @@ def main(argv): #This is where the magic happens
 			timetype,tfs=fseutils.gettype(arg)
 		elif opt=="-z": #Temporary - Converts db to fancy new format
 			com=True
-	print("Running option...")
+	print("Running options...")
 
 	#Functions using the payments db
 	if True in (pay, ppay, spay, stot, fuel):
-		filename=str(Path(dirs.user_data_dir).joinpath('payments.db'))
+		if group:
+			filename=str(Path(dirs.user_data_dir).joinpath('grppayments.db'))
+		else:
+			filename=str(Path(dirs.user_data_dir).joinpath('payments.db'))
 		conn=sqlite3.connect(filename)
 		if pay:
-			logpaymonth(conn,fromdate)
+			logpaymonth(conn,fromdate,group)
 		if ppay:
 			plotpayments(conn,fromdate,todate)
 		if spay:
