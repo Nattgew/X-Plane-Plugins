@@ -779,7 +779,7 @@ def plotpayments(conn,fromdate,todate): #Plot payment totals per category
 		fdate += delta
 		i += 1
 	#I guess we're just plotting these expenses for now
-	fseutils.plotdates([refjet, addcrewfee, gndcrewfee],"Money","Money",['-'],None,0)
+	fseutils.plotdates([fborefjet, grpay, fbogndcrew],"Money","Money",['-'],None,0)
 
 def sumpayments(conn,fdate,tdate): #Plot portion of income/expense per category
 	c=getpaydbcon(conn)
@@ -873,8 +873,8 @@ def sumpayments(conn,fdate,tdate): #Plot portion of income/expense per category
 		else:
 			expnet.append(net)
 			netexp+=net[0]
-	fseutils.pieplot(incnet,netinc,5,"Income sources")
-	fseutils.pieplot(expnet,netexp,5,"Expense sources")
+	fseutils.pieplot(incnet,netinc,5,"Income sources - "+str(netinc))
+	fseutils.pieplot(expnet,netexp,5,"Expense sources - "+str(netexp))
 	#Totals income/expenses
 	revs=[rentinc, assnmtinc, acsold, fboref100, fborefjet, fbogndcrew, fborepinc, fboeqpinc, ptrentinc, fbosell, wssell100, wsselljet, wssellbld, wssellsupp]
 	exps=[rentexp, assnmtexp, pltfee, addcrewfee, gndcrewfee, bkgfee, ref100, refjet, mxexp, eqinstl, acbought, fborepexp, fboeqpexp, fbobuy, wsbuy100, wsbuyjet, wsbuybld, wsbuysupp]
