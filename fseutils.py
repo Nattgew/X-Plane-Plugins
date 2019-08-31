@@ -2,7 +2,7 @@
 import xml.etree.ElementTree as etree
 import urllib.request, math, csv, time, sys
 import dicts # My script for custom dictionaries
-from datetime import datetime 
+from datetime import datetime
 from appdirs import AppDirs
 from pathlib import Path
 
@@ -23,9 +23,12 @@ def getkey(grp=0): #Returns API key stored in file
 		mykey=""
 	return mykey
 
-def getname(): #Returns username stored in file
+def getname(group): #Returns username stored in file
 	dirs=AppDirs("nattgew-xpp","Nattgew")
-	filename=Path(dirs.user_data_dir).joinpath('mykey.txt')
+	if group:
+		filename=Path(dirs.user_data_dir).joinpath('mygroupkey.txt')
+	else:
+		filename=Path(dirs.user_data_dir).joinpath('mykey.txt')
 	try:
 		with filename.open() as f:
 			nothing = f.readline() #skip the key
