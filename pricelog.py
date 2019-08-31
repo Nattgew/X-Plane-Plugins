@@ -994,7 +994,7 @@ def main(argv): #This is where the magic happens
 			fromdate=arg
 		elif opt in ("-g", "--total"): #Plots total aircraft of this type for sale
 			tottype,tot=fseutils.gettype(arg)
-		elif opt in ("--group"): #Query against Group
+		elif opt == "--group": #Query against Group
 			group = True
 		elif opt in ("-h", "--help"): #plshelp
 			print(syntaxstring)
