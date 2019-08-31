@@ -945,12 +945,12 @@ def main(argv): #This is where the magic happens
 			"   -c, --cheapest    Plots cheapest prices for a type (type required)\n"
 			"   -d, --duration    Plots time for a type to sell (type required) (in work)\n"
 			"   -e, --commodity   Maps locations and amounts of commodities (type required)\n"
-			"   -g, --total       Plots total aircraft for sale of type (type aircraft for all)\n"
-			"   --group           Query against group (currently only payment logs)"
+			"   -g                Query against group (currently only payment logs)"
 			"   -h, --help        Prints this info\n"
 			"   -j                Plots fuel prices averaged for each day\n"
 			"   -k                Updates aircraft configuration database\n"
 			"   -m, --map         Plots location of a type for sale (no type will map all)\n"
+			"   -o, --total       Plots total aircraft for sale of type (type aircraft for all)\n"
 			"   -p                Logs a month of payments (--from required)\n"
 			"   -q                Plots payment totals (--from and --to, or will print all data)\n"
 			"   -s                Plots payment percentages (--from and --to, or will print all data)\n"
@@ -965,7 +965,7 @@ def main(argv): #This is where the magic happens
 			"   -i, --high        Highest price\n"
 			"   -l, --low         Lowest price\n")
 	try: #_b___________no__r_____x__
-		opts, args = getopt.getopt(argv,"a:c:d:e:f:g:h:i:jkl:m:pqst:uvwy:z",["group=","duration=","map=","average=","cheapest=","from=","to=","low=","high=","total=","help=","commodity=","timeforsale="])
+		opts, args = getopt.getopt(argv,"a:c:d:e:f:gh:i:jkl:m:opqst:uvwy:z",["duration=","map=","average=","cheapest=","from=","to=","low=","high=","total=","help=","commodity=","timeforsale="])
 	except getopt.GetoptError:
 		print(syntaxstring)
 		sys.exit(2)
@@ -992,9 +992,9 @@ def main(argv): #This is where the magic happens
 			fseutils.mapper(arg, locations, cmin, cmax, "Locations of Commodities")
 		elif opt in ("-f", "--from"): #First date to be used in different functions
 			fromdate=arg
-		elif opt in ("-g", "--total"): #Plots total aircraft of this type for sale
+		elif opt in ("-o", "--total"): #Plots total aircraft of this type for sale
 			tottype,tot=fseutils.gettype(arg)
-		elif opt == "--group": #Query against Group
+		elif opt == "-g": #Query against Group
 			group = True
 		elif opt in ("-h", "--help"): #plshelp
 			print(syntaxstring)
