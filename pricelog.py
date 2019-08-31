@@ -965,7 +965,7 @@ def main(argv): #This is where the magic happens
 			"   -i, --high        Highest price\n"
 			"   -l, --low         Lowest price\n")
 	try: #_b___________no__r_____x__
-		opts, args = getopt.getopt(argv,"a:c:d:e:f:g:h:i:jkl:m:pqst:uvwy:z",["duration=","map=","average=","cheapest=","from=","to=","low=","high=","total=","help=","commodity=","timeforsale="])
+		opts, args = getopt.getopt(argv,"a:c:d:e:f:g:h:i:jkl:m:pqst:uvwy:z",["group=","duration=","map=","average=","cheapest=","from=","to=","low=","high=","total=","help=","commodity=","timeforsale="])
 	except getopt.GetoptError:
 		print(syntaxstring)
 		sys.exit(2)
