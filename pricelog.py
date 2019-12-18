@@ -760,7 +760,11 @@ def plotpayments(conn,fromdate,todate,group,fbo): #Plot payment totals per categ
 				("FBO sale", fbosell, fbobuy),
 				("Installation of equipment in aircraft", fboeqpinc, eqinstl)]
 	i=0
-	print('Tallying daily payments from %i-%i to %i-%i...' % (fdate.year,fdate.month,tdate.year,tdate.month))
+	if fbo:
+		fbostr = " for "+fbo
+	else:
+		fbostr = ""
+	print('Tallying daily payments from %i-%i to %i-%i%s...' % (fdate.year,fdate.month,tdate.year,tdate.month,fbostr))
 	#(date text, to text, from text, amount real, reason text, location real, aircraft real)
 	while fdate <= tdate:
 		#From and to dates to use in query
@@ -771,7 +775,17 @@ def plotpayments(conn,fromdate,todate,group,fbo): #Plot payment totals per categ
 				#Carry over the previous totals to new date
 				var.append([fdate,var[i-1][1]])
 		#Get all of the payments between the from and to dates
-		for payment in c.execute('SELECT payfrom, amount, reason FROM payments WHERE date BETWEEN ? AND ?',(fdateq,tdateq)):
+		if fbo:
+			c.execute('SELECT payfrom, amount, reason FROM payments WHERE date BETWEEN ? AND ? AND (fbo = ? OR (location = ? AND (reason = "Sale of supplies" OR reason = "Sale of wholesale JetA" OR reason = "Sale of wholesale 100LL")))',(fdateq,tdateq,fbo,fbo))
+			payments = c.fetchall()
+			#c.execute('SELECT payfrom, amount, reason FROM payments WHERE date BETWEEN ? AND ? AND ',(fdateq,tdateq,fbo))
+			#payments.extend(c.fetchall())
+		else:
+			c.execute('SELECT payfrom, amount, reason FROM payments WHERE date BETWEEN ? AND ?',(fdateq,tdateq))
+			payments = c.fetchall()
+		# if payments:
+		# 	print(payments)
+		for payment in payments:
 			for cat in categories:
 				if payment[2]==cat[0]: #Test if category name matches
 					if payment[0]!=user: #If payment not from user, it is income
@@ -884,9 +898,11 @@ def sumpayments(conn,fdate,tdate,group,fbo): #Plot portion of income/expense per
 	fseutils.pieplot(expnet,netexp,5,"Expense sources - "+str(netexp))
 	#Totals income/expenses
 	revs=[rentinc, assnmtinc, acsold, fboref100, fborefjet, fbogndcrew, fborepinc, fboeqpinc, ptrentinc, fbosell, wssell100, wsselljet, wssellbld, wssellsupp]
+	netrev = sum([i[0] for i in revs])
 	exps=[rentexp, assnmtexp, pltfee, addcrewfee, gndcrewfee, bkgfee, ref100, refjet, mxexp, eqinstl, acbought, fborepexp, fboeqpexp, fbobuy, wsbuy100, wsbuyjet, wsbuybld, wsbuysupp]
-	fseutils.pieplot(revs,None,5,"Revenues")
-	fseutils.pieplot(exps,None,5,"Expenses")
+	netexp = sum([i[0] for i in exps])
+	fseutils.pieplot(revs,None,5,"Revenues - "+str(netrev))
+	fseutils.pieplot(exps,None,5,"Expenses - "+str(netexp))
 
 def sumacpayments(conn,fdate,tdate,group,fbo): #Plot revenue portion by aircraft
 	c=getpaydbcon(conn)
